@@ -1,8 +1,11 @@
+import 'server-only';
+
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 
 import { publicEnv } from '@/lib/env';
 
+import { writeServerCookies } from './cookie-writes';
 import type { Database } from './database.types';
 
 export async function createServerSupabase() {
@@ -16,13 +19,11 @@ export async function createServerSupabase() {
       cookies: {
         getAll: () => store.getAll(),
         setAll: (values) => {
-          try {
+          writeServerCookies(() => {
             values.forEach(({ name, value, options }) => {
               store.set(name, value, options);
             });
-          } catch {
-            // Server Components cannot write cookies. The proxy refreshes them.
-          }
+          });
         },
       },
     },

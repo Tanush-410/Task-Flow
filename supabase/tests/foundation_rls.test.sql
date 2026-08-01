@@ -1,10 +1,16 @@
 begin;
 
-select plan(94);
+select plan(95);
 
 select has_table('public', 'profiles', 'profiles exists');
 select has_table('public', 'organizations', 'organizations exists');
 select has_table('public', 'organization_memberships', 'memberships exists');
+select has_index(
+  'public',
+  'organization_memberships',
+  'organization_memberships_one_active_per_user_idx',
+  'memberships enforce one active organization per user'
+);
 select has_table('public', 'invitations', 'invitations exists');
 select has_table('public', 'feature_flags', 'feature flags exist');
 select has_table('public', 'feature_flag_audit_log', 'feature flag audit log exists');

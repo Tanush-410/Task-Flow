@@ -1,49 +1,34 @@
+import 'server-only';
+
 import { redirect } from 'next/navigation';
 
 import { createServerSupabase } from '@/lib/supabase/server';
 
-export type MembershipContext = {
-  organizationId: string;
-  userId: string;
-  role: 'admin' | 'employee';
-};
+import { resolveMembershipAccess, type MembershipContext } from './context';
 
-export function requireSingleMembership(
-  items: MembershipContext[],
-): MembershipContext {
-  if (items.length !== 1) {
-    throw new Error('ACTIVE_MEMBERSHIP_REQUIRED');
-  }
-
-  return items[0];
-}
+export type { MembershipContext } from './context';
+export { requireSingleMembership } from './context';
 
 export async function requireMembership(): Promise<MembershipContext> {
   const supabase = await createServerSupabase();
-  const { data: claims } = await supabase.auth.getClaims();
-  const userId = claims?.claims.sub;
+  const access = await resolveMembershipAccess(
+    () => supabase.auth.getClaims(),
+    async (userId) => {
+      const { data, error } = await supabase
+        .from('organization_memberships')
+        .select('organization_id,user_id,role')
+        .eq('user_id', userId)
+        .eq('status', 'active');
 
-  if (!userId) {
-    redirect('/login');
-  }
-
-  const { data, error } = await supabase
-    .from('organization_memberships')
-    .select('organization_id,user_id,role')
-    .eq('user_id', userId)
-    .eq('status', 'active');
-
-  if (error || !data) {
-    redirect('/login');
-  }
-
-  return requireSingleMembership(
-    data.map((item) => ({
-      organizationId: item.organization_id,
-      userId: item.user_id,
-      role: item.role,
-    })),
+      return { data, error };
+    },
   );
+
+  if (access.kind === 'redirect') {
+    redirect(access.location);
+  }
+
+  return access.membership;
 }
 
 export async function requireAdmin(): Promise<MembershipContext> {
