@@ -4,14 +4,18 @@ import { redirect } from 'next/navigation';
 
 import { createServerSupabase } from '@/lib/supabase/server';
 
-import { resolveMembershipAccess, type MembershipContext } from './context';
+import {
+  resolveMembershipAccess,
+  type MembershipAccess,
+  type MembershipContext,
+} from './context';
 
 export type { MembershipContext } from './context';
 export { requireSingleMembership } from './context';
 
-export async function requireMembership(): Promise<MembershipContext> {
+export async function getMembershipAccess(): Promise<MembershipAccess> {
   const supabase = await createServerSupabase();
-  const access = await resolveMembershipAccess(
+  return resolveMembershipAccess(
     () => supabase.auth.getClaims(),
     async (userId) => {
       const { data, error } = await supabase
@@ -23,6 +27,10 @@ export async function requireMembership(): Promise<MembershipContext> {
       return { data, error };
     },
   );
+}
+
+export async function requireMembership(): Promise<MembershipContext> {
+  const access = await getMembershipAccess();
 
   if (access.kind === 'redirect') {
     redirect(access.location);

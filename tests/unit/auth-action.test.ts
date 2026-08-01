@@ -1,0 +1,135 @@
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+const mocks = vi.hoisted(() => ({
+  createServerSupabase: vi.fn(),
+  getMembershipAccess: vi.fn(),
+  redirect: vi.fn(),
+  signInWithPassword: vi.fn(),
+}));
+
+vi.mock('server-only', () => ({}));
+vi.mock('next/navigation', () => ({ redirect: mocks.redirect }));
+vi.mock('@/lib/supabase/server', () => ({
+  createServerSupabase: mocks.createServerSupabase,
+}));
+vi.mock('@/modules/members/queries', () => ({
+  getMembershipAccess: mocks.getMembershipAccess,
+}));
+
+import { login } from '@/modules/auth/actions';
+
+function loginData(email: string, password: string) {
+  const data = new FormData();
+  data.set('email', email);
+  data.set('password', password);
+  return data;
+}
+
+describe('login', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.createServerSupabase.mockResolvedValue({
+      auth: { signInWithPassword: mocks.signInWithPassword },
+    });
+  });
+
+  it('returns safe field errors without calling the provider', async () => {
+    const result = await login(null, loginData('not-an-email', 'short'));
+
+    expect(result).toMatchObject({
+      ok: false,
+      error: {
+        code: 'INVALID_LOGIN',
+        message: 'Enter a valid email and password.',
+        fields: { email: expect.any(Array), password: expect.any(Array) },
+        traceId: expect.any(String),
+      },
+    });
+    expect(mocks.signInWithPassword).not.toHaveBeenCalled();
+  });
+
+  it('does not expose authentication provider errors', async () => {
+    mocks.signInWithPassword.mockResolvedValue({
+      error: new Error('provider secret detail'),
+    });
+
+    const result = await login(
+      null,
+      loginData('person@example.com', 'password123'),
+    );
+
+    expect(result).toMatchObject({
+      ok: false,
+      error: {
+        code: 'INVALID_LOGIN',
+        message: 'Email or password is incorrect.',
+        traceId: expect.any(String),
+      },
+    });
+    expect(JSON.stringify(result)).not.toContain('provider secret detail');
+  });
+
+  it('returns a safe traced error when the auth service is unavailable', async () => {
+    mocks.createServerSupabase.mockRejectedValueOnce(
+      new Error('sensitive connection detail'),
+    );
+
+    const result = await login(
+      null,
+      loginData('person@example.com', 'password123'),
+    );
+
+    expect(result).toMatchObject({
+      ok: false,
+      error: {
+        code: 'INVALID_LOGIN',
+        message: 'We could not complete sign in. Please try again.',
+        traceId: expect.any(String),
+      },
+    });
+    expect(JSON.stringify(result)).not.toContain('sensitive connection');
+  });
+
+  it('returns a safe traced error when membership verification fails', async () => {
+    mocks.signInWithPassword.mockResolvedValue({ error: null });
+    mocks.getMembershipAccess.mockRejectedValue(
+      new Error('sensitive membership detail'),
+    );
+
+    const result = await login(
+      null,
+      loginData('person@example.com', 'password123'),
+    );
+
+    expect(result).toMatchObject({
+      ok: false,
+      error: {
+        code: 'INVALID_LOGIN',
+        message: 'We could not complete sign in. Please try again.',
+        traceId: expect.any(String),
+      },
+    });
+    expect(JSON.stringify(result)).not.toContain('sensitive membership');
+  });
+
+  it('uses verified membership context for the role landing page', async () => {
+    mocks.signInWithPassword.mockResolvedValue({ error: null });
+    mocks.getMembershipAccess.mockResolvedValue({
+      kind: 'membership',
+      membership: {
+        organizationId: 'org',
+        userId: 'user',
+        role: 'employee',
+      },
+    });
+
+    await login(null, loginData(' PERSON@EXAMPLE.COM ', 'password123'));
+
+    expect(mocks.signInWithPassword).toHaveBeenCalledWith({
+      email: 'person@example.com',
+      password: 'password123',
+    });
+    expect(mocks.getMembershipAccess).toHaveBeenCalledOnce();
+    expect(mocks.redirect).toHaveBeenCalledWith('/my-day');
+  });
+});
