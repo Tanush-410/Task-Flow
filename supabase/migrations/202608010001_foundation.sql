@@ -2,6 +2,7 @@ create extension if not exists pgcrypto;
 
 create type public.membership_role as enum ('admin', 'employee');
 create type public.membership_status as enum ('active', 'deactivated');
+create type public.deployment_environment as enum ('development', 'staging', 'production');
 
 create table public.profiles (
   id uuid primary key references auth.users (id) on delete cascade,
@@ -38,7 +39,7 @@ create table public.invitations (
   email text not null,
   role public.membership_role not null,
   token_hash text not null unique,
-  invited_by uuid not null references public.profiles (id),
+  invited_by uuid not null default auth.uid() references public.profiles (id),
   expires_at timestamptz not null,
   accepted_at timestamptz,
   created_at timestamptz not null default now()
@@ -51,11 +52,31 @@ create table public.feature_flags (
   id uuid primary key default gen_random_uuid(),
   organization_id uuid references public.organizations (id) on delete cascade,
   key text not null,
+  environment public.deployment_environment not null,
+  role_scope public.membership_role,
   enabled boolean not null default false,
   rollout_percentage integer not null default 100 check (rollout_percentage between 0 and 100),
   owner text not null,
+  purpose text not null,
+  rollout_plan text not null,
   review_on date not null,
-  unique nulls not distinct (organization_id, key)
+  expires_on date not null,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  check (review_on <= expires_on),
+  unique nulls not distinct (organization_id, environment, role_scope, key)
+);
+
+create table public.feature_flag_audit_log (
+  id uuid primary key default gen_random_uuid(),
+  feature_flag_id uuid not null,
+  organization_id uuid,
+  flag_key text not null,
+  changed_by uuid references public.profiles (id) on delete set null,
+  action text not null check (action in ('insert', 'update', 'delete')),
+  old_record jsonb,
+  new_record jsonb,
+  changed_at timestamptz not null default now()
 );
 
 create or replace function public.handle_new_auth_user()
@@ -86,6 +107,54 @@ $$;
 create trigger on_auth_user_created
 after insert on auth.users
 for each row execute function public.handle_new_auth_user();
+
+create or replace function public.set_updated_at()
+returns trigger
+language plpgsql
+set search_path = ''
+as $$
+begin
+  new.updated_at = statement_timestamp();
+  return new;
+end;
+$$;
+
+create trigger profiles_set_updated_at
+before update on public.profiles
+for each row execute function public.set_updated_at();
+
+create trigger organizations_set_updated_at
+before update on public.organizations
+for each row execute function public.set_updated_at();
+
+create trigger feature_flags_set_updated_at
+before update on public.feature_flags
+for each row execute function public.set_updated_at();
+
+create or replace function public.validate_organization_timezone()
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  if not exists (
+    select 1
+    from pg_catalog.pg_timezone_names
+    where name = new.timezone
+  ) then
+    raise exception using
+      errcode = 'check_violation',
+      message = format('invalid organization timezone: %s', new.timezone);
+  end if;
+
+  return new;
+end;
+$$;
+
+create trigger organizations_validate_timezone
+before insert or update of timezone on public.organizations
+for each row execute function public.validate_organization_timezone();
 
 create or replace function public.is_active_member(target_organization_id uuid)
 returns boolean
@@ -120,17 +189,148 @@ as $$
   );
 $$;
 
+create or replace function public.is_active_admin()
+returns boolean
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select exists (
+    select 1
+    from public.organization_memberships as membership
+    where membership.user_id = auth.uid()
+      and membership.role = 'admin'
+      and membership.status = 'active'
+  );
+$$;
+
+create or replace function public.protect_last_active_admin()
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  removes_active_admin boolean := false;
+begin
+  if old.role = 'admin' and old.status = 'active' then
+    if tg_op = 'DELETE' then
+      removes_active_admin := true;
+    elsif new.role <> 'admin' or new.status <> 'active' then
+      removes_active_admin := true;
+    end if;
+  end if;
+
+  if removes_active_admin then
+    perform 1
+    from public.organizations
+    where id = old.organization_id
+    for update;
+
+    if not found then
+      return old;
+    end if;
+
+    if not exists (
+      select 1
+      from public.organization_memberships as membership
+      where membership.organization_id = old.organization_id
+        and membership.id <> old.id
+        and membership.role = 'admin'
+        and membership.status = 'active'
+    ) then
+      raise exception using
+        errcode = 'check_violation',
+        message = 'organization must retain at least one active admin';
+    end if;
+  end if;
+
+  if tg_op = 'DELETE' then
+    return old;
+  end if;
+
+  return new;
+end;
+$$;
+
+create trigger memberships_protect_last_active_admin
+before update of role, status or delete on public.organization_memberships
+for each row execute function public.protect_last_active_admin();
+
+create or replace function public.audit_feature_flag_change()
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  insert into public.feature_flag_audit_log (
+    feature_flag_id,
+    organization_id,
+    flag_key,
+    changed_by,
+    action,
+    old_record,
+    new_record
+  )
+  values (
+    case when tg_op = 'DELETE' then old.id else new.id end,
+    case when tg_op = 'DELETE' then old.organization_id else new.organization_id end,
+    case when tg_op = 'DELETE' then old.key else new.key end,
+    auth.uid(),
+    lower(tg_op),
+    case when tg_op in ('UPDATE', 'DELETE') then to_jsonb(old) end,
+    case when tg_op in ('INSERT', 'UPDATE') then to_jsonb(new) end
+  );
+
+  if tg_op = 'DELETE' then
+    return old;
+  end if;
+
+  return new;
+end;
+$$;
+
+create trigger feature_flags_audit_changes
+after insert or update or delete on public.feature_flags
+for each row execute function public.audit_feature_flag_change();
+
+create or replace function public.prevent_feature_flag_audit_mutation()
+returns trigger
+language plpgsql
+set search_path = ''
+as $$
+begin
+  raise exception using
+    errcode = 'check_violation',
+    message = 'feature flag audit records are append-only';
+end;
+$$;
+
+create trigger feature_flag_audit_log_append_only
+before update or delete on public.feature_flag_audit_log
+for each row execute function public.prevent_feature_flag_audit_mutation();
+
 revoke all on function public.handle_new_auth_user() from public;
+revoke all on function public.set_updated_at() from public;
+revoke all on function public.validate_organization_timezone() from public;
 revoke all on function public.is_active_member(uuid) from public;
 revoke all on function public.is_admin(uuid) from public;
+revoke all on function public.is_active_admin() from public;
+revoke all on function public.protect_last_active_admin() from public;
+revoke all on function public.audit_feature_flag_change() from public;
+revoke all on function public.prevent_feature_flag_audit_mutation() from public;
 grant execute on function public.is_active_member(uuid) to authenticated;
 grant execute on function public.is_admin(uuid) to authenticated;
+grant execute on function public.is_active_admin() to authenticated;
 
 alter table public.profiles enable row level security;
 alter table public.organizations enable row level security;
 alter table public.organization_memberships enable row level security;
 alter table public.invitations enable row level security;
 alter table public.feature_flags enable row level security;
+alter table public.feature_flag_audit_log enable row level security;
 
 create policy profiles_view_self_or_coworker
 on public.profiles
@@ -190,13 +390,13 @@ to authenticated
 using (public.is_admin(organization_id))
 with check (public.is_admin(organization_id));
 
-create policy members_view_flags
+create policy admins_view_flags
 on public.feature_flags
 for select
 to authenticated
 using (
-  organization_id is null
-  or public.is_active_member(organization_id)
+  (organization_id is null and public.is_active_admin())
+  or public.is_admin(organization_id)
 );
 
 create policy admins_manage_flags
@@ -212,8 +412,55 @@ with check (
   and public.is_admin(organization_id)
 );
 
-grant select, update on public.profiles to authenticated;
-grant select, update on public.organizations to authenticated;
-grant select, insert, update, delete on public.organization_memberships to authenticated;
-grant select, insert, update, delete on public.invitations to authenticated;
-grant select, insert, update, delete on public.feature_flags to authenticated;
+create policy admins_view_flag_audit_log
+on public.feature_flag_audit_log
+for select
+to authenticated
+using (
+  (organization_id is null and public.is_active_admin())
+  or public.is_admin(organization_id)
+);
+
+grant select on public.profiles to authenticated;
+grant update (display_name) on public.profiles to authenticated;
+
+grant select on public.organizations to authenticated;
+grant update (name, timezone) on public.organizations to authenticated;
+
+grant select, delete on public.organization_memberships to authenticated;
+grant insert (organization_id, user_id, role, status)
+on public.organization_memberships to authenticated;
+grant update (role, status) on public.organization_memberships to authenticated;
+
+grant select, delete on public.invitations to authenticated;
+grant insert (organization_id, email, role, token_hash, expires_at)
+on public.invitations to authenticated;
+grant update (role, expires_at, accepted_at) on public.invitations to authenticated;
+
+grant select, delete on public.feature_flags to authenticated;
+grant insert (
+  organization_id,
+  key,
+  environment,
+  role_scope,
+  enabled,
+  rollout_percentage,
+  owner,
+  purpose,
+  rollout_plan,
+  review_on,
+  expires_on
+)
+on public.feature_flags to authenticated;
+grant update (
+  enabled,
+  rollout_percentage,
+  owner,
+  purpose,
+  rollout_plan,
+  review_on,
+  expires_on
+)
+on public.feature_flags to authenticated;
+
+grant select on public.feature_flag_audit_log to authenticated;

@@ -9,33 +9,98 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      feature_flag_audit_log: {
+        Row: {
+          action: string;
+          changed_at: string;
+          changed_by: string | null;
+          feature_flag_id: string;
+          flag_key: string;
+          id: string;
+          new_record: Json | null;
+          old_record: Json | null;
+          organization_id: string | null;
+        };
+        Insert: {
+          action: string;
+          changed_at?: string;
+          changed_by?: string | null;
+          feature_flag_id: string;
+          flag_key: string;
+          id?: string;
+          new_record?: Json | null;
+          old_record?: Json | null;
+          organization_id?: string | null;
+        };
+        Update: {
+          action?: string;
+          changed_at?: string;
+          changed_by?: string | null;
+          feature_flag_id?: string;
+          flag_key?: string;
+          id?: string;
+          new_record?: Json | null;
+          old_record?: Json | null;
+          organization_id?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'feature_flag_audit_log_changed_by_fkey';
+            columns: ['changed_by'];
+            isOneToOne: false;
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
       feature_flags: {
         Row: {
+          created_at: string;
           enabled: boolean;
+          environment: Database['public']['Enums']['deployment_environment'];
+          expires_on: string;
           id: string;
           key: string;
           organization_id: string | null;
           owner: string;
+          purpose: string;
           review_on: string;
+          role_scope: Database['public']['Enums']['membership_role'] | null;
+          rollout_plan: string;
           rollout_percentage: number;
+          updated_at: string;
         };
         Insert: {
+          created_at?: string;
           enabled?: boolean;
+          environment: Database['public']['Enums']['deployment_environment'];
+          expires_on: string;
           id?: string;
           key: string;
           organization_id?: string | null;
           owner: string;
+          purpose: string;
           review_on: string;
+          role_scope?: Database['public']['Enums']['membership_role'] | null;
+          rollout_plan: string;
           rollout_percentage?: number;
+          updated_at?: string;
         };
         Update: {
+          created_at?: string;
           enabled?: boolean;
+          environment?: Database['public']['Enums']['deployment_environment'];
+          expires_on?: string;
           id?: string;
           key?: string;
           organization_id?: string | null;
           owner?: string;
+          purpose?: string;
           review_on?: string;
+          role_scope?: Database['public']['Enums']['membership_role'] | null;
+          rollout_plan?: string;
           rollout_percentage?: number;
+          updated_at?: string;
         };
         Relationships: [
           {
@@ -65,7 +130,7 @@ export type Database = {
           email: string;
           expires_at: string;
           id?: string;
-          invited_by: string;
+          invited_by?: string;
           organization_id: string;
           role: Database['public']['Enums']['membership_role'];
           token_hash: string;
@@ -199,6 +264,10 @@ export type Database = {
     };
     Views: { [_ in never]: never };
     Functions: {
+      is_active_admin: {
+        Args: Record<PropertyKey, never>;
+        Returns: boolean;
+      };
       is_active_member: {
         Args: { target_organization_id: string };
         Returns: boolean;
@@ -209,6 +278,7 @@ export type Database = {
       };
     };
     Enums: {
+      deployment_environment: 'development' | 'staging' | 'production';
       membership_role: 'admin' | 'employee';
       membership_status: 'active' | 'deactivated';
     };
@@ -335,6 +405,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      deployment_environment: ['development', 'staging', 'production'],
       membership_role: ['admin', 'employee'],
       membership_status: ['active', 'deactivated'],
     },
