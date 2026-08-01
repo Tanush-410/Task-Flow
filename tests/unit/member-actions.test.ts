@@ -3,8 +3,10 @@ import { createHash } from 'node:crypto';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
+  createAdminSupabase: vi.fn(),
   createServerSupabase: vi.fn(),
   deliverInvitation: vi.fn(),
+  reportCleanupFailure: vi.fn(),
   requireAdmin: vi.fn(),
   rpc: vi.fn(),
   serverEnv: vi.fn(),
@@ -15,8 +17,14 @@ vi.mock('@/lib/server-env', () => ({ serverEnv: mocks.serverEnv }));
 vi.mock('@/lib/supabase/server', () => ({
   createServerSupabase: mocks.createServerSupabase,
 }));
+vi.mock('@/lib/supabase/admin', () => ({
+  createAdminSupabase: mocks.createAdminSupabase,
+}));
 vi.mock('@/modules/members/invitation-delivery', () => ({
   deliverInvitation: mocks.deliverInvitation,
+}));
+vi.mock('@/modules/members/invitation-reporting', () => ({
+  reportInvitationCleanupFailure: mocks.reportCleanupFailure,
 }));
 vi.mock('@/modules/members/queries', () => ({
   requireAdmin: mocks.requireAdmin,
@@ -40,6 +48,7 @@ describe('inviteMember', () => {
     });
     mocks.serverEnv.mockReturnValue({ APP_ORIGIN: 'https://tasks.example' });
     mocks.createServerSupabase.mockResolvedValue({ rpc: mocks.rpc });
+    mocks.createAdminSupabase.mockReturnValue({ rpc: mocks.rpc });
     mocks.rpc.mockImplementation(async (name: string) => {
       if (name === 'stage_invitation') return { data: [staged], error: null };
       return { data: true, error: null };
@@ -73,6 +82,7 @@ describe('inviteMember', () => {
         invitation_id: 'invite-123',
       },
     );
+    expect(mocks.createAdminSupabase).toHaveBeenCalledOnce();
     expect(mocks.rpc.mock.invocationCallOrder[0]).toBeLessThan(
       mocks.deliverInvitation.mock.invocationCallOrder[0],
     );

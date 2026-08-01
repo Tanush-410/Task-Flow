@@ -25,6 +25,7 @@ const applicationOriginSchema = z.url().transform((value, context) => {
 
 const serverEnvSchema = z.object({
   APP_ORIGIN: applicationOriginSchema,
+  SUPABASE_SERVICE_ROLE_KEY: z.string().min(1),
 });
 
 export type ServerEnv = z.infer<typeof serverEnvSchema>;
@@ -34,5 +35,8 @@ export function parseServerEnv(value: unknown): ServerEnv {
 }
 
 export function serverEnv(): ServerEnv {
-  return parseServerEnv({ APP_ORIGIN: process.env.APP_ORIGIN });
+  return parseServerEnv({
+    APP_ORIGIN: process.env.APP_ORIGIN,
+    SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY,
+  });
 }

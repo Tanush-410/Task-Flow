@@ -25,6 +25,13 @@ const databaseContract = readFileSync(
   join(process.cwd(), 'supabase/tests/foundation_rls.test.sql'),
   'utf8',
 );
+const serverFinalizeMigration = readFileSync(
+  join(
+    process.cwd(),
+    'supabase/migrations/202608010006_server_only_invitation_finalize.sql',
+  ),
+  'utf8',
+);
 
 describe('secure identity lifecycle migration', () => {
   it('uses only columns granted for client invitation insertion', () => {
@@ -146,5 +153,17 @@ describe('atomic invitation delivery migration', () => {
     expect(atomicMigration).toMatch(
       /set revoked_at = statement_timestamp\(\)/i,
     );
+  });
+});
+
+describe('server-only invitation finalization migration', () => {
+  it('grants finalize only to service_role and validates email shape', () => {
+    expect(serverFinalizeMigration).toMatch(
+      /revoke all on function public\.finalize_invitation_delivery\(uuid\) from public, anon, authenticated/i,
+    );
+    expect(serverFinalizeMigration).toMatch(
+      /grant execute on function public\.finalize_invitation_delivery\(uuid\) to service_role/i,
+    );
+    expect(serverFinalizeMigration).toMatch(/invitation_email !~/i);
   });
 });

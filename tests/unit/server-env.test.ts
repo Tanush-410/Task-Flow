@@ -6,8 +6,14 @@ import { parseServerEnv } from '@/lib/server-env';
 
 describe('parseServerEnv', () => {
   it('accepts an absolute HTTP application origin', () => {
-    expect(parseServerEnv({ APP_ORIGIN: 'https://tasks.example' })).toEqual({
+    expect(
+      parseServerEnv({
+        APP_ORIGIN: 'https://tasks.example',
+        SUPABASE_SERVICE_ROLE_KEY: 'secret',
+      }),
+    ).toEqual({
       APP_ORIGIN: 'https://tasks.example',
+      SUPABASE_SERVICE_ROLE_KEY: 'secret',
     });
   });
 
@@ -17,6 +23,14 @@ describe('parseServerEnv', () => {
     'https://tasks.example/base',
     'https://tasks.example?next=evil',
   ])('rejects a non-origin APP_ORIGIN value', (APP_ORIGIN) => {
-    expect(() => parseServerEnv({ APP_ORIGIN })).toThrow();
+    expect(() =>
+      parseServerEnv({ APP_ORIGIN, SUPABASE_SERVICE_ROLE_KEY: 'secret' }),
+    ).toThrow();
+  });
+
+  it('rejects a missing service-role credential', () => {
+    expect(() =>
+      parseServerEnv({ APP_ORIGIN: 'https://tasks.example' }),
+    ).toThrow();
   });
 });

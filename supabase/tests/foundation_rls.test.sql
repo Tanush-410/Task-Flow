@@ -1,6 +1,6 @@
 begin;
 
-select plan(130);
+select plan(137);
 
 select has_table('public', 'profiles', 'profiles exists');
 select has_table('public', 'organizations', 'organizations exists');
@@ -55,6 +55,12 @@ select ok(
   ),
   'anonymous users cannot execute organization bootstrap'
 );
+select ok(has_function_privilege('authenticated', 'public.stage_invitation(text, public.membership_role, text, timestamp with time zone)', 'execute'), 'authenticated can stage through the admin-authorized RPC');
+select ok(not has_function_privilege('anon', 'public.stage_invitation(text, public.membership_role, text, timestamp with time zone)', 'execute'), 'anonymous cannot stage invitations');
+select ok(has_function_privilege('authenticated', 'public.discard_staged_invitation(uuid)', 'execute'), 'authenticated admins can discard staging');
+select ok(not has_function_privilege('anon', 'public.discard_staged_invitation(uuid)', 'execute'), 'anonymous cannot discard staging');
+select ok(not has_function_privilege('authenticated', 'public.finalize_invitation_delivery(uuid)', 'execute'), 'authenticated clients cannot finalize delivery');
+select ok(has_function_privilege('service_role', 'public.finalize_invitation_delivery(uuid)', 'execute'), 'service role alone can finalize delivery');
 select ok(
   has_function_privilege(
     'authenticated',
@@ -951,6 +957,13 @@ select set_config(
   '{"sub":"10000000-0000-0000-0000-000000000003","role":"authenticated"}',
   true
 );
+select throws_like(
+  $$select * from public.stage_invitation('not-an-email', 'employee', repeat('7', 64), now() + interval '7 days')$$,
+  '%INVITATION_INVALID%',
+  'stage rejects malformed email in the database'
+);
+reset role;
+set local role service_role;
 select results_eq(
   $$select public.finalize_invitation_delivery((select id from public.invitations where token_hash = repeat('b', 64)))$$,
   array[true],
@@ -965,6 +978,14 @@ select results_eq(
   $$select delivery_status::text from public.invitations where token_hash = repeat('b', 64)$$,
   array['active'],
   'finalization makes the delivered token active'
+);
+reset role;
+set local role authenticated;
+select set_config('request.jwt.claim.sub', '10000000-0000-0000-0000-000000000003', true);
+select set_config(
+  'request.jwt.claims',
+  '{"sub":"10000000-0000-0000-0000-000000000003","role":"authenticated"}',
+  true
 );
 select results_eq(
   $$select public.discard_staged_invitation(id) from public.stage_invitation('invited@example.test', 'admin', repeat('e', 64), now() + interval '7 days')$$,

@@ -4,9 +4,11 @@ import { createHash, randomBytes, randomUUID } from 'node:crypto';
 
 import type { ActionResult } from '@/lib/result';
 import { serverEnv } from '@/lib/server-env';
+import { createAdminSupabase } from '@/lib/supabase/admin';
 import { createServerSupabase } from '@/lib/supabase/server';
 
 import { deliverInvitation } from './invitation-delivery';
+import { reportInvitationCleanupFailure } from './invitation-reporting';
 import { requireAdmin } from './queries';
 import { invitationAcceptanceSchema, invitationSchema } from './schemas';
 
@@ -97,7 +99,10 @@ export async function inviteMember(
         invitation_id: invitation.id,
       });
       if (discarded.error) {
-        // Cleanup is best effort; staged invitations are not acceptable.
+        reportInvitationCleanupFailure({
+          traceId,
+          invitationId: invitation.id,
+        });
       }
     } catch {
       // Best-effort revocation; never leak delivery or bearer-token details.
@@ -106,7 +111,8 @@ export async function inviteMember(
   }
 
   try {
-    const finalized = await supabase.rpc('finalize_invitation_delivery', {
+    const admin = createAdminSupabase();
+    const finalized = await admin.rpc('finalize_invitation_delivery', {
       invitation_id: invitation.id,
     });
     if (finalized.error || !finalized.data) {
