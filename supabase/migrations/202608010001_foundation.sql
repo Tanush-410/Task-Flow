@@ -63,6 +63,10 @@ create table public.feature_flags (
   expires_on date not null,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
+  check (char_length(btrim(owner)) > 0),
+  check (char_length(btrim(purpose)) > 0),
+  check (char_length(btrim(rollout_plan)) > 0),
+  check (review_on >= created_at::date),
   check (review_on <= expires_on),
   unique nulls not distinct (organization_id, environment, role_scope, key)
 );
@@ -72,12 +76,15 @@ create table public.feature_flag_audit_log (
   feature_flag_id uuid not null,
   organization_id uuid,
   flag_key text not null,
-  changed_by uuid references public.profiles (id) on delete set null,
+  changed_by uuid,
   action text not null check (action in ('insert', 'update', 'delete')),
   old_record jsonb,
   new_record jsonb,
   changed_at timestamptz not null default now()
 );
+
+create index feature_flag_audit_log_organization_changed_at_idx
+on public.feature_flag_audit_log (organization_id, changed_at);
 
 create or replace function public.handle_new_auth_user()
 returns trigger
@@ -312,15 +319,24 @@ create trigger feature_flag_audit_log_append_only
 before update or delete on public.feature_flag_audit_log
 for each row execute function public.prevent_feature_flag_audit_mutation();
 
-revoke all on function public.handle_new_auth_user() from public;
-revoke all on function public.set_updated_at() from public;
-revoke all on function public.validate_organization_timezone() from public;
-revoke all on function public.is_active_member(uuid) from public;
-revoke all on function public.is_admin(uuid) from public;
-revoke all on function public.is_active_admin() from public;
-revoke all on function public.protect_last_active_admin() from public;
-revoke all on function public.audit_feature_flag_change() from public;
-revoke all on function public.prevent_feature_flag_audit_mutation() from public;
+revoke all on function public.handle_new_auth_user() from public, anon, authenticated;
+revoke all on function public.set_updated_at() from public, anon, authenticated;
+revoke all on function public.validate_organization_timezone() from public, anon, authenticated;
+revoke all on function public.is_active_member(uuid) from public, anon, authenticated;
+revoke all on function public.is_admin(uuid) from public, anon, authenticated;
+revoke all on function public.is_active_admin() from public, anon, authenticated;
+revoke all on function public.protect_last_active_admin() from public, anon, authenticated;
+revoke all on function public.audit_feature_flag_change() from public, anon, authenticated;
+revoke all on function public.prevent_feature_flag_audit_mutation() from public, anon, authenticated;
+
+revoke all on table public.profiles from anon, authenticated;
+revoke all on table public.organizations from anon, authenticated;
+revoke all on table public.organization_memberships from anon, authenticated;
+revoke all on table public.invitations from anon, authenticated;
+revoke all on table public.feature_flags from anon, authenticated;
+revoke all on table public.feature_flag_audit_log from anon, authenticated;
+revoke all on all sequences in schema public from anon, authenticated;
+
 grant execute on function public.is_active_member(uuid) to authenticated;
 grant execute on function public.is_admin(uuid) to authenticated;
 grant execute on function public.is_active_admin() to authenticated;

@@ -1,6 +1,6 @@
 begin;
 
-select plan(54);
+select plan(94);
 
 select has_table('public', 'profiles', 'profiles exists');
 select has_table('public', 'organizations', 'organizations exists');
@@ -21,6 +21,103 @@ select policies_are(
   'organization_memberships',
   array['members_view_memberships', 'admins_manage_memberships'],
   'memberships have exactly the member-view and admin-manage policies'
+);
+
+select ok(
+  not has_table_privilege('anon', 'public.profiles', 'select'),
+  'anonymous has no profile table grant'
+);
+select ok(
+  not has_table_privilege('anon', 'public.organizations', 'select'),
+  'anonymous has no organization table grant'
+);
+select ok(
+  not has_table_privilege('anon', 'public.organization_memberships', 'select'),
+  'anonymous has no membership table grant'
+);
+select ok(
+  not has_table_privilege('anon', 'public.invitations', 'select'),
+  'anonymous has no invitation table grant'
+);
+select ok(
+  not has_table_privilege('anon', 'public.feature_flags', 'select'),
+  'anonymous has no feature flag table grant'
+);
+select ok(
+  not has_table_privilege('anon', 'public.feature_flag_audit_log', 'select'),
+  'anonymous has no feature flag audit table grant'
+);
+select ok(
+  has_table_privilege('authenticated', 'public.profiles', 'select'),
+  'authenticated can select profiles subject to RLS'
+);
+select ok(
+  not has_table_privilege('authenticated', 'public.profiles', 'update'),
+  'authenticated has no whole-profile update grant'
+);
+select ok(
+  has_column_privilege('authenticated', 'public.profiles', 'display_name', 'update'),
+  'authenticated can update profile display names'
+);
+select ok(
+  not has_column_privilege('authenticated', 'public.profiles', 'id', 'update'),
+  'authenticated cannot update profile identity'
+);
+select ok(
+  not has_column_privilege('authenticated', 'public.profiles', 'updated_at', 'update'),
+  'authenticated cannot forge profile timestamps'
+);
+select ok(
+  not has_table_privilege('authenticated', 'public.organizations', 'update'),
+  'authenticated has no whole-organization update grant'
+);
+select ok(
+  has_column_privilege('authenticated', 'public.organizations', 'name', 'update'),
+  'authenticated can update organization names subject to RLS'
+);
+select ok(
+  not has_column_privilege('authenticated', 'public.organizations', 'created_by', 'update'),
+  'authenticated cannot update organization provenance'
+);
+select ok(
+  not has_table_privilege('authenticated', 'public.organization_memberships', 'update'),
+  'authenticated has no whole-membership update grant'
+);
+select ok(
+  has_column_privilege('authenticated', 'public.organization_memberships', 'role', 'update'),
+  'authenticated can update membership roles subject to RLS'
+);
+select ok(
+  not has_column_privilege('authenticated', 'public.organization_memberships', 'user_id', 'update'),
+  'authenticated cannot rewrite membership identity'
+);
+select ok(
+  not has_table_privilege('authenticated', 'public.invitations', 'update'),
+  'authenticated has no whole-invitation update grant'
+);
+select ok(
+  has_column_privilege('authenticated', 'public.invitations', 'accepted_at', 'update'),
+  'authenticated can update invitation acceptance subject to RLS'
+);
+select ok(
+  not has_column_privilege('authenticated', 'public.invitations', 'invited_by', 'update'),
+  'authenticated cannot rewrite invitation provenance'
+);
+select ok(
+  not has_table_privilege('authenticated', 'public.feature_flags', 'update'),
+  'authenticated has no whole-feature-flag update grant'
+);
+select ok(
+  has_column_privilege('authenticated', 'public.feature_flags', 'enabled', 'update'),
+  'authenticated can update mutable flag state subject to RLS'
+);
+select ok(
+  not has_column_privilege('authenticated', 'public.feature_flags', 'key', 'update'),
+  'authenticated cannot rewrite feature flag identity'
+);
+select ok(
+  not has_table_privilege('authenticated', 'public.feature_flag_audit_log', 'insert'),
+  'authenticated cannot insert feature flag audit records directly'
 );
 
 insert into auth.users (
@@ -412,6 +509,85 @@ select throws_like(
   'clients cannot forge feature flag audit records'
 );
 
+select results_eq(
+  $$insert into public.organization_memberships (id, organization_id, user_id, role) values ('30000000-0000-0000-0000-000000000004', '20000000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-000000000004', 'employee') returning organization_id::text$$,
+  array['20000000-0000-0000-0000-000000000001'],
+  'admins can insert memberships in their organization'
+);
+select throws_like(
+  $$insert into public.organization_memberships (organization_id, user_id, role) values ('20000000-0000-0000-0000-000000000002', '10000000-0000-0000-0000-000000000004', 'employee')$$,
+  '%row-level security%',
+  'membership WITH CHECK rejects cross-organization inserts'
+);
+select results_eq(
+  $$insert into public.invitations (organization_id, email, role, token_hash, expires_at) values ('20000000-0000-0000-0000-000000000001', 'same-org@example.test', 'employee', 'hash-same-org', now() + interval '7 days') returning invited_by::text$$,
+  array['10000000-0000-0000-0000-000000000001'],
+  'admins can insert invitations in their organization with trusted attribution'
+);
+select throws_like(
+  $$insert into public.invitations (organization_id, email, role, token_hash, expires_at) values ('20000000-0000-0000-0000-000000000002', 'cross-org@example.test', 'employee', 'hash-cross-org', now() + interval '7 days')$$,
+  '%row-level security%',
+  'invitation WITH CHECK rejects cross-organization inserts'
+);
+select results_eq(
+  $$insert into public.feature_flags (organization_id, key, environment, enabled, owner, purpose, rollout_plan, review_on, expires_on) values ('20000000-0000-0000-0000-000000000001', 'same-org-insert', 'development', false, 'admin-a', 'Exercise allowed insertion.', 'Review before enabling.', current_date + 7, current_date + 30) returning organization_id::text$$,
+  array['20000000-0000-0000-0000-000000000001'],
+  'admins can insert feature flags in their organization'
+);
+select throws_like(
+  $$insert into public.feature_flags (organization_id, key, environment, enabled, owner, purpose, rollout_plan, review_on, expires_on) values ('20000000-0000-0000-0000-000000000002', 'cross-org-insert', 'development', false, 'admin-a', 'Exercise denied insertion.', 'Never enable.', current_date + 7, current_date + 30)$$,
+  '%row-level security%',
+  'feature flag WITH CHECK rejects cross-organization inserts'
+);
+select throws_like(
+  $$insert into public.feature_flags (organization_id, key, environment, enabled, owner, purpose, rollout_plan, review_on, expires_on) values (null, 'global-insert', 'development', false, 'admin-a', 'Exercise denied global insertion.', 'Service role only.', current_date + 7, current_date + 30)$$,
+  '%row-level security%',
+  'feature flag WITH CHECK rejects client-created global flags'
+);
+
+delete from public.organization_memberships
+where id = '30000000-0000-0000-0000-000000000004';
+
+reset role;
+set local role authenticated;
+select set_config('request.jwt.claim.sub', '10000000-0000-0000-0000-000000000002', true);
+select set_config(
+  'request.jwt.claims',
+  '{"sub":"10000000-0000-0000-0000-000000000002","role":"authenticated"}',
+  true
+);
+
+select is(
+  public.is_active_member('20000000-0000-0000-0000-000000000001'),
+  false,
+  'a deactivated identity is no longer an active member'
+);
+select results_eq(
+  $$select display_name from public.profiles order by display_name$$,
+  array['Employee A Updated'],
+  'deactivated identities retain only self-profile access'
+);
+select is_empty(
+  $$select id from public.organizations$$,
+  'deactivated identities cannot read organizations'
+);
+select is_empty(
+  $$select id from public.organization_memberships$$,
+  'deactivated identities cannot read memberships'
+);
+select is_empty(
+  $$select id from public.invitations$$,
+  'deactivated identities cannot read invitations'
+);
+select is_empty(
+  $$select id from public.feature_flags$$,
+  'deactivated identities cannot read raw feature flags'
+);
+select is_empty(
+  $$select id from public.feature_flag_audit_log$$,
+  'deactivated identities cannot read feature flag audit records'
+);
+
 reset role;
 set local role authenticated;
 select set_config('request.jwt.claim.sub', '10000000-0000-0000-0000-000000000003', true);
@@ -481,6 +657,37 @@ select is_empty(
 select is_empty(
   $$select id from public.feature_flags$$,
   'unaffiliated identities cannot read global feature flag metadata'
+);
+
+reset role;
+
+insert into public.feature_flag_audit_log (
+  id,
+  feature_flag_id,
+  organization_id,
+  flag_key,
+  changed_by,
+  action,
+  new_record
+)
+values (
+  '60000000-0000-0000-0000-000000000001',
+  '50000000-0000-0000-0000-000000000001',
+  null,
+  'account-deletion-attribution',
+  '10000000-0000-0000-0000-000000000004',
+  'insert',
+  '{"enabled":true}'
+);
+
+select lives_ok(
+  $$delete from auth.users where id = '10000000-0000-0000-0000-000000000004'$$,
+  'deleting an auth identity can cascade its profile without mutating audit history'
+);
+select results_eq(
+  $$select changed_by::text from public.feature_flag_audit_log where id = '60000000-0000-0000-0000-000000000001'$$,
+  array['10000000-0000-0000-0000-000000000004'],
+  'audit attribution survives account and profile deletion'
 );
 
 select * from finish();

@@ -44,6 +44,6 @@ npm run build
 git diff --check
 ```
 
-Confirm that reset applies `202608010001_foundation.sql`, all 54 pgTAP assertions pass, and database lint reports no security or correctness findings. The authorization contract covers role/JWT fixtures, anonymous and cross-organization denial, employee/admin access, self-escalation and deactivation denial, last-admin protection, invitation isolation, flag metadata isolation, append-only audit integrity, column-level provenance protection, timestamp maintenance, and timezone validation.
+Confirm that reset applies `202608010001_foundation.sql`, all 94 pgTAP assertions pass, and database lint reports no security or correctness findings. The authorization contract covers explicit privilege revocation and column grants, role/JWT fixtures, anonymous and cross-organization denial, same-organization and cross/global `WITH CHECK` behavior, deactivated-user isolation, self-escalation and deactivation denial, last-admin protection, invitation isolation, flag metadata isolation, append-only audit attribution across account deletion, column-level provenance protection, timestamp maintenance, and timezone validation.
 
 Confirm that the regenerated declarations still contain the six public tables, all three enums, and the `is_active_member`, `is_admin`, and `is_active_admin` functions. Review any generated type diff before committing it.

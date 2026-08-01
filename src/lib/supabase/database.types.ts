@@ -43,15 +43,7 @@ export type Database = {
           old_record?: Json | null;
           organization_id?: string | null;
         };
-        Relationships: [
-          {
-            foreignKeyName: 'feature_flag_audit_log_changed_by_fkey';
-            columns: ['changed_by'];
-            isOneToOne: false;
-            referencedRelation: 'profiles';
-            referencedColumns: ['id'];
-          },
-        ];
+        Relationships: [];
       };
       feature_flags: {
         Row: {
