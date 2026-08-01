@@ -28,6 +28,8 @@ Live email delivery remains deferred and fails closed. `src/modules/members/invi
 
 Acceptance is an authenticated database transaction requiring a confirmed email that matches the current, unexpired, unaccepted, unrevoked invitation. Replacement is serialized per organization and normalized email; it revokes any older pending token before inserting the new one. Acceptance locks the identity and invitation, activates the constrained membership under the one-active-organization invariant, invalidates sibling pending invitations, and marks the selected invitation accepted exactly once.
 
+Authenticated clients have only `SELECT`, `DELETE`, and column-scoped `INSERT` access to invitations. They cannot directly update acceptance, expiry, role, email, token, revocation, or provenance fields; those transitions are reserved for the security-definer acceptance function and replacement trigger.
+
 ## Deferred commands
 
 After installing or exposing a working Docker/Podman runtime, run these commands from the repository root:

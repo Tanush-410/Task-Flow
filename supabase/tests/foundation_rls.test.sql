@@ -171,12 +171,16 @@ select ok(
   'authenticated cannot forge invitation provenance on insert'
 );
 select ok(
-  has_column_privilege('authenticated', 'public.invitations', 'accepted_at', 'update'),
-  'authenticated can update invitation acceptance subject to RLS'
+  not has_column_privilege('authenticated', 'public.invitations', 'accepted_at', 'update'),
+  'authenticated cannot directly mark invitations accepted'
 );
 select ok(
-  not has_column_privilege('authenticated', 'public.invitations', 'invited_by', 'update'),
-  'authenticated cannot rewrite invitation provenance'
+  not has_column_privilege('authenticated', 'public.invitations', 'expires_at', 'update')
+  and not has_column_privilege('authenticated', 'public.invitations', 'role', 'update')
+  and not has_column_privilege('authenticated', 'public.invitations', 'email', 'update')
+  and not has_column_privilege('authenticated', 'public.invitations', 'token_hash', 'update')
+  and not has_column_privilege('authenticated', 'public.invitations', 'invited_by', 'update'),
+  'authenticated cannot directly rewrite invitation state or provenance'
 );
 select ok(
   not has_table_privilege('authenticated', 'public.feature_flags', 'update'),
@@ -361,7 +365,7 @@ values
     '20000000-0000-0000-0000-000000000001',
     'invite-a@example.test',
     'employee',
-    'hash-a',
+    repeat('0', 64),
     '10000000-0000-0000-0000-000000000001',
     now() + interval '7 days'
   ),
@@ -370,7 +374,7 @@ values
     '20000000-0000-0000-0000-000000000002',
     'invite-b@example.test',
     'employee',
-    'hash-b',
+    repeat('1', 64),
     '10000000-0000-0000-0000-000000000003',
     now() + interval '7 days'
   );
@@ -588,10 +592,40 @@ select results_eq(
   array['invite-a@example.test'],
   'admins see invitations only in their organization'
 );
-select results_eq(
-  $$update public.invitations set accepted_at = now() where email = 'invite-a@example.test' returning accepted_at is not null$$,
-  array[true],
-  'admins can update mutable invitation state in their organization'
+select lives_ok(
+  $$
+    do $updates_denied$
+    begin
+      begin
+        update public.invitations
+        set accepted_at = now()
+        where email = 'invite-a@example.test';
+        raise exception 'accepted_at update unexpectedly allowed';
+      exception when insufficient_privilege then
+        null;
+      end;
+
+      begin
+        update public.invitations
+        set expires_at = now() + interval '30 days'
+        where email = 'invite-a@example.test';
+        raise exception 'expires_at update unexpectedly allowed';
+      exception when insufficient_privilege then
+        null;
+      end;
+
+      begin
+        update public.invitations
+        set role = 'admin'
+        where email = 'invite-a@example.test';
+        raise exception 'role update unexpectedly allowed';
+      exception when insufficient_privilege then
+        null;
+      end;
+    end
+    $updates_denied$
+  $$,
+  'admins cannot directly mutate invitation acceptance, expiry, or role'
 );
 select results_eq(
   $$select key from public.feature_flags order by key$$,
@@ -634,12 +668,12 @@ select throws_like(
   'membership WITH CHECK rejects cross-organization inserts'
 );
 select results_eq(
-  $$insert into public.invitations (organization_id, email, role, token_hash, expires_at) values ('20000000-0000-0000-0000-000000000001', 'same-org@example.test', 'employee', 'hash-same-org', now() + interval '7 days') returning invited_by::text$$,
+  $$insert into public.invitations (organization_id, email, role, token_hash, expires_at) values ('20000000-0000-0000-0000-000000000001', 'same-org@example.test', 'employee', repeat('2', 64), now() + interval '7 days') returning invited_by::text$$,
   array['10000000-0000-0000-0000-000000000001'],
   'admins can insert invitations in their organization with trusted attribution'
 );
 select throws_like(
-  $$insert into public.invitations (organization_id, email, role, token_hash, expires_at) values ('20000000-0000-0000-0000-000000000002', 'cross-org@example.test', 'employee', 'hash-cross-org', now() + interval '7 days')$$,
+  $$insert into public.invitations (organization_id, email, role, token_hash, expires_at) values ('20000000-0000-0000-0000-000000000002', 'cross-org@example.test', 'employee', repeat('3', 64), now() + interval '7 days')$$,
   '%row-level security%',
   'invitation WITH CHECK rejects cross-organization inserts'
 );

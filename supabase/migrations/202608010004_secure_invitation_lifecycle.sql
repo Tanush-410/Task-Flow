@@ -234,3 +234,8 @@ revoke all on function public.bootstrap_organization(text, text) from public, an
 revoke all on function public.accept_invitation(text) from public, anon;
 grant execute on function public.bootstrap_organization(text, text) to authenticated;
 grant execute on function public.accept_invitation(text) to authenticated;
+
+revoke all privileges on table public.invitations from authenticated;
+grant select, delete on public.invitations to authenticated;
+grant insert (organization_id, email, role, token_hash, expires_at)
+on public.invitations to authenticated;

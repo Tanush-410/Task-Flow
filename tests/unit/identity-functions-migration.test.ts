@@ -17,12 +17,19 @@ const identityMigration = readFileSync(
 
 describe('secure identity lifecycle migration', () => {
   it('uses only columns granted for client invitation insertion', () => {
-    expect(foundationMigration).toMatch(
+    expect(identityMigration).toMatch(
+      /revoke all privileges on table public\.invitations from authenticated/i,
+    );
+    expect(identityMigration).toMatch(
+      /grant select, delete on public\.invitations to authenticated/i,
+    );
+    expect(identityMigration).toMatch(
       /grant insert \(organization_id, email, role, token_hash, expires_at\)\s+on public\.invitations to authenticated/i,
     );
-    expect(foundationMigration).not.toMatch(
-      /grant insert \([^)]*invited_by[^)]*\)\s+on public\.invitations to authenticated/i,
+    expect(identityMigration).not.toMatch(
+      /grant update|grant insert \([^)]*invited_by/i,
     );
+    expect(foundationMigration).toMatch(/default auth\.uid\(\)/i);
   });
 
   it('authoritatively locks and verifies the bootstrap identity', () => {
