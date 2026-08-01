@@ -12,7 +12,6 @@ export default defineConfig({
   },
   test: {
     environment: 'jsdom',
-    passWithNoTests: true,
     setupFiles: ['./tests/setup.ts'],
     coverage: {
       reporter: ['text', 'html'],

@@ -2,23 +2,28 @@ This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-
 
 ## Getting Started
 
-First, run the development server:
+Use Node.js 22.22.1 or newer and npm 11.9.0. With `nvm`, select the
+repository-pinned runtime before installing dependencies:
 
 ```bash
+nvm use
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+You can start editing the page by modifying `src/app/page.tsx`. The page
+auto-updates as you edit the file.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+The application uses a system font stack, so development and production builds
+do not download fonts from an external service.
+
+Next.js is temporarily pinned to the exact `16.3.0-canary.105` pre-release.
+That release is the first available version whose declared PostCSS and sharp
+dependencies remove the known high-severity production advisories affecting
+the stable release. Replace this pin with the first compatible patched stable
+Next.js release after verifying the build, tests, and production audit.
 
 ## Learn More
 
