@@ -1,6 +1,6 @@
 begin;
 
-select plan(101);
+select plan(122);
 
 select has_table('public', 'profiles', 'profiles exists');
 select has_table('public', 'organizations', 'organizations exists');
@@ -12,6 +12,18 @@ select has_index(
   'memberships enforce one active organization per user'
 );
 select has_table('public', 'invitations', 'invitations exists');
+select has_column(
+  'public',
+  'invitations',
+  'revoked_at',
+  'invitations track explicit revocation'
+);
+select has_index(
+  'public',
+  'invitations',
+  'invitations_one_pending_per_organization_email_idx',
+  'invitations allow one normalized pending token per organization and email'
+);
 select has_table('public', 'feature_flags', 'feature flags exist');
 select has_table('public', 'feature_flag_audit_log', 'feature flag audit log exists');
 
@@ -147,6 +159,18 @@ select ok(
   'authenticated has no whole-invitation update grant'
 );
 select ok(
+  not has_table_privilege('authenticated', 'public.invitations', 'insert'),
+  'authenticated has no whole-invitation insert grant'
+);
+select ok(
+  has_column_privilege('authenticated', 'public.invitations', 'token_hash', 'insert'),
+  'authenticated can insert hashed invitation tokens subject to RLS'
+);
+select ok(
+  not has_column_privilege('authenticated', 'public.invitations', 'invited_by', 'insert'),
+  'authenticated cannot forge invitation provenance on insert'
+);
+select ok(
   has_column_privilege('authenticated', 'public.invitations', 'accepted_at', 'update'),
   'authenticated can update invitation acceptance subject to RLS'
 );
@@ -234,6 +258,45 @@ values
     now(),
     '{"provider":"email","providers":["email"]}',
     '{"display_name":"Outsider"}',
+    now(),
+    now()
+  ),
+  (
+    '00000000-0000-0000-0000-000000000000',
+    '10000000-0000-0000-0000-000000000005',
+    'authenticated',
+    'authenticated',
+    'bootstrap@example.test',
+    crypt('test-password', gen_salt('bf')),
+    now(),
+    '{"provider":"email","providers":["email"],"can_bootstrap_org":true}',
+    '{"display_name":"Bootstrap Admin"}',
+    now(),
+    now()
+  ),
+  (
+    '00000000-0000-0000-0000-000000000000',
+    '10000000-0000-0000-0000-000000000006',
+    'authenticated',
+    'authenticated',
+    'unverified-bootstrap@example.test',
+    crypt('test-password', gen_salt('bf')),
+    null,
+    '{"provider":"email","providers":["email"],"can_bootstrap_org":true}',
+    '{"display_name":"Unverified Bootstrap"}',
+    now(),
+    now()
+  ),
+  (
+    '00000000-0000-0000-0000-000000000000',
+    '10000000-0000-0000-0000-000000000007',
+    'authenticated',
+    'authenticated',
+    'invited@example.test',
+    crypt('test-password', gen_salt('bf')),
+    now(),
+    '{"provider":"email","providers":["email"]}',
+    '{"display_name":"Invited Employee"}',
     now(),
     now()
   );
@@ -711,6 +774,182 @@ select is_empty(
 );
 
 reset role;
+
+set local role authenticated;
+select set_config('request.jwt.claim.sub', '10000000-0000-0000-0000-000000000004', true);
+select set_config(
+  'request.jwt.claims',
+  '{"sub":"10000000-0000-0000-0000-000000000004","role":"authenticated","app_metadata":{"can_bootstrap_org":true}}',
+  true
+);
+select throws_like(
+  $$select public.bootstrap_organization('Forged Bootstrap', 'UTC')$$,
+  '%BOOTSTRAP_DENIED%',
+  'a forged JWT bootstrap claim cannot replace authoritative app metadata'
+);
+
+select set_config('request.jwt.claim.sub', '10000000-0000-0000-0000-000000000006', true);
+select set_config(
+  'request.jwt.claims',
+  '{"sub":"10000000-0000-0000-0000-000000000006","role":"authenticated"}',
+  true
+);
+select throws_like(
+  $$select public.bootstrap_organization('Unverified Bootstrap', 'UTC')$$,
+  '%BOOTSTRAP_DENIED%',
+  'an unverified identity cannot bootstrap despite trusted app metadata'
+);
+
+select set_config('request.jwt.claim.sub', '10000000-0000-0000-0000-000000000005', true);
+select set_config(
+  'request.jwt.claims',
+  '{"sub":"10000000-0000-0000-0000-000000000005","role":"authenticated"}',
+  true
+);
+select results_eq(
+  $$select public.bootstrap_organization('Trusted Bootstrap', 'Asia/Kolkata') is not null$$,
+  array[true],
+  'a verified identity with authoritative app metadata can bootstrap once'
+);
+select results_eq(
+  $$select role::text from public.organization_memberships where user_id = auth.uid() and status = 'active'$$,
+  array['admin'],
+  'bootstrap atomically creates the first active admin membership'
+);
+
+reset role;
+
+insert into public.invitations (
+  organization_id,
+  email,
+  role,
+  token_hash,
+  invited_by,
+  expires_at
+)
+values (
+  '20000000-0000-0000-0000-000000000002',
+  'INVITED@example.test',
+  'admin',
+  repeat('a', 64),
+  '10000000-0000-0000-0000-000000000003',
+  now() + interval '7 days'
+);
+insert into public.invitations (
+  organization_id,
+  email,
+  role,
+  token_hash,
+  invited_by,
+  expires_at
+)
+values (
+  '20000000-0000-0000-0000-000000000002',
+  'invited@example.test',
+  'employee',
+  repeat('b', 64),
+  '10000000-0000-0000-0000-000000000003',
+  now() + interval '7 days'
+);
+insert into public.invitations (
+  organization_id,
+  email,
+  role,
+  token_hash,
+  invited_by,
+  expires_at
+)
+values
+  (
+    '20000000-0000-0000-0000-000000000002',
+    'expired@example.test',
+    'employee',
+    repeat('c', 64),
+    '10000000-0000-0000-0000-000000000003',
+    now() + interval '7 days'
+  ),
+  (
+    '20000000-0000-0000-0000-000000000002',
+    'wrong@example.test',
+    'employee',
+    repeat('d', 64),
+    '10000000-0000-0000-0000-000000000003',
+    now() + interval '7 days'
+  );
+
+update public.invitations
+set expires_at = now() - interval '1 minute'
+where token_hash = repeat('c', 64);
+
+select results_eq(
+  $$select count(*)::integer from public.invitations where organization_id = '20000000-0000-0000-0000-000000000002' and lower(btrim(email)) = 'invited@example.test' and accepted_at is null and revoked_at is null$$,
+  array[1],
+  'replacement leaves exactly one normalized pending invitation'
+);
+select results_eq(
+  $$select revoked_at is not null from public.invitations where token_hash = repeat('a', 64)$$,
+  array[true],
+  'replacement revokes the older elevated-role token'
+);
+select throws_like(
+  $$insert into public.invitations (organization_id, email, role, token_hash, invited_by, expires_at) values ('20000000-0000-0000-0000-000000000002', 'invited@example.test', 'admin', repeat('e', 64), '10000000-0000-0000-0000-000000000003', now() - interval '1 minute')$$,
+  '%INVITATION_INVALID%',
+  'an invalid replacement is rejected before it can revoke the current token'
+);
+select results_eq(
+  $$select token_hash from public.invitations where organization_id = '20000000-0000-0000-0000-000000000002' and lower(btrim(email)) = 'invited@example.test' and accepted_at is null and revoked_at is null$$,
+  array[repeat('b', 64)],
+  'a rejected replacement leaves the current invitation pending'
+);
+
+set local role authenticated;
+select set_config('request.jwt.claim.sub', '10000000-0000-0000-0000-000000000007', true);
+select set_config(
+  'request.jwt.claims',
+  '{"sub":"10000000-0000-0000-0000-000000000007","role":"authenticated"}',
+  true
+);
+select throws_like(
+  $$select * from public.accept_invitation(repeat('a', 64))$$,
+  '%INVITATION_INVALID%',
+  'a replaced elevated-role token cannot be accepted'
+);
+select throws_like(
+  $$select * from public.accept_invitation(repeat('c', 64))$$,
+  '%INVITATION_INVALID%',
+  'an expired invitation fails generically'
+);
+select throws_like(
+  $$select * from public.accept_invitation(repeat('d', 64))$$,
+  '%INVITATION_INVALID%',
+  'an invitation for another verified email fails generically'
+);
+select is_empty(
+  $$select id from public.organization_memberships where user_id = auth.uid()$$,
+  'failed acceptance attempts roll back without activating membership'
+);
+select results_eq(
+  $$select organization_id::text || ':' || role::text from public.accept_invitation(repeat('b', 64))$$,
+  array['20000000-0000-0000-0000-000000000002:employee'],
+  'the current matching invitation activates its constrained role'
+);
+select results_eq(
+  $$select role::text from public.organization_memberships where user_id = auth.uid() and status = 'active'$$,
+  array['employee'],
+  'an older admin invitation cannot elevate the accepted employee membership'
+);
+select throws_like(
+  $$select * from public.accept_invitation(repeat('b', 64))$$,
+  '%INVITATION_INVALID%',
+  'an accepted invitation cannot be replayed'
+);
+
+reset role;
+select results_eq(
+  $$select count(*)::integer from public.invitations where token_hash = repeat('b', 64) and accepted_at is not null$$,
+  array[1],
+  'acceptance marks the invitation exactly once'
+);
 
 insert into public.feature_flag_audit_log (
   id,

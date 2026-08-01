@@ -3,64 +3,82 @@ import { join } from 'node:path';
 
 import { describe, expect, it } from 'vitest';
 
-const migration = readFileSync(
+const foundationMigration = readFileSync(
+  join(process.cwd(), 'supabase/migrations/202608010001_foundation.sql'),
+  'utf8',
+);
+const identityMigration = readFileSync(
   join(
     process.cwd(),
-    'supabase/migrations/202608010003_identity_functions.sql',
+    'supabase/migrations/202608010004_secure_invitation_lifecycle.sql',
   ),
   'utf8',
 );
 
-describe('organization and invitation function migration', () => {
-  it('restricts organization bootstrap to trusted authenticated identities', () => {
-    expect(migration).toMatch(/security definer/i);
-    expect(migration).toMatch(/auth\.uid\(\) is null/i);
-    expect(migration).toMatch(
-      /auth\.jwt\(\)\s*->\s*'app_metadata'\s*->>\s*'can_bootstrap_org'/i,
+describe('secure identity lifecycle migration', () => {
+  it('uses only columns granted for client invitation insertion', () => {
+    expect(foundationMigration).toMatch(
+      /grant insert \(organization_id, email, role, token_hash, expires_at\)\s+on public\.invitations to authenticated/i,
     );
-    expect(migration).toMatch(/status = 'active'/i);
-    expect(migration).toMatch(
-      /revoke all on function public\.bootstrap_organization\(text, text\) from public, anon/i,
-    );
-    expect(migration).toMatch(
-      /grant execute on function public\.bootstrap_organization\(text, text\) to authenticated/i,
+    expect(foundationMigration).not.toMatch(
+      /grant insert \([^)]*invited_by[^)]*\)\s+on public\.invitations to authenticated/i,
     );
   });
 
-  it('validates bootstrap inputs inside the database transaction', () => {
-    expect(migration).toMatch(/char_length\(btrim\(organization_name\)\)/i);
-    expect(migration).toMatch(/pg_catalog\.pg_timezone_names/i);
-    expect(migration).toMatch(/insert into public\.organizations/i);
-    expect(migration).toMatch(/insert into public\.organization_memberships/i);
+  it('authoritatively locks and verifies the bootstrap identity', () => {
+    const bootstrap = identityMigration.slice(
+      identityMigration.indexOf(
+        'create or replace function public.bootstrap_organization',
+      ),
+      identityMigration.indexOf(
+        'create or replace function public.accept_invitation',
+      ),
+    );
+    expect(bootstrap).toMatch(/from auth\.users as auth_user/i);
+    expect(bootstrap).toMatch(/auth_user\.email_confirmed_at is not null/i);
+    expect(bootstrap).toMatch(
+      /auth_user\.raw_app_meta_data\s*->>\s*'can_bootstrap_org'/i,
+    );
+    expect(bootstrap).toMatch(/for update/i);
+    expect(bootstrap).not.toMatch(/auth\.jwt\(\)/i);
   });
 
-  it('accepts only a locked, unused, unexpired invitation for verified matching email', () => {
-    expect(migration).toMatch(
-      /create or replace function public\.accept_invitation/i,
+  it('enforces one normalized pending invitation and safely replaces older tokens', () => {
+    expect(identityMigration).toMatch(/add column revoked_at timestamptz/i);
+    expect(identityMigration).toMatch(
+      /create unique index invitations_one_pending_per_organization_email_idx/i,
     );
-    expect(migration).toMatch(/email_confirmed_at is not null/i);
-    expect(migration).toMatch(/lower\(btrim\(invitation\.email\)\)/i);
-    expect(migration).toMatch(/candidate\.accepted_at is null/i);
-    expect(migration).toMatch(
+    expect(identityMigration).toMatch(
+      /organization_id, lower\(btrim\(email\)\)/i,
+    );
+    expect(identityMigration).toMatch(
+      /where accepted_at is null\s+and revoked_at is null/i,
+    );
+    expect(identityMigration).toMatch(/pg_advisory_xact_lock/i);
+    expect(identityMigration).toMatch(
+      /new\.expires_at <= statement_timestamp\(\)/i,
+    );
+    expect(identityMigration).toMatch(
+      /set revoked_at = statement_timestamp\(\)/i,
+    );
+  });
+
+  it('rejects revoked tokens and invalidates every pending sibling on acceptance', () => {
+    const acceptance = identityMigration.slice(
+      identityMigration.indexOf(
+        'create or replace function public.accept_invitation',
+      ),
+    );
+    expect(acceptance).toMatch(/pg_advisory_xact_lock/i);
+    expect(acceptance).toMatch(/candidate\.revoked_at is null/i);
+    expect(acceptance).toMatch(
       /candidate\.expires_at > statement_timestamp\(\)/i,
     );
-    expect(migration).toMatch(/for update/i);
-    expect(migration).toMatch(
-      /organization_memberships_one_active_per_user_idx/i,
+    expect(acceptance).toMatch(/for update/i);
+    expect(acceptance).toMatch(
+      /lower\(btrim\(pending\.email\)\) = lower\(btrim\(invitation\.email\)\)/i,
     );
-    expect(migration).toMatch(/accepted_at = statement_timestamp\(\)/i);
-  });
-
-  it('exposes acceptance only to authenticated users and takes no raw token', () => {
-    expect(migration).toMatch(
-      /accept_invitation\(invitation_token_hash text\)/i,
-    );
-    expect(migration).toMatch(
-      /revoke all on function public\.accept_invitation\(text\) from public, anon/i,
-    );
-    expect(migration).toMatch(
-      /grant execute on function public\.accept_invitation\(text\) to authenticated/i,
-    );
-    expect(migration).not.toMatch(/raw_token|invitation_token text/i);
+    expect(acceptance).toMatch(/pending\.id <> invitation\.id/i);
+    expect(acceptance).toMatch(/message = 'INVITATION_INVALID'/i);
   });
 });

@@ -114,6 +114,7 @@ export type Database = {
           invited_by: string;
           organization_id: string;
           role: Database['public']['Enums']['membership_role'];
+          revoked_at: string | null;
           token_hash: string;
         };
         Insert: {
@@ -125,6 +126,7 @@ export type Database = {
           invited_by?: string;
           organization_id: string;
           role: Database['public']['Enums']['membership_role'];
+          revoked_at?: string | null;
           token_hash: string;
         };
         Update: {
@@ -136,6 +138,7 @@ export type Database = {
           invited_by?: string;
           organization_id?: string;
           role?: Database['public']['Enums']['membership_role'];
+          revoked_at?: string | null;
           token_hash?: string;
         };
         Relationships: [

@@ -66,7 +66,7 @@ export default async function InvitationPage({
         {userId ? (
           <form action={accept} className="mt-7">
             <button
-              className="flex h-12 w-full items-center justify-center rounded-xl bg-slate-950 px-4 text-sm font-semibold text-white hover:bg-slate-800"
+              className="flex h-12 w-full items-center justify-center rounded-xl bg-slate-950 px-4 text-sm font-semibold text-white hover:bg-slate-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-950"
               type="submit"
             >
               Accept invitation
@@ -74,7 +74,7 @@ export default async function InvitationPage({
           </form>
         ) : (
           <Link
-            className="mt-7 flex h-12 w-full items-center justify-center rounded-xl bg-slate-950 px-4 text-sm font-semibold text-white hover:bg-slate-800"
+            className="mt-7 flex h-12 w-full items-center justify-center rounded-xl bg-slate-950 px-4 text-sm font-semibold text-white hover:bg-slate-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-950"
             href={`/login?next=${encodeURIComponent(invitationPath)}`}
           >
             Sign in to continue
