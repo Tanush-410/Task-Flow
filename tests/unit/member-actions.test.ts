@@ -170,6 +170,35 @@ describe('inviteMember', () => {
     expect(JSON.stringify(result)).not.toContain('sensitive');
   });
 
+  it('reports a discard that completes without reconciling the invitation', async () => {
+    mocks.deliverInvitation.mockResolvedValueOnce({
+      ok: false,
+      reason: 'unavailable',
+    });
+    mocks.rpc.mockImplementation(async (name: string) => {
+      if (name === 'stage_invitation') return { data: [staged], error: null };
+      if (name === 'discard_staged_invitation') {
+        return { data: false, error: null };
+      }
+      return { data: true, error: null };
+    });
+
+    const result = await inviteMember({
+      email: 'person@example.com',
+      role: 'employee',
+    });
+
+    expect(mocks.reportCleanupFailure).toHaveBeenCalledOnce();
+    expect(mocks.reportCleanupFailure).toHaveBeenCalledWith({
+      traceId: expect.any(String),
+      invitationId: staged.id,
+    });
+    expect(result).toMatchObject({
+      ok: false,
+      error: { code: 'INVITATION_DELIVERY_UNAVAILABLE' },
+    });
+  });
+
   it('marks staging failed and returns an operational error when finalize fails', async () => {
     mocks.rpc.mockImplementation(async (name: string) => {
       if (name === 'stage_invitation') return { data: [staged], error: null };

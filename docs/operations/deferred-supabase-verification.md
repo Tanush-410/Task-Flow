@@ -22,7 +22,7 @@ Before that identity calls `bootstrap_organization`, set the boolean Auth app-me
 
 ## Invitation delivery status
 
-Invitation creation is admin-gated and persists only a SHA-256 token hash with a seven-day expiry. The raw 32-byte base64url token is used transiently to produce an absolute bearer URL from the server-only `APP_ORIGIN` setting and is never stored or returned to client code. Persistence precedes delivery. If delivery is unavailable or fails, the action makes a best-effort deletion of the newly persisted invitation and returns only a generic traced error.
+Invitation creation is admin-gated and persists only a SHA-256 token hash with a seven-day expiry. The raw 32-byte base64url token is used transiently to produce an absolute bearer URL from the server-only `APP_ORIGIN` setting and is never stored or returned to client code. Persistence precedes delivery. If delivery is unavailable or fails, the action makes a best-effort discard that marks the invitation failed and revoked, retains it for reconciliation, and returns only a generic traced error.
 
 Live email delivery remains deferred and fails closed. `src/modules/members/invitation-delivery.ts` is the server-only provider boundary and currently reports delivery unavailable without logging its recipient or bearer URL. Consequently, new users cannot yet be invited through the application; there is no manual bearer-link or pre-provisioning workaround. Before enabling invitations, connect that boundary to managed delivery, configure `APP_ORIGIN` and the server-only `SUPABASE_SERVICE_ROLE_KEY`, and verify redirects remain fixed-shape. Only the privileged server client may finalize delivery; never expose its key to client code.
 
@@ -30,7 +30,7 @@ Acceptance is an authenticated database transaction requiring a confirmed email 
 
 Authenticated clients have only `SELECT` access to invitation rows. Creation, delivery finalization, staging cleanup, acceptance, replacement, and deactivation revocation are reserved for narrowly granted security-definer functions and triggers.
 
-Invitation delivery follows a stage → deliver → finalize lifecycle. Staged and failed tokens cannot be accepted and do not participate in the one-active-invitation constraint. Service-role finalization requires no user subject: it takes the organization/email lock, revokes the prior active token, and activates the delivered token atomically. A failed resend is discarded by marking its staged row `failed` and revoked without disturbing the prior active invite. If reconciliation returns an error or throws, the privacy-safe report contains only trace and invitation IDs; the still-pending token remains non-acceptable and requires support reconciliation before retrying.
+Invitation delivery follows a stage → deliver → finalize lifecycle. Staged and failed tokens cannot be accepted and do not participate in the one-active-invitation constraint. Service-role finalization requires no user subject: it takes the organization/email lock, revokes the prior active token, and activates the delivered token atomically. A failed resend is discarded by marking its staged row `failed` and revoked without disturbing the prior active invite. If reconciliation returns an error or false result, or throws, the privacy-safe report contains only trace and invitation IDs; the still-pending token remains non-acceptable and requires support reconciliation before retrying.
 
 ## Deferred commands
 

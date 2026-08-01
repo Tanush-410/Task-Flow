@@ -43,7 +43,7 @@ async function discardStagedInvitation(
     const discarded = await supabase.rpc('discard_staged_invitation', {
       invitation_id: invitationId,
     });
-    if (discarded.error) {
+    if (discarded.error || !discarded.data) {
       reportInvitationCleanupFailure({ traceId, invitationId });
     }
   } catch {
