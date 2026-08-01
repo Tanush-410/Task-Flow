@@ -1,5 +1,5 @@
-import { render, screen } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { cleanup, render, screen } from '@testing-library/react';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
   useActionState: vi.fn(),
@@ -12,6 +12,8 @@ vi.mock('react', async (importOriginal) => {
 vi.mock('@/modules/auth/actions', () => ({ login: vi.fn() }));
 
 import { LoginForm } from '@/components/login-form';
+
+afterEach(cleanup);
 
 describe('LoginForm', () => {
   it('associates labels and field errors with the inputs', () => {
@@ -49,5 +51,6 @@ describe('LoginForm', () => {
     render(<LoginForm />);
 
     expect(screen.getByRole('button', { name: 'Signing in…' })).toBeDisabled();
+    expect(screen.getByRole('status')).toHaveTextContent('Signing in');
   });
 });

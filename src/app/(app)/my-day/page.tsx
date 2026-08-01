@@ -1,7 +1,7 @@
-import { requireMembership } from '@/modules/members/queries';
+import { requireEmployee } from '@/modules/members/queries';
 
 export default async function MyDayPage() {
-  await requireMembership();
+  await requireEmployee();
 
   return (
     <section aria-labelledby="my-day-heading">

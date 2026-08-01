@@ -14,6 +14,8 @@ import type { ComponentType, ReactNode } from 'react';
 
 import type { MembershipContext } from '@/modules/members/context';
 
+import { AppNavLink } from './app-nav-link';
+
 type Role = MembershipContext['role'];
 type NavigationItem = {
   href: string;
@@ -73,17 +75,13 @@ export function AppShell({
           className="flex gap-1 overflow-x-auto px-3 pb-3 md:flex-1 md:flex-col md:overflow-visible md:px-4 md:py-3"
         >
           {items.map(({ href, icon: Icon, label }) => (
-            <Link
-              className="group flex min-h-11 shrink-0 items-center gap-3 rounded-lg px-3 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-950 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-slate-950 active:bg-slate-200"
-              href={href}
-              key={href}
-            >
+            <AppNavLink href={href} key={href}>
               <Icon
                 aria-hidden={true}
                 className="size-[18px] text-slate-400 transition-colors group-hover:text-slate-700"
               />
               {label}
-            </Link>
+            </AppNavLink>
           ))}
         </nav>
 

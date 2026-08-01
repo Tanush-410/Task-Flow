@@ -2,6 +2,10 @@
 
 import { randomUUID } from 'node:crypto';
 
+import {
+  isAuthApiError,
+  isAuthRetryableFetchError,
+} from '@supabase/supabase-js';
 import { redirect } from 'next/navigation';
 
 import { createServerSupabase } from '@/lib/supabase/server';
@@ -27,6 +31,24 @@ function invalidLogin(
   };
 }
 
+function unavailableLogin(traceId: string): ActionResult<null> {
+  return {
+    ok: false,
+    error: {
+      code: 'LOGIN_UNAVAILABLE',
+      message: LOGIN_UNAVAILABLE_MESSAGE,
+      traceId,
+    },
+  };
+}
+
+function isOperationalAuthError(error: unknown) {
+  return (
+    isAuthRetryableFetchError(error) ||
+    (isAuthApiError(error) && error.status >= 500)
+  );
+}
+
 export async function login(
   _previousState: ActionResult<null> | null,
   formData: FormData,
@@ -42,17 +64,21 @@ export async function login(
     );
   }
 
-  let authenticationFailed: boolean;
+  let authenticationError: unknown;
 
   try {
     const supabase = await createServerSupabase();
     const { error } = await supabase.auth.signInWithPassword(parsed.data);
-    authenticationFailed = Boolean(error);
+    authenticationError = error;
   } catch {
-    return invalidLogin(traceId, LOGIN_UNAVAILABLE_MESSAGE);
+    return unavailableLogin(traceId);
   }
 
-  if (authenticationFailed) {
+  if (isOperationalAuthError(authenticationError)) {
+    return unavailableLogin(traceId);
+  }
+
+  if (authenticationError) {
     return invalidLogin(traceId, INVALID_CREDENTIALS_MESSAGE);
   }
 
@@ -61,7 +87,7 @@ export async function login(
   try {
     access = await getMembershipAccess();
   } catch {
-    return invalidLogin(traceId, LOGIN_UNAVAILABLE_MESSAGE);
+    return unavailableLogin(traceId);
   }
 
   if (access.kind === 'redirect') {
@@ -69,7 +95,7 @@ export async function login(
       redirect(access.location);
     }
 
-    return invalidLogin(traceId, LOGIN_UNAVAILABLE_MESSAGE);
+    return unavailableLogin(traceId);
   }
 
   redirect(roleLandingPath(access.membership.role));

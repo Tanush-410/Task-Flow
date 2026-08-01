@@ -84,6 +84,9 @@ export function LoginForm() {
       >
         {pending ? 'Signing in…' : 'Sign in'}
       </button>
+      <span aria-live="polite" className="sr-only" role="status">
+        {pending ? 'Signing in, please wait.' : ''}
+      </span>
     </form>
   );
 }

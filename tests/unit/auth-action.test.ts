@@ -1,3 +1,8 @@
+import {
+  AuthApiError,
+  AuthInvalidCredentialsError,
+  AuthRetryableFetchError,
+} from '@supabase/supabase-js';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
@@ -48,10 +53,11 @@ describe('login', () => {
     expect(mocks.signInWithPassword).not.toHaveBeenCalled();
   });
 
-  it('does not expose authentication provider errors', async () => {
-    mocks.signInWithPassword.mockResolvedValue({
-      error: new Error('provider secret detail'),
-    });
+  it.each([
+    new AuthInvalidCredentialsError('provider credential detail'),
+    new AuthApiError('provider credential detail', 400, 'invalid_credentials'),
+  ])('returns generic invalid credentials for %s', async (providerError) => {
+    mocks.signInWithPassword.mockResolvedValue({ error: providerError });
 
     const result = await login(
       null,
@@ -66,7 +72,29 @@ describe('login', () => {
         traceId: expect.any(String),
       },
     });
-    expect(JSON.stringify(result)).not.toContain('provider secret detail');
+    expect(JSON.stringify(result)).not.toContain('provider credential detail');
+  });
+
+  it.each([
+    new AuthRetryableFetchError('sensitive network detail', 0),
+    new AuthApiError('sensitive server detail', 503, 'unexpected_failure'),
+  ])('returns safe unavailable state for %s', async (providerError) => {
+    mocks.signInWithPassword.mockResolvedValue({ error: providerError });
+
+    const result = await login(
+      null,
+      loginData('person@example.com', 'password123'),
+    );
+
+    expect(result).toMatchObject({
+      ok: false,
+      error: {
+        code: 'LOGIN_UNAVAILABLE',
+        message: 'We could not complete sign in. Please try again.',
+        traceId: expect.any(String),
+      },
+    });
+    expect(JSON.stringify(result)).not.toContain('sensitive');
   });
 
   it('returns a safe traced error when the auth service is unavailable', async () => {
@@ -82,7 +110,7 @@ describe('login', () => {
     expect(result).toMatchObject({
       ok: false,
       error: {
-        code: 'INVALID_LOGIN',
+        code: 'LOGIN_UNAVAILABLE',
         message: 'We could not complete sign in. Please try again.',
         traceId: expect.any(String),
       },
@@ -104,7 +132,7 @@ describe('login', () => {
     expect(result).toMatchObject({
       ok: false,
       error: {
-        code: 'INVALID_LOGIN',
+        code: 'LOGIN_UNAVAILABLE',
         message: 'We could not complete sign in. Please try again.',
         traceId: expect.any(String),
       },

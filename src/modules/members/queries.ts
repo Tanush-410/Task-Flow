@@ -48,3 +48,13 @@ export async function requireAdmin(): Promise<MembershipContext> {
 
   return membership;
 }
+
+export async function requireEmployee(): Promise<MembershipContext> {
+  const membership = await requireMembership();
+
+  if (membership.role !== 'employee') {
+    redirect('/dashboard');
+  }
+
+  return membership;
+}
