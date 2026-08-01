@@ -21,6 +21,10 @@ const atomicMigration = readFileSync(
   ),
   'utf8',
 );
+const databaseContract = readFileSync(
+  join(process.cwd(), 'supabase/tests/foundation_rls.test.sql'),
+  'utf8',
+);
 
 describe('secure identity lifecycle migration', () => {
   it('uses only columns granted for client invitation insertion', () => {
@@ -98,6 +102,15 @@ describe('secure identity lifecycle migration', () => {
 });
 
 describe('atomic invitation delivery migration', () => {
+  it('asserts the final active-only invitation index in pgTAP', () => {
+    expect(databaseContract).toMatch(
+      /has_index\([\s\S]*?'public',[\s\S]*?'invitations',[\s\S]*?'invitations_one_active_per_organization_email_idx'/i,
+    );
+    expect(databaseContract).not.toMatch(
+      /'invitations_one_pending_per_organization_email_idx'/i,
+    );
+  });
+
   it('models delivery state and permits only active invitations to be accepted', () => {
     expect(atomicMigration).toMatch(
       /pending_delivery[\s\S]*active[\s\S]*failed/i,

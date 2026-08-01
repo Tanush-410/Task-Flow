@@ -21,8 +21,8 @@ select has_column(
 select has_index(
   'public',
   'invitations',
-  'invitations_one_pending_per_organization_email_idx',
-  'invitations allow one normalized pending token per organization and email'
+  'invitations_one_active_per_organization_email_idx',
+  'invitations allow one normalized active usable token per organization and email'
 );
 select has_table('public', 'feature_flags', 'feature flags exist');
 select has_table('public', 'feature_flag_audit_log', 'feature flag audit log exists');
