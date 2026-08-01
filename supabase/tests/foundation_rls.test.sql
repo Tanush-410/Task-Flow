@@ -964,6 +964,8 @@ select throws_like(
 );
 reset role;
 set local role service_role;
+select set_config('request.jwt.claim.sub', '', true);
+select set_config('request.jwt.claims', '{"role":"service_role"}', true);
 select results_eq(
   $$select public.finalize_invitation_delivery((select id from public.invitations where token_hash = repeat('b', 64)))$$,
   array[true],

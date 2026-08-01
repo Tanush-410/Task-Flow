@@ -138,9 +138,37 @@ describe('inviteMember', () => {
           traceId: expect.any(String),
         },
       });
+      expect(mocks.reportCleanupFailure).toHaveBeenCalledWith({
+        traceId: expect.any(String),
+        invitationId: staged.id,
+      });
       expect(JSON.stringify(result)).not.toContain('sensitive');
     },
   );
+
+  it('reports thrown discard failures without exposing cleanup details', async () => {
+    mocks.deliverInvitation.mockResolvedValueOnce({
+      ok: false,
+      reason: 'unavailable',
+    });
+    mocks.rpc.mockImplementation(async (name: string) => {
+      if (name === 'stage_invitation') return { data: [staged], error: null };
+      if (name === 'discard_staged_invitation')
+        throw new Error('sensitive cleanup failure');
+      return { data: true, error: null };
+    });
+
+    const result = await inviteMember({
+      email: 'person@example.com',
+      role: 'employee',
+    });
+
+    expect(mocks.reportCleanupFailure).toHaveBeenCalledWith({
+      traceId: expect.any(String),
+      invitationId: staged.id,
+    });
+    expect(JSON.stringify(result)).not.toContain('sensitive');
+  });
 
   it('marks staging failed and returns an operational error when finalize fails', async () => {
     mocks.rpc.mockImplementation(async (name: string) => {

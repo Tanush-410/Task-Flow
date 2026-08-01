@@ -34,6 +34,23 @@ function hashToken(token: string): string {
   return createHash('sha256').update(token).digest('hex');
 }
 
+async function discardStagedInvitation(
+  supabase: Awaited<ReturnType<typeof createServerSupabase>>,
+  invitationId: string,
+  traceId: string,
+) {
+  try {
+    const discarded = await supabase.rpc('discard_staged_invitation', {
+      invitation_id: invitationId,
+    });
+    if (discarded.error) {
+      reportInvitationCleanupFailure({ traceId, invitationId });
+    }
+  } catch {
+    reportInvitationCleanupFailure({ traceId, invitationId });
+  }
+}
+
 export async function inviteMember(
   input: unknown,
 ): Promise<
@@ -94,19 +111,7 @@ export async function inviteMember(
   }
 
   if (!delivered) {
-    try {
-      const discarded = await supabase.rpc('discard_staged_invitation', {
-        invitation_id: invitation.id,
-      });
-      if (discarded.error) {
-        reportInvitationCleanupFailure({
-          traceId,
-          invitationId: invitation.id,
-        });
-      }
-    } catch {
-      // Best-effort revocation; never leak delivery or bearer-token details.
-    }
+    await discardStagedInvitation(supabase, invitation.id, traceId);
     return { ok: false, error: { ...INVITATION_DELIVERY_ERROR, traceId } };
   }
 
@@ -116,19 +121,11 @@ export async function inviteMember(
       invitation_id: invitation.id,
     });
     if (finalized.error || !finalized.data) {
-      await supabase.rpc('discard_staged_invitation', {
-        invitation_id: invitation.id,
-      });
+      await discardStagedInvitation(supabase, invitation.id, traceId);
       return { ok: false, error: { ...INVITATION_FINALIZE_ERROR, traceId } };
     }
   } catch {
-    try {
-      await supabase.rpc('discard_staged_invitation', {
-        invitation_id: invitation.id,
-      });
-    } catch {
-      // Pending-delivery tokens remain unusable and require support cleanup.
-    }
+    await discardStagedInvitation(supabase, invitation.id, traceId);
     return { ok: false, error: { ...INVITATION_FINALIZE_ERROR, traceId } };
   }
 

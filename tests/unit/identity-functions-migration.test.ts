@@ -32,6 +32,13 @@ const serverFinalizeMigration = readFileSync(
   ),
   'utf8',
 );
+const reconciliationMigration = readFileSync(
+  join(
+    process.cwd(),
+    'supabase/migrations/202608010007_service_role_finalize.sql',
+  ),
+  'utf8',
+);
 
 describe('secure identity lifecycle migration', () => {
   it('uses only columns granted for client invitation insertion', () => {
@@ -165,5 +172,14 @@ describe('server-only invitation finalization migration', () => {
       /grant execute on function public\.finalize_invitation_delivery\(uuid\) to service_role/i,
     );
     expect(serverFinalizeMigration).toMatch(/invitation_email !~/i);
+  });
+});
+
+describe('service-role reconciliation migration', () => {
+  it('finalizes without a user subject and requires service_role', () => {
+    expect(reconciliationMigration).toMatch(
+      /auth\.role\(\) <> 'service_role'/i,
+    );
+    expect(reconciliationMigration).not.toMatch(/auth\.uid\(\)|is_admin/i);
   });
 });
