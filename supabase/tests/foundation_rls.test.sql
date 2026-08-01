@@ -1,6 +1,6 @@
 begin;
 
-select plan(95);
+select plan(101);
 
 select has_table('public', 'profiles', 'profiles exists');
 select has_table('public', 'organizations', 'organizations exists');
@@ -14,6 +14,51 @@ select has_index(
 select has_table('public', 'invitations', 'invitations exists');
 select has_table('public', 'feature_flags', 'feature flags exist');
 select has_table('public', 'feature_flag_audit_log', 'feature flag audit log exists');
+
+select has_function(
+  'public',
+  'bootstrap_organization',
+  array['text', 'text'],
+  'organization bootstrap function exists'
+);
+select has_function(
+  'public',
+  'accept_invitation',
+  array['text'],
+  'invitation acceptance function exists'
+);
+select ok(
+  has_function_privilege(
+    'authenticated',
+    'public.bootstrap_organization(text, text)',
+    'execute'
+  ),
+  'authenticated users can execute trusted organization bootstrap'
+);
+select ok(
+  not has_function_privilege(
+    'anon',
+    'public.bootstrap_organization(text, text)',
+    'execute'
+  ),
+  'anonymous users cannot execute organization bootstrap'
+);
+select ok(
+  has_function_privilege(
+    'authenticated',
+    'public.accept_invitation(text)',
+    'execute'
+  ),
+  'authenticated users can execute invitation acceptance'
+);
+select ok(
+  not has_function_privilege(
+    'anon',
+    'public.accept_invitation(text)',
+    'execute'
+  ),
+  'anonymous users cannot execute invitation acceptance'
+);
 
 select policies_are(
   'public',

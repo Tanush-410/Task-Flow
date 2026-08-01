@@ -12,7 +12,11 @@ import { createServerSupabase } from '@/lib/supabase/server';
 import type { ActionResult } from '@/lib/result';
 import { getMembershipAccess } from '@/modules/members/queries';
 
-import { roleLandingPath } from './navigation';
+import {
+  isInvitationPath,
+  roleLandingPath,
+  sanitizeNextPath,
+} from './navigation';
 import { loginSchema } from './schemas';
 
 const INVALID_INPUT_MESSAGE = 'Enter a valid email and password.';
@@ -88,6 +92,15 @@ export async function login(
 
   if (authenticationError) {
     return invalidLogin(traceId, INVALID_CREDENTIALS_MESSAGE);
+  }
+
+  const nextValue = formData.get('next');
+  const nextPath = sanitizeNextPath(
+    typeof nextValue === 'string' ? nextValue : null,
+  );
+
+  if (isInvitationPath(nextPath)) {
+    return redirect(nextPath);
   }
 
   let access;

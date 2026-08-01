@@ -110,6 +110,15 @@ describe('GET /auth/callback', () => {
     ).resolves.toBe('https://taskflow.example/notifications?view=unread');
   });
 
+  it('continues an exchanged managed-auth invite before membership exists', async () => {
+    const invitePath = `/invite/${'a'.repeat(43)}`;
+
+    await expect(
+      location(`?code=invite&next=${encodeURIComponent(invitePath)}`),
+    ).resolves.toBe(`https://taskflow.example${invitePath}`);
+    expect(mocks.getMembershipAccess).not.toHaveBeenCalled();
+  });
+
   it('falls back to the role landing for a hostile next URL', async () => {
     await expect(
       location('?code=hostile&next=https%3A%2F%2Fevil.example%2Fphish'),

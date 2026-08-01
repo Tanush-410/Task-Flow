@@ -1,7 +1,11 @@
 import { NextResponse, type NextRequest } from 'next/server';
 
 import { createServerSupabase } from '@/lib/supabase/server';
-import { roleLandingPath, sanitizeNextPath } from '@/modules/auth/navigation';
+import {
+  isInvitationPath,
+  roleLandingPath,
+  sanitizeNextPath,
+} from '@/modules/auth/navigation';
 import { getMembershipAccess } from '@/modules/members/queries';
 
 function redirectTo(request: NextRequest, pathname: string) {
@@ -22,6 +26,10 @@ export async function GET(request: NextRequest) {
 
     if (error) {
       return redirectTo(request, '/login?error=callback');
+    }
+
+    if (isInvitationPath(nextPath)) {
+      return redirectTo(request, nextPath);
     }
 
     const access = await getMembershipAccess();

@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 
 import { LoginForm } from '@/components/login-form';
+import { sanitizeNextPath } from '@/modules/auth/navigation';
 
 export const metadata: Metadata = {
   title: 'Sign in | TaskFlow',
@@ -9,9 +10,10 @@ export const metadata: Metadata = {
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string }>;
+  searchParams: Promise<{ error?: string; next?: string }>;
 }) {
-  const { error } = await searchParams;
+  const { error, next } = await searchParams;
+  const nextPath = sanitizeNextPath(next ?? null) ?? undefined;
 
   return (
     <main className="grid min-h-screen place-items-center bg-[#f4f4f1] px-5 py-12">
@@ -49,7 +51,7 @@ export default async function LoginPage({
           </p>
         ) : null}
 
-        <LoginForm />
+        <LoginForm nextPath={nextPath} />
       </section>
     </main>
   );

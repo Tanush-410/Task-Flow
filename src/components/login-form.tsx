@@ -7,7 +7,7 @@ import { login } from '@/modules/auth/actions';
 const fieldClassName =
   'mt-2 h-12 w-full rounded-xl border border-slate-300 bg-white px-3.5 text-[15px] text-slate-950 outline-none transition-colors placeholder:text-slate-400 hover:border-slate-400 focus:border-slate-950 focus:ring-4 focus:ring-slate-950/10 disabled:cursor-not-allowed disabled:bg-slate-100';
 
-export function LoginForm() {
+export function LoginForm({ nextPath }: { nextPath?: string }) {
   const [state, formAction, pending] = useActionState(login, null);
   const error = state && !state.ok ? state.error : null;
   const emailError = error?.fields?.email?.[0];
@@ -15,6 +15,7 @@ export function LoginForm() {
 
   return (
     <form action={formAction} aria-busy={pending} className="space-y-5">
+      {nextPath ? <input name="next" type="hidden" value={nextPath} /> : null}
       <div>
         <label className="text-sm font-medium text-slate-800" htmlFor="email">
           Email

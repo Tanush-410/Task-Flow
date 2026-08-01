@@ -16,9 +16,15 @@ Because the database never started, neither the expected RED result nor a GREEN 
 
 ## Controlled initial-admin bootstrap
 
-Public signup and email signup are disabled, and email confirmation is required. Until the invitation acceptance flow exists, create the first identity only through the Supabase console or a trusted server-side Admin API call using the service-role credential. Never expose that credential to a browser, checked-in script, or client-visible environment variable.
+Public signup and email signup are disabled, and email confirmation is required. Create the first identity only through the Supabase console or a trusted server-side Admin API call using the service-role credential. Never expose that credential to a browser, checked-in script, or client-visible environment variable.
 
-After the Auth identity exists and the profile trigger has run, use the SQL console or another service-role-only transaction to insert the organization and its first active `admin` membership. The public client has no organization-insert path and cannot bootstrap itself. Record the operator and resulting IDs in the deployment change record. Additional identities remain console/service-role controlled until the invitation flow is implemented and verified.
+Before that identity calls `bootstrap_organization`, set the boolean Auth app-metadata claim `can_bootstrap_org` to `true` through the trusted Admin API or console. The security-definer RPC requires that trusted claim, a verified identity, a profile, and no active membership; it validates the name and timezone and atomically creates the organization and first active `admin` membership. Remove the bootstrap claim after successful provisioning and record the operator and resulting IDs in the deployment change record. Arbitrary authenticated identities cannot bootstrap themselves.
+
+## Invitation delivery status
+
+Invitation creation is admin-gated and persists only a SHA-256 token hash with a seven-day expiry. The raw 32-byte base64url token is used transiently to produce `/invite/<token>` and is never stored. Acceptance is an authenticated database transaction requiring a verified email that matches an unexpired, unused invitation; it locks the identity and invitation, activates the membership under the one-active-organization invariant, and marks the invitation accepted once.
+
+Live email delivery remains deferred. `src/modules/members/invitation-delivery.ts` is the server-only provider boundary and currently returns the deterministic invitation path to the trusted admin caller. Before production invitations are enabled, connect that boundary to the managed Supabase Auth admin invitation API using a server-only service-role credential, configure the approved application origin, and verify that redirects can target only `/invite/<43-character-base64url-token>`. Do not add a public signup route or expose the service-role key to client code.
 
 ## Deferred commands
 
@@ -44,6 +50,6 @@ npm run build
 git diff --check
 ```
 
-Confirm that reset applies `202608010001_foundation.sql` and `202608010002_single_active_membership.sql`, all 95 pgTAP assertions pass, and database lint reports no security or correctness findings. The authorization contract covers the one-active-organization-per-user invariant, explicit privilege revocation and column grants, role/JWT fixtures, anonymous and cross-organization denial, same-organization and cross/global `WITH CHECK` behavior, deactivated-user isolation, self-escalation and deactivation denial, last-admin protection, invitation isolation, flag metadata isolation, append-only audit attribution across account deletion, column-level provenance protection, timestamp maintenance, and timezone validation.
+Confirm that reset applies `202608010001_foundation.sql`, `202608010002_single_active_membership.sql`, and `202608010003_identity_functions.sql`; all 101 pgTAP assertions pass; and database lint reports no security or correctness findings. The authorization contract covers the one-active-organization-per-user invariant, explicit privilege revocation and column grants, bootstrap and acceptance function privileges, role/JWT fixtures, anonymous and cross-organization denial, same-organization and cross/global `WITH CHECK` behavior, deactivated-user isolation, self-escalation and deactivation denial, last-admin protection, invitation isolation, flag metadata isolation, append-only audit attribution across account deletion, column-level provenance protection, timestamp maintenance, and timezone validation. Exercise bootstrap and invitation acceptance manually against the local Auth runtime as part of this gate, including untrusted bootstrap, email mismatch, unverified email, expiry, replay, and concurrent acceptance failures.
 
-Confirm that the regenerated declarations still contain the six public tables, all three enums, and the `is_active_member`, `is_admin`, and `is_active_admin` functions. Review any generated type diff before committing it.
+Confirm that the regenerated declarations still contain the six public tables, all three enums, and the `bootstrap_organization`, `accept_invitation`, `is_active_member`, `is_admin`, and `is_active_admin` functions. Review any generated type diff before committing it.

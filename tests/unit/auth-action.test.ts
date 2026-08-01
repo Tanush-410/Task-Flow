@@ -176,4 +176,15 @@ describe('login', () => {
     expect(mocks.getMembershipAccess).toHaveBeenCalledOnce();
     expect(mocks.redirect).toHaveBeenCalledWith('/my-day');
   });
+
+  it('continues only to a local fixed-shape invitation path after sign in', async () => {
+    mocks.signInWithPassword.mockResolvedValue({ error: null });
+    const data = loginData('person@example.com', 'password123');
+    data.set('next', `/invite/${'a'.repeat(43)}`);
+
+    await login(null, data);
+
+    expect(mocks.redirect).toHaveBeenCalledWith(`/invite/${'a'.repeat(43)}`);
+    expect(mocks.getMembershipAccess).not.toHaveBeenCalled();
+  });
 });

@@ -256,6 +256,20 @@ export type Database = {
     };
     Views: { [_ in never]: never };
     Functions: {
+      accept_invitation: {
+        Args: { invitation_token_hash: string };
+        Returns: {
+          organization_id: string;
+          role: Database['public']['Enums']['membership_role'];
+        }[];
+      };
+      bootstrap_organization: {
+        Args: {
+          organization_name: string;
+          organization_timezone: string;
+        };
+        Returns: string;
+      };
       is_active_admin: {
         Args: Record<PropertyKey, never>;
         Returns: boolean;

@@ -50,6 +50,12 @@ export function sanitizeNextPath(candidate: string | null): string | null {
   }
 }
 
+export function isInvitationPath(
+  pathname: string | null,
+): pathname is `/invite/${string}` {
+  return pathname !== null && /^\/invite\/[A-Za-z0-9_-]{43}$/.test(pathname);
+}
+
 export function roleLandingPath(
   role: MembershipRole,
   requestedPath?: string | null,
