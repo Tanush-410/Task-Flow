@@ -78,6 +78,22 @@ describe('login', () => {
   it.each([
     new AuthRetryableFetchError('sensitive network detail', 0),
     new AuthApiError('sensitive server detail', 503, 'unexpected_failure'),
+    new AuthApiError('sensitive rate limit detail', 429, undefined),
+    new AuthApiError(
+      'sensitive request limit detail',
+      400,
+      'over_request_rate_limit',
+    ),
+    new AuthApiError(
+      'sensitive email limit detail',
+      400,
+      'over_email_send_rate_limit',
+    ),
+    new AuthApiError(
+      'sensitive SMS limit detail',
+      400,
+      'over_sms_send_rate_limit',
+    ),
   ])('returns safe unavailable state for %s', async (providerError) => {
     mocks.signInWithPassword.mockResolvedValue({ error: providerError });
 

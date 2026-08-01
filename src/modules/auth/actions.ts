@@ -19,6 +19,11 @@ const INVALID_INPUT_MESSAGE = 'Enter a valid email and password.';
 const INVALID_CREDENTIALS_MESSAGE = 'Email or password is incorrect.';
 const LOGIN_UNAVAILABLE_MESSAGE =
   'We could not complete sign in. Please try again.';
+const AUTH_RATE_LIMIT_CODES: ReadonlySet<string> = new Set([
+  'over_request_rate_limit',
+  'over_email_send_rate_limit',
+  'over_sms_send_rate_limit',
+]);
 
 function invalidLogin(
   traceId: string,
@@ -45,7 +50,10 @@ function unavailableLogin(traceId: string): ActionResult<null> {
 function isOperationalAuthError(error: unknown) {
   return (
     isAuthRetryableFetchError(error) ||
-    (isAuthApiError(error) && error.status >= 500)
+    (isAuthApiError(error) &&
+      (error.status === 429 ||
+        error.status >= 500 ||
+        (error.code !== undefined && AUTH_RATE_LIMIT_CODES.has(error.code))))
   );
 }
 
