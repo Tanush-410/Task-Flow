@@ -44,6 +44,50 @@ Use a TypeScript Next.js application backed by Supabase services:
 
 This architecture is preferred over a separate custom API/worker stack because it meets the expected scale with substantially less operational complexity. It is preferred over Firebase because the domain is relational and requires aggregation-heavy reporting and strict row-level access rules.
 
+### Application module boundaries
+
+The codebase is organized by domain rather than by page alone. Each module owns its validation, server operations, data access, domain types, tests, and module-specific interface components. Shared infrastructure is accessed through narrow adapters.
+
+| Module | Owns | Depends on |
+| --- | --- | --- |
+| Authentication | Session handling, sign-in, recovery, invitation acceptance | Supabase Auth, Organizations |
+| Organizations | Organization settings, timezone, retention policy | Authentication |
+| Members | Memberships, roles, invitations, deactivation | Authentication, Organizations, Notifications |
+| Tasks | Task intent, drafts, publication, edits, recurrence configuration | Organizations, Members, Files, Activity |
+| Assignments | Assignees, status, progress, delay, completion, acknowledgements | Tasks, Members, Activity, Notifications |
+| Discussions | Comments, replies, mentions, moderation | Tasks, Members, Notifications, Activity |
+| Files | Upload authorization, metadata, quotas, signed access, quarantine | Tasks, Assignments, Activity, Storage adapter |
+| Notifications | Durable inbox, preferences, grouping, delivery attempts | Members, Email and realtime adapters |
+| Reports | Read-only metrics, exports, workload views | Tasks, Assignments, Members |
+| Operations | Jobs, feature flags, telemetry, support tools, recovery checks | All modules through explicit service interfaces |
+
+Modules do not import another module's internal repository or database helpers. Cross-module writes use exported services so authorization, events, and transaction rules cannot be bypassed. Shared code is limited to design primitives, typed errors, database/client factories, time utilities, and infrastructure adapters.
+
+### Server operation boundaries
+
+Next.js Server Actions are the primary mutation interface. Query services run on the server and return role-filtered view models. Route handlers are reserved for file transfer, scheduled jobs, exports, authentication callbacks, and external webhooks. All inputs use shared schemas; authorization is repeated server-side; multi-record mutations are transactional; and actions return a typed success or safe error result containing a trace ID.
+
+| Module | Server operations |
+| --- | --- |
+| Members | `inviteMember`, `resendInvitation`, `changeMemberRole`, `deactivateMember`, `reactivateMember` |
+| Tasks | `createTask`, `updateTask`, `publishTask`, `scheduleTask`, `archiveTask`, `updateRecurrence`, `acknowledgeTaskChange` |
+| Assignments | `updateAssignmentProgress`, `changeAssignmentStatus`, `adminOverrideAssignment`, `reopenAssignment` |
+| Discussions | `createComment`, `editOwnComment`, `moderateComment`, `setTaskThreadMuted` |
+| Files | `createUploadIntent`, `finalizeUpload`, `removeAttachment`, `createSignedDownload` |
+| Notifications | `markNotificationRead`, `markAllNotificationsRead`, `updateNotificationPreferences` |
+| Reports | `getDashboardSummary`, `getWorkloadReport`, `getCompletionReport`, `createOrganizationExport` |
+| Operations | `retryNotificationDelivery`, `setFeatureFlag`, `runRetentionDryRun`, `deactivateCompromisedAccount` |
+
+Protected route handlers are:
+
+- `POST /api/uploads/sign` and `POST /api/uploads/complete` for validated direct storage uploads.
+- `GET /api/files/:attachmentId` for authorized short-lived download redirection.
+- `GET /api/exports/:exportId` for authorized export download.
+- `POST /api/jobs/reminders`, `/api/jobs/overdue`, `/api/jobs/recurrence`, `/api/jobs/notifications`, and `/api/jobs/retention` for signature-verified, idempotent scheduled execution.
+- `GET /auth/callback` for managed authentication completion.
+
+Query services include `listMyDay`, `listMyTasks`, `listOrganizationTasks`, `getTaskDetail`, `listNotifications`, `listMembers`, `getDashboard`, and `getReport`. Each accepts explicit pagination and filter objects; no query service exposes an unrestricted generic database interface.
+
 ## 5. Roles and permissions
 
 ### Admin
@@ -106,6 +150,34 @@ Progress uses 0, 25, 50, 75, or 100 percent. Starting work moves a zero-progress
 
 Overdue is a computed condition, not a manually selected status. An incomplete assignment is overdue when the deadline has passed in the organization's timezone. This permits meaningful combinations such as In Progress + Overdue and Delayed + Overdue.
 
+### Assignment state machine
+
+```mermaid
+stateDiagram-v2
+    [*] --> NotStarted
+    NotStarted --> InProgress: start work
+    NotStarted --> Delayed: report delay + reason
+    NotStarted --> Completed: complete
+    InProgress --> Delayed: report delay + reason
+    InProgress --> Completed: complete
+    Delayed --> InProgress: resume work
+    Delayed --> Completed: complete
+    Completed --> InProgress: Admin reopen + reason
+```
+
+| Current state | Allowed next state | Employee | Admin | Constraints |
+| --- | --- | --- | --- | --- |
+| Not Started | In Progress | Yes | Override | Progress becomes at least 25 |
+| Not Started | Delayed | Yes | Override | Non-empty delay reason required; progress remains 0 |
+| Not Started | Completed | Yes | Override | Progress becomes 100 |
+| In Progress | Delayed | Yes | Override | Non-empty delay reason required |
+| In Progress | Completed | Yes | Override | Progress becomes 100 |
+| Delayed | In Progress | Yes | Override | Delay reason remains in history; current reason clears |
+| Delayed | Completed | Yes | Override | Progress becomes 100 |
+| Completed | In Progress | No | Yes | Reopen reason required; progress becomes 75 unless Admin selects a lower permitted value |
+
+An Admin "Override" uses the same target transition but requires a reason and employee notification. No actor can move started work back to Not Started. In Progress permits progress 25, 50, or 75; Delayed permits 0, 25, 50, or 75; Completed requires 100. Attempts outside this table are invalid even if submitted directly to a server action.
+
 ## 7. User flows
 
 ### Admin assignment flow
@@ -135,16 +207,16 @@ Every published-task edit records before/after values in an activity event. The 
 
 | Change | Result |
 | --- | --- |
-| Deadline moved earlier | Notify incomplete assignees immediately and require acknowledgement |
+| Deadline moved earlier | Notify incomplete assignees immediately; require acknowledgement by default only from assignees who already started |
 | Deadline moved later | Notify incomplete assignees; no acknowledgement by default |
-| Material instruction change | Notify incomplete assignees and require acknowledgement |
+| Material instruction change | Notify incomplete assignees; require acknowledgement by default only from assignees who already started |
 | Priority change | Notify incomplete assignees; no acknowledgement by default |
 | Assignee added | Create a new independent assignment and send a new-assignment notification |
 | Assignee removed | Revoke future access, preserve historical attribution, and notify the removed employee |
 | Reference attachment added, replaced, or removed | Notify incomplete assignees; Admin can mark the change as requiring acknowledgement |
 | Recurrence changed | Apply only to future occurrences after Admin confirms the effective date |
 
-"Material instruction change" means an edit that changes the requested outcome, acceptance criteria, or required work rather than spelling or formatting. The edit dialog requires the Admin to classify an instruction edit as material or minor and records that choice. A required acknowledgement appears as a blocking task-detail banner but does not prevent employees from accessing their existing work. Admins can see acknowledgement state per assignee.
+"Material instruction change" means an edit that changes the requested outcome, acceptance criteria, or required work rather than spelling or formatting. The edit dialog requires the Admin to classify an instruction edit as material or minor and records that choice. An assignment counts as started when its status is In Progress or Delayed, its progress is greater than zero, or it has a recorded `started_at` value. Not Started assignees receive the notification without acknowledgement friction. For started work, the Admin can disable acknowledgement for that individual edit but must supply a reason, which is audited. A required acknowledgement appears as a prominent task-detail banner but does not prevent employees from accessing or updating their work. Admins can see acknowledgement state per assignee.
 
 ## 8. Information architecture
 
@@ -171,6 +243,40 @@ Every published-task edit records before/after values in an activity event. The 
 - Task detail
 
 Desktop navigation uses a persistent sidebar. Mobile uses a compact header and bottom navigation for primary destinations. Secondary information in the desktop task view becomes vertically stacked content on mobile.
+
+### Navigation and route map
+
+```text
+Public
+├── /login
+├── /forgot-password
+├── /reset-password
+└── /invite/[token]
+
+Admin application
+├── /dashboard
+├── /tasks
+│   ├── /new
+│   └── /[taskId]
+├── /employees
+│   └── /[memberId]
+├── /reports
+├── /notifications
+└── /settings
+    ├── /organization
+    ├── /members
+    ├── /notifications
+    └── /operations
+
+Employee application
+├── /my-day
+├── /my-tasks
+│   └── /[taskId]
+├── /notifications
+└── /profile
+```
+
+Role-aware navigation hides destinations the session cannot access, while route guards and row-level policies enforce the same boundary. Shared task URLs resolve through one canonical task-detail route internally; the role-specific paths above describe the visible navigation context rather than duplicating task-detail implementations.
 
 ## 9. Key screen behavior
 
@@ -207,13 +313,54 @@ Core tables are:
 - `invitations`
 - `tasks`
 - `task_assignments`
+- `task_change_acknowledgements`
 - `comments`
 - `attachments`
 - `activity_events`
 - `notifications`
+- `notification_deliveries`
 - `notification_preferences`
 - `recurrence_rules`
 - `reminder_deliveries`
+- `feature_flags`
+- `scheduled_job_runs`
+- `organization_exports`
+
+### Domain relationship diagram
+
+```mermaid
+erDiagram
+    ORGANIZATIONS ||--o{ ORGANIZATION_MEMBERSHIPS : contains
+    PROFILES ||--o{ ORGANIZATION_MEMBERSHIPS : joins
+    ORGANIZATIONS ||--o{ INVITATIONS : issues
+    ORGANIZATIONS ||--o{ TASKS : owns
+    PROFILES ||--o{ TASKS : creates
+    TASKS ||--o{ TASK_ASSIGNMENTS : delegates
+    PROFILES ||--o{ TASK_ASSIGNMENTS : receives
+    TASK_ASSIGNMENTS ||--o{ TASK_CHANGE_ACKNOWLEDGEMENTS : acknowledges
+    TASKS ||--o{ COMMENTS : discusses
+    COMMENTS o|--o{ COMMENTS : replies_to
+    PROFILES ||--o{ COMMENTS : authors
+    TASKS ||--o{ ATTACHMENTS : contains
+    TASK_ASSIGNMENTS o|--o{ ATTACHMENTS : submits
+    PROFILES ||--o{ ATTACHMENTS : uploads
+    TASKS ||--o{ ACTIVITY_EVENTS : records
+    TASK_ASSIGNMENTS o|--o{ ACTIVITY_EVENTS : concerns
+    ACTIVITY_EVENTS ||--o{ TASK_CHANGE_ACKNOWLEDGEMENTS : requires
+    ORGANIZATIONS ||--o{ NOTIFICATIONS : owns
+    PROFILES ||--o{ NOTIFICATIONS : receives
+    ACTIVITY_EVENTS o|--o{ NOTIFICATIONS : triggers
+    NOTIFICATIONS ||--o{ NOTIFICATION_DELIVERIES : delivers_by
+    PROFILES ||--|| NOTIFICATION_PREFERENCES : configures
+    TASKS o|--|| RECURRENCE_RULES : configures
+    TASKS o|--o{ TASKS : generates
+    TASK_ASSIGNMENTS ||--o{ REMINDER_DELIVERIES : schedules
+    ORGANIZATIONS ||--o{ FEATURE_FLAGS : scopes
+    ORGANIZATIONS ||--o{ SCHEDULED_JOB_RUNS : executes
+    ORGANIZATIONS ||--o{ ORGANIZATION_EXPORTS : exports
+```
+
+`organization_id` is retained directly on security-sensitive child tables even where it can be derived through a parent. This supports simple, auditable row-level policies and prevents authorization from depending on long or nullable join chains.
 
 All organization-owned records contain `organization_id`. Mutable records use creation and update timestamps. Records needed for accountability are archived or deactivated rather than hard-deleted. Activity events are append-only and include actor, event type, subject, timestamp, and structured change metadata.
 
@@ -248,7 +395,7 @@ All jobs use unique delivery or occurrence keys so retries cannot duplicate noti
 | Event | In-app | Email default | Grouping and audience |
 | --- | --- | --- | --- |
 | New assignment | Immediate | Immediate | One notification per task-assignment |
-| Deadline moved earlier or material instructions changed | Immediate, acknowledgement required | Immediate | One per task edit, affected assignees only |
+| Deadline moved earlier or material instructions changed | Immediate; acknowledgement for started work unless Admin disables with reason | Immediate | One per task edit, affected assignees only |
 | Other task edits | Immediate inbox item | Five-minute grouped digest | Group repeated edits to the same task |
 | Mention or direct reply | Immediate | Immediate unless muted | One per mention/reply |
 | General thread comment | Immediate inbox item | Five-minute grouped digest | Group by task and recipient |
@@ -347,6 +494,21 @@ Alerts are severity-classified, include a runbook link, and route to the designa
 
 An audit-protected support area allows specifically authorized Admin/support operators to find a user, task, assignment, notification, or trace by ID; inspect failed email and scheduled-job attempts; retry eligible notification deliveries; deactivate a compromised account; and review storage usage. Support actions require a reason and create an immutable audit event. Support authorization is organization-scoped and never silently bypasses row-level security. Cross-organization platform support, if introduced later, requires explicit time-limited access and user-visible auditing.
 
+### Risk register
+
+| Risk | Impact | Mitigation and detection |
+| --- | --- | --- |
+| Realtime connection loss | Users miss timely visual updates | Durable notification records, reconnect backoff, stale-connection metric, and 60-second inbox polling fallback while disconnected |
+| Email provider outage or bounce | Offline users miss email alerts | Durable queue, bounded retry, provider adapter, bounce monitoring, and visible delivery state in support tools |
+| Duplicate reminder or recurrence execution | Duplicate tasks or noisy alerts | Stable idempotency keys, unique database constraints, duplicate-attempt telemetry, and replay tests |
+| Large or interrupted uploads | Poor mobile experience or orphaned files | Direct resumable upload where supported, strict quotas, finalize step, checksum verification, and orphan cleanup job |
+| Authorization or RLS mismatch | Cross-user or cross-organization exposure | Permissions contract tests at UI/action/database layers, deny-by-default policies, and production security gate |
+| Failed or partially applied migration | Outage or data inconsistency | Expand/migrate/contract changes, staging upgrade rehearsal, transaction use where supported, backup, and health-gated rollout |
+| Database or audit-table growth | Slow filters and reports | Cursor pagination, bounded queries, targeted indexes, query-plan checks, archival jobs, and storage trend alerts |
+| Timezone or scheduler error | Wrong deadlines, reminders, or recurrence | UTC storage, explicit organization timezone conversion, boundary tests, and missed-job monitoring |
+| Feature-flag inconsistency | Mixed behavior or inaccessible data | Server-authoritative evaluation, audited changes, tested off-state, and data-compatible rollback behavior |
+| Support-tool misuse | Privileged data exposure or destructive action | Organization scoping, least privilege, mandatory reasons, immutable audit events, and elevated-action alerts |
+
 ## 17. Performance and capacity budgets
 
 - Primary task pages reach usable interaction within 2.5 seconds at the 75th percentile on a representative mid-range mobile device and typical 4G connection.
@@ -367,6 +529,34 @@ Feature flags exist from Phase 0 and are evaluated on the server for authorizati
 The interface is an original, modern workplace product rather than a visual clone of an education tool. It uses readable typography, restrained color, clear hierarchy, generous spacing, and consistent status chips. Red is reserved for overdue and destructive/error states. Motion is subtle and functional. Core actions use plain labels such as Assign Task, Start Task, Report Delay, and Mark Complete.
 
 Accessibility requirements include semantic HTML, complete keyboard use, visible focus, screen-reader labels, sufficient contrast, reduced-motion support, and phone-sized touch targets.
+
+### Design system components
+
+Foundation tokens define typography, spacing, radii, elevation, borders, color roles, breakpoints, motion, and focus treatment. Product screens compose these reusable components:
+
+- Application Shell, Sidebar Navigation, Mobile Navigation, Page Header, Breadcrumbs
+- Button, Icon Button, Link, Input, Textarea, Select, Combobox, Checkbox, Radio, Switch, Date/Time Picker
+- Avatar, Member Picker, Priority Badge, Status Badge, Overdue Indicator, Progress Indicator
+- Task Card, Task Grid, Task Board Column, Calendar Task Item, Filter Bar, Sort Menu, Pagination
+- Task Composer, Assignee Rollup, Assignment Controls, Required Acknowledgement Banner
+- Comment Thread, Comment Composer, Mention Picker, Activity Timeline
+- File Upload, Attachment List, Upload Progress, File Preview/Download Action
+- Notification Bell, Notification Item, Toast, Notification Preferences
+- Metric Card, Report Chart, Data Table, Empty State, Skeleton, Inline Error
+- Modal, Confirmation Dialog, Drawer, Popover, Tooltip, Dropdown Menu
+
+Every component specifies variants, sizes, loading/disabled/error states, keyboard behavior, accessible name requirements, and responsive behavior. Domain components consume typed view models and never perform unrestricted database access.
+
+### Engineering and naming standards
+
+- TypeScript uses strict mode with no unchecked `any`; external data is validated at boundaries.
+- ESLint, Prettier, type checking, unit tests, and migration checks run in continuous integration. Pre-commit hooks use Husky with lint-staged for fast checks, while CI remains authoritative.
+- Database tables, columns, constraints, and SQL functions use `snake_case`. PostgreSQL enums use lower-case string values unless a check constraint is more migration-friendly.
+- TypeScript types, React components, and exported classes use `PascalCase`; variables, functions, hooks, action payloads, and JSON fields use `camelCase`; constants use `SCREAMING_SNAKE_CASE` only for true immutable configuration.
+- Files use lowercase kebab-case except framework-required names. Tests live next to focused modules or in clearly named integration/end-to-end directories.
+- Commits follow Conventional Commits. Branches use `feature/`, `fix/`, `chore/`, or `docs/` plus a concise kebab-case subject.
+- Production changes require a reviewed pull request, green required checks, migration notes, screenshots for visual changes, test evidence, security/permissions impact, rollout/flag plan, and rollback notes.
+- Domain files remain focused; circular module imports, generic utility dumping grounds, and database access from presentation components are prohibited.
 
 ## 20. Release and quality gates
 
@@ -478,3 +668,17 @@ The product is complete when:
 - Multi-organization administration UI
 
 The schema and module boundaries should avoid preventing these future additions, but no deferred feature will be implemented speculatively.
+
+### Extension points, not current features
+
+- Departments/teams can extend memberships through organization-scoped group and group-member tables; task assignment can later target a group by expanding it into independent assignments.
+- Task templates can create drafts through the existing task-creation service without changing assignment semantics.
+- AI summaries can consume permission-filtered task view models through an isolated provider adapter and store only user-approved output; no AI provider receives unrestricted organization data.
+- Time tracking can attach immutable work-log entries to assignments without overloading progress or activity events.
+- Subtasks can use a task relationship table while preserving the existing assignment state machine for each actionable item.
+- Dependencies can add validated task edges and scheduling warnings without changing task identity.
+- External integrations can publish and consume domain events through an outbox and provider adapters with per-organization credentials.
+- Native mobile clients can use a future versioned HTTP API backed by the same domain services rather than duplicating business rules.
+- Multi-tenant SaaS administration can build on existing `organization_id` isolation, but billing, global support access, and tenant provisioning require separate specifications.
+
+These seams influence naming and module ownership only. Their tables, screens, endpoints, jobs, and providers are not built until separately approved.
