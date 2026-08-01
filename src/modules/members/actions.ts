@@ -22,6 +22,10 @@ const INVITATION_DELIVERY_ERROR = {
   code: 'INVITATION_DELIVERY_UNAVAILABLE',
   message: 'Invitation delivery is currently unavailable.',
 } as const;
+const INVITATION_FINALIZE_ERROR = {
+  code: 'INVITATION_FINALIZE_FAILED',
+  message: 'The invitation was delivered but could not be activated.',
+} as const;
 const INVITATION_LIFETIME_MS = 7 * 24 * 60 * 60 * 1_000;
 
 function hashToken(token: string): string {
@@ -53,25 +57,22 @@ export async function inviteMember(
   let supabase: Awaited<ReturnType<typeof createServerSupabase>>;
 
   try {
-    const admin = await requireAdmin();
+    await requireAdmin();
     token = randomBytes(32).toString('base64url');
     supabase = await createServerSupabase();
-    const { data, error } = await supabase
-      .from('invitations')
-      .insert({
-        organization_id: admin.organizationId,
-        email: parsed.data.email,
-        role: parsed.data.role,
-        token_hash: hashToken(token),
-        expires_at: new Date(Date.now() + INVITATION_LIFETIME_MS).toISOString(),
-      })
-      .select('id,email,expires_at')
-      .single();
+    const { data, error } = await supabase.rpc('stage_invitation', {
+      invitation_email: parsed.data.email,
+      invitation_role: parsed.data.role,
+      invitation_token_hash: hashToken(token),
+      invitation_expires_at: new Date(
+        Date.now() + INVITATION_LIFETIME_MS,
+      ).toISOString(),
+    });
 
-    if (error || !data) {
+    if (error || !data?.[0]) {
       return { ok: false, error: { ...INVITATION_CREATE_ERROR, traceId } };
     }
-    invitation = data;
+    invitation = data[0];
   } catch {
     return { ok: false, error: { ...INVITATION_CREATE_ERROR, traceId } };
   }
@@ -92,11 +93,37 @@ export async function inviteMember(
 
   if (!delivered) {
     try {
-      await supabase.from('invitations').delete().eq('id', invitation.id);
+      const discarded = await supabase.rpc('discard_staged_invitation', {
+        invitation_id: invitation.id,
+      });
+      if (discarded.error) {
+        // Cleanup is best effort; staged invitations are not acceptable.
+      }
     } catch {
       // Best-effort revocation; never leak delivery or bearer-token details.
     }
     return { ok: false, error: { ...INVITATION_DELIVERY_ERROR, traceId } };
+  }
+
+  try {
+    const finalized = await supabase.rpc('finalize_invitation_delivery', {
+      invitation_id: invitation.id,
+    });
+    if (finalized.error || !finalized.data) {
+      await supabase.rpc('discard_staged_invitation', {
+        invitation_id: invitation.id,
+      });
+      return { ok: false, error: { ...INVITATION_FINALIZE_ERROR, traceId } };
+    }
+  } catch {
+    try {
+      await supabase.rpc('discard_staged_invitation', {
+        invitation_id: invitation.id,
+      });
+    } catch {
+      // Pending-delivery tokens remain unusable and require support cleanup.
+    }
+    return { ok: false, error: { ...INVITATION_FINALIZE_ERROR, traceId } };
   }
 
   return {

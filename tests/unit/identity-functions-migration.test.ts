@@ -14,6 +14,13 @@ const identityMigration = readFileSync(
   ),
   'utf8',
 );
+const atomicMigration = readFileSync(
+  join(
+    process.cwd(),
+    'supabase/migrations/202608010005_atomic_invitation_delivery.sql',
+  ),
+  'utf8',
+);
 
 describe('secure identity lifecycle migration', () => {
   it('uses only columns granted for client invitation insertion', () => {
@@ -87,5 +94,44 @@ describe('secure identity lifecycle migration', () => {
     );
     expect(acceptance).toMatch(/pending\.id <> invitation\.id/i);
     expect(acceptance).toMatch(/message = 'INVITATION_INVALID'/i);
+  });
+});
+
+describe('atomic invitation delivery migration', () => {
+  it('models delivery state and permits only active invitations to be accepted', () => {
+    expect(atomicMigration).toMatch(
+      /pending_delivery[\s\S]*active[\s\S]*failed/i,
+    );
+    expect(atomicMigration).toMatch(/candidate\.delivery_status = 'active'/i);
+    expect(atomicMigration).toMatch(/where delivery_status = 'active'/i);
+  });
+
+  it('stages, finalizes, and discards through narrow security-definer RPCs', () => {
+    expect(atomicMigration).toMatch(/function public\.stage_invitation/i);
+    expect(atomicMigration).toMatch(
+      /function public\.finalize_invitation_delivery/i,
+    );
+    expect(atomicMigration).toMatch(
+      /function public\.discard_staged_invitation/i,
+    );
+    expect(atomicMigration).toMatch(
+      /revoke all privileges on table public\.invitations from authenticated/i,
+    );
+    expect(atomicMigration).toMatch(
+      /grant select on public\.invitations to authenticated/i,
+    );
+    expect(atomicMigration).not.toMatch(
+      /grant insert|grant delete|grant update/i,
+    );
+  });
+
+  it('revokes outstanding invitations on membership deactivation', () => {
+    expect(atomicMigration).toMatch(
+      /after update of status on public\.organization_memberships/i,
+    );
+    expect(atomicMigration).toMatch(/new\.status = 'deactivated'/i);
+    expect(atomicMigration).toMatch(
+      /set revoked_at = statement_timestamp\(\)/i,
+    );
   });
 });

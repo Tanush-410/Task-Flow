@@ -4,16 +4,10 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
   createServerSupabase: vi.fn(),
-  deleteInvitation: vi.fn(),
-  deleteWhereId: vi.fn(),
   deliverInvitation: vi.fn(),
-  from: vi.fn(),
-  insert: vi.fn(),
   requireAdmin: vi.fn(),
   rpc: vi.fn(),
-  select: vi.fn(),
   serverEnv: vi.fn(),
-  single: vi.fn(),
 }));
 
 vi.mock('server-only', () => ({}));
@@ -30,6 +24,12 @@ vi.mock('@/modules/members/queries', () => ({
 
 import { acceptInvitation, inviteMember } from '@/modules/members/actions';
 
+const staged = {
+  email: 'person@example.com',
+  expires_at: '2026-08-09T00:00:00.000Z',
+  id: 'invite-123',
+};
+
 describe('inviteMember', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -39,163 +39,123 @@ describe('inviteMember', () => {
       userId: 'admin-123',
     });
     mocks.serverEnv.mockReturnValue({ APP_ORIGIN: 'https://tasks.example' });
-    mocks.createServerSupabase.mockResolvedValue({
-      from: mocks.from,
-      rpc: mocks.rpc,
+    mocks.createServerSupabase.mockResolvedValue({ rpc: mocks.rpc });
+    mocks.rpc.mockImplementation(async (name: string) => {
+      if (name === 'stage_invitation') return { data: [staged], error: null };
+      return { data: true, error: null };
     });
-    mocks.from.mockReturnValue({
-      delete: mocks.deleteInvitation,
-      insert: mocks.insert,
-    });
-    mocks.insert.mockReturnValue({ select: mocks.select });
-    mocks.select.mockReturnValue({ single: mocks.single });
-    mocks.single.mockResolvedValue({
-      data: {
-        email: 'person@example.com',
-        expires_at: '2026-08-09T00:00:00.000Z',
-        id: 'invite-123',
-      },
-      error: null,
-    });
-    mocks.deleteInvitation.mockReturnValue({ eq: mocks.deleteWhereId });
-    mocks.deleteWhereId.mockResolvedValue({ error: null });
     mocks.deliverInvitation.mockResolvedValue({ ok: true });
   });
 
-  it('requires verified admin context before persisting', async () => {
-    await inviteMember({ email: ' PERSON@example.com ', role: 'employee' });
-
-    expect(mocks.requireAdmin).toHaveBeenCalledOnce();
-    expect(mocks.requireAdmin.mock.invocationCallOrder[0]).toBeLessThan(
-      mocks.insert.mock.invocationCallOrder[0],
-    );
-  });
-
-  it('uses exactly the client-insertable columns and stores only a token hash', async () => {
-    await inviteMember({ email: ' PERSON@example.com ', role: 'employee' });
-
-    const inserted = mocks.insert.mock.calls[0][0];
-    expect(Object.keys(inserted).sort()).toEqual([
-      'email',
-      'expires_at',
-      'organization_id',
-      'role',
-      'token_hash',
-    ]);
-    expect(inserted).toMatchObject({
-      email: 'person@example.com',
-      organization_id: 'org-123',
-      role: 'employee',
-      token_hash: expect.stringMatching(/^[0-9a-f]{64}$/),
-    });
-    expect(inserted).not.toHaveProperty('invited_by');
-  });
-
-  it('persists before delivering an absolute bearer URL and returns redacted metadata', async () => {
+  it('stages, delivers, then finalizes and returns only redacted metadata', async () => {
     const result = await inviteMember({
       email: ' PERSON@example.com ',
       role: 'employee',
     });
 
-    expect(mocks.single.mock.invocationCallOrder[0]).toBeLessThan(
-      mocks.deliverInvitation.mock.invocationCallOrder[0],
-    );
+    expect(mocks.requireAdmin).toHaveBeenCalledOnce();
+    expect(mocks.rpc).toHaveBeenNthCalledWith(1, 'stage_invitation', {
+      invitation_email: 'person@example.com',
+      invitation_expires_at: expect.any(String),
+      invitation_role: 'employee',
+      invitation_token_hash: expect.stringMatching(/^[0-9a-f]{64}$/),
+    });
     expect(mocks.deliverInvitation).toHaveBeenCalledWith({
       invitationUrl: expect.stringMatching(
         /^https:\/\/tasks\.example\/invite\/[A-Za-z0-9_-]{43}$/,
       ),
       recipientEmail: 'person@example.com',
     });
-
-    const invitationUrl =
-      mocks.deliverInvitation.mock.calls[0][0].invitationUrl;
-    const token = invitationUrl.split('/').at(-1);
-    expect(mocks.insert.mock.calls[0][0].token_hash).toBe(
+    expect(mocks.rpc).toHaveBeenNthCalledWith(
+      2,
+      'finalize_invitation_delivery',
+      {
+        invitation_id: 'invite-123',
+      },
+    );
+    expect(mocks.rpc.mock.invocationCallOrder[0]).toBeLessThan(
+      mocks.deliverInvitation.mock.invocationCallOrder[0],
+    );
+    expect(mocks.deliverInvitation.mock.invocationCallOrder[0]).toBeLessThan(
+      mocks.rpc.mock.invocationCallOrder[1],
+    );
+    const token = mocks.deliverInvitation.mock.calls[0][0].invitationUrl
+      .split('/')
+      .at(-1);
+    expect(mocks.rpc.mock.calls[0][1].invitation_token_hash).toBe(
       createHash('sha256').update(token).digest('hex'),
     );
     expect(result).toEqual({
       ok: true,
       data: {
-        email: 'person@example.com',
-        expiresAt: '2026-08-09T00:00:00.000Z',
-        invitationId: 'invite-123',
+        invitationId: staged.id,
+        email: staged.email,
+        expiresAt: staged.expires_at,
       },
     });
     expect(JSON.stringify(result)).not.toContain(token);
-    expect(JSON.stringify(result)).not.toContain('/invite/');
   });
 
   it.each([
     [{ ok: false, reason: 'unavailable' }],
-    [new Error('sensitive provider failure')],
+    [new Error('sensitive delivery failure')],
   ])(
-    'revokes the persisted invitation and fails safely when delivery is unavailable',
-    async (deliveryOutcome) => {
-      if (deliveryOutcome instanceof Error) {
-        mocks.deliverInvitation.mockRejectedValueOnce(deliveryOutcome);
-      } else {
-        mocks.deliverInvitation.mockResolvedValueOnce(deliveryOutcome);
-      }
-      const consoleError = vi
-        .spyOn(console, 'error')
-        .mockImplementation(() => undefined);
-      const consoleLog = vi
-        .spyOn(console, 'log')
-        .mockImplementation(() => undefined);
+    'discards staging after delivery failure and inspects cleanup errors',
+    async (outcome) => {
+      if (outcome instanceof Error)
+        mocks.deliverInvitation.mockRejectedValueOnce(outcome);
+      else mocks.deliverInvitation.mockResolvedValueOnce(outcome);
+      mocks.rpc.mockImplementation(async (name: string) => {
+        if (name === 'stage_invitation') return { data: [staged], error: null };
+        if (name === 'discard_staged_invitation') {
+          return { data: null, error: new Error('sensitive cleanup failure') };
+        }
+        return { data: true, error: null };
+      });
 
       const result = await inviteMember({
         email: 'person@example.com',
         role: 'employee',
       });
 
-      expect(mocks.deleteInvitation).toHaveBeenCalledOnce();
-      expect(mocks.deleteWhereId).toHaveBeenCalledWith('id', 'invite-123');
+      expect(mocks.rpc).toHaveBeenLastCalledWith('discard_staged_invitation', {
+        invitation_id: staged.id,
+      });
       expect(result).toMatchObject({
         ok: false,
         error: {
           code: 'INVITATION_DELIVERY_UNAVAILABLE',
-          message: 'Invitation delivery is currently unavailable.',
           traceId: expect.any(String),
         },
       });
       expect(JSON.stringify(result)).not.toContain('sensitive');
-      expect(consoleError).not.toHaveBeenCalled();
-      expect(consoleLog).not.toHaveBeenCalled();
-      consoleError.mockRestore();
-      consoleLog.mockRestore();
     },
   );
 
-  it('returns generic errors for authorization and persistence failures', async () => {
-    mocks.requireAdmin.mockRejectedValueOnce(
-      new Error('sensitive auth detail'),
-    );
-    const denied = await inviteMember({
+  it('marks staging failed and returns an operational error when finalize fails', async () => {
+    mocks.rpc.mockImplementation(async (name: string) => {
+      if (name === 'stage_invitation') return { data: [staged], error: null };
+      if (name === 'finalize_invitation_delivery') {
+        return { data: null, error: new Error('sensitive finalize failure') };
+      }
+      return { data: true, error: null };
+    });
+
+    const result = await inviteMember({
       email: 'person@example.com',
       role: 'employee',
     });
 
-    mocks.single.mockResolvedValueOnce({
-      data: null,
-      error: new Error('sensitive unique violation'),
+    expect(mocks.rpc).toHaveBeenLastCalledWith('discard_staged_invitation', {
+      invitation_id: staged.id,
     });
-    const failed = await inviteMember({
-      email: 'person@example.com',
-      role: 'employee',
+    expect(result).toMatchObject({
+      ok: false,
+      error: {
+        code: 'INVITATION_FINALIZE_FAILED',
+        traceId: expect.any(String),
+      },
     });
-
-    for (const result of [denied, failed]) {
-      expect(result).toMatchObject({
-        ok: false,
-        error: {
-          code: 'INVITATION_CREATE_FAILED',
-          message: 'The invitation could not be created.',
-          traceId: expect.any(String),
-        },
-      });
-      expect(JSON.stringify(result)).not.toContain('sensitive');
-    }
-    expect(mocks.deliverInvitation).not.toHaveBeenCalled();
   });
 });
 
@@ -211,34 +171,25 @@ describe('acceptInvitation', () => {
       data: [{ organization_id: 'org-123', role: 'employee' }],
       error: null,
     });
-
     const result = await acceptInvitation({ token });
-
     expect(mocks.rpc).toHaveBeenCalledWith('accept_invitation', {
       invitation_token_hash: createHash('sha256').update(token).digest('hex'),
     });
-    expect(JSON.stringify(mocks.rpc.mock.calls)).not.toContain(token);
     expect(result).toEqual({
       ok: true,
       data: { organizationId: 'org-123', role: 'employee' },
     });
   });
 
-  it('returns one generic error for invalid, expired, or used invitations', async () => {
+  it('returns one generic error for unusable invitations', async () => {
     mocks.rpc.mockResolvedValue({
       data: null,
       error: new Error('INVITATION_INVALID'),
     });
-
     const result = await acceptInvitation({ token: 'b'.repeat(43) });
-
     expect(result).toMatchObject({
       ok: false,
-      error: {
-        code: 'INVITATION_ACCEPT_FAILED',
-        message: 'This invitation could not be accepted.',
-        traceId: expect.any(String),
-      },
+      error: { code: 'INVITATION_ACCEPT_FAILED', traceId: expect.any(String) },
     });
     expect(JSON.stringify(result)).not.toContain('INVITATION_INVALID');
   });

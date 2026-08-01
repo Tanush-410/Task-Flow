@@ -108,6 +108,7 @@ export type Database = {
         Row: {
           accepted_at: string | null;
           created_at: string;
+          delivery_status: Database['public']['Enums']['invitation_delivery_status'];
           email: string;
           expires_at: string;
           id: string;
@@ -120,6 +121,7 @@ export type Database = {
         Insert: {
           accepted_at?: string | null;
           created_at?: string;
+          delivery_status?: Database['public']['Enums']['invitation_delivery_status'];
           email: string;
           expires_at: string;
           id?: string;
@@ -132,6 +134,7 @@ export type Database = {
         Update: {
           accepted_at?: string | null;
           created_at?: string;
+          delivery_status?: Database['public']['Enums']['invitation_delivery_status'];
           email?: string;
           expires_at?: string;
           id?: string;
@@ -273,6 +276,14 @@ export type Database = {
         };
         Returns: string;
       };
+      discard_staged_invitation: {
+        Args: { invitation_id: string };
+        Returns: boolean;
+      };
+      finalize_invitation_delivery: {
+        Args: { invitation_id: string };
+        Returns: boolean;
+      };
       is_active_admin: {
         Args: Record<PropertyKey, never>;
         Returns: boolean;
@@ -285,9 +296,19 @@ export type Database = {
         Args: { target_organization_id: string };
         Returns: boolean;
       };
+      stage_invitation: {
+        Args: {
+          invitation_email: string;
+          invitation_expires_at: string;
+          invitation_role: Database['public']['Enums']['membership_role'];
+          invitation_token_hash: string;
+        };
+        Returns: { id: string; email: string; expires_at: string }[];
+      };
     };
     Enums: {
       deployment_environment: 'development' | 'staging' | 'production';
+      invitation_delivery_status: 'pending_delivery' | 'active' | 'failed';
       membership_role: 'admin' | 'employee';
       membership_status: 'active' | 'deactivated';
     };

@@ -1,6 +1,6 @@
 begin;
 
-select plan(122);
+select plan(130);
 
 select has_table('public', 'profiles', 'profiles exists');
 select has_table('public', 'organizations', 'organizations exists');
@@ -163,8 +163,8 @@ select ok(
   'authenticated has no whole-invitation insert grant'
 );
 select ok(
-  has_column_privilege('authenticated', 'public.invitations', 'token_hash', 'insert'),
-  'authenticated can insert hashed invitation tokens subject to RLS'
+  not has_column_privilege('authenticated', 'public.invitations', 'token_hash', 'insert'),
+  'authenticated must stage hashed invitation tokens through the RPC'
 );
 select ok(
   not has_column_privilege('authenticated', 'public.invitations', 'invited_by', 'insert'),
@@ -667,15 +667,15 @@ select throws_like(
   '%row-level security%',
   'membership WITH CHECK rejects cross-organization inserts'
 );
-select results_eq(
+select throws_like(
   $$insert into public.invitations (organization_id, email, role, token_hash, expires_at) values ('20000000-0000-0000-0000-000000000001', 'same-org@example.test', 'employee', repeat('2', 64), now() + interval '7 days') returning invited_by::text$$,
-  array['10000000-0000-0000-0000-000000000001'],
-  'admins can insert invitations in their organization with trusted attribution'
+  '%permission denied%',
+  'admins cannot bypass the invitation staging RPC'
 );
 select throws_like(
   $$insert into public.invitations (organization_id, email, role, token_hash, expires_at) values ('20000000-0000-0000-0000-000000000002', 'cross-org@example.test', 'employee', repeat('3', 64), now() + interval '7 days')$$,
-  '%row-level security%',
-  'invitation WITH CHECK rejects cross-organization inserts'
+  '%permission denied%',
+  'direct invitation insertion is denied before cross-organization probing'
 );
 select results_eq(
   $$insert into public.feature_flags (organization_id, key, environment, enabled, owner, purpose, rollout_plan, review_on, expires_on) values ('20000000-0000-0000-0000-000000000001', 'same-org-insert', 'development', false, 'admin-a', 'Exercise allowed insertion.', 'Review before enabling.', current_date + 7, current_date + 30) returning organization_id::text$$,
@@ -859,7 +859,8 @@ insert into public.invitations (
   role,
   token_hash,
   invited_by,
-  expires_at
+  expires_at,
+  delivery_status
 )
 values (
   '20000000-0000-0000-0000-000000000002',
@@ -867,7 +868,8 @@ values (
   'admin',
   repeat('a', 64),
   '10000000-0000-0000-0000-000000000003',
-  now() + interval '7 days'
+  now() + interval '7 days',
+  'active'
 );
 insert into public.invitations (
   organization_id,
@@ -875,7 +877,8 @@ insert into public.invitations (
   role,
   token_hash,
   invited_by,
-  expires_at
+  expires_at,
+  delivery_status
 )
 values (
   '20000000-0000-0000-0000-000000000002',
@@ -883,7 +886,8 @@ values (
   'employee',
   repeat('b', 64),
   '10000000-0000-0000-0000-000000000003',
-  now() + interval '7 days'
+  now() + interval '7 days',
+  'pending_delivery'
 );
 insert into public.invitations (
   organization_id,
@@ -916,27 +920,63 @@ set expires_at = now() - interval '1 minute'
 where token_hash = repeat('c', 64);
 
 select results_eq(
-  $$select count(*)::integer from public.invitations where organization_id = '20000000-0000-0000-0000-000000000002' and lower(btrim(email)) = 'invited@example.test' and accepted_at is null and revoked_at is null$$,
+  $$select count(*)::integer from public.invitations where organization_id = '20000000-0000-0000-0000-000000000002' and lower(btrim(email)) = 'invited@example.test' and delivery_status = 'active' and accepted_at is null and revoked_at is null$$,
   array[1],
-  'replacement leaves exactly one normalized pending invitation'
+  'staging a resend leaves the prior active invitation usable'
+);
+select results_eq(
+  $$select revoked_at is null from public.invitations where token_hash = repeat('a', 64)$$,
+  array[true],
+  'raw staging does not revoke the prior active invitation'
+);
+
+set local role authenticated;
+select set_config('request.jwt.claim.sub', '10000000-0000-0000-0000-000000000007', true);
+select set_config(
+  'request.jwt.claims',
+  '{"sub":"10000000-0000-0000-0000-000000000007","role":"authenticated"}',
+  true
+);
+select throws_like(
+  $$select * from public.accept_invitation(repeat('b', 64))$$,
+  '%INVITATION_INVALID%',
+  'a staged but undelivered token cannot be accepted'
+);
+
+reset role;
+set local role authenticated;
+select set_config('request.jwt.claim.sub', '10000000-0000-0000-0000-000000000003', true);
+select set_config(
+  'request.jwt.claims',
+  '{"sub":"10000000-0000-0000-0000-000000000003","role":"authenticated"}',
+  true
+);
+select results_eq(
+  $$select public.finalize_invitation_delivery((select id from public.invitations where token_hash = repeat('b', 64)))$$,
+  array[true],
+  'successful delivery finalization activates the staged resend'
 );
 select results_eq(
   $$select revoked_at is not null from public.invitations where token_hash = repeat('a', 64)$$,
   array[true],
-  'replacement revokes the older elevated-role token'
-);
-select throws_like(
-  $$insert into public.invitations (organization_id, email, role, token_hash, invited_by, expires_at) values ('20000000-0000-0000-0000-000000000002', 'invited@example.test', 'admin', repeat('e', 64), '10000000-0000-0000-0000-000000000003', now() - interval '1 minute')$$,
-  '%INVITATION_INVALID%',
-  'an invalid replacement is rejected before it can revoke the current token'
+  'finalization revokes the prior elevated-role token only after delivery'
 );
 select results_eq(
-  $$select token_hash from public.invitations where organization_id = '20000000-0000-0000-0000-000000000002' and lower(btrim(email)) = 'invited@example.test' and accepted_at is null and revoked_at is null$$,
-  array[repeat('b', 64)],
-  'a rejected replacement leaves the current invitation pending'
+  $$select delivery_status::text from public.invitations where token_hash = repeat('b', 64)$$,
+  array['active'],
+  'finalization makes the delivered token active'
+);
+select results_eq(
+  $$select public.discard_staged_invitation(id) from public.stage_invitation('invited@example.test', 'admin', repeat('e', 64), now() + interval '7 days')$$,
+  array[true],
+  'a failed resend can be staged then discarded'
+);
+select results_eq(
+  $$select delivery_status::text from public.invitations where token_hash = repeat('b', 64)$$,
+  array['active'],
+  'discarding a failed resend preserves the prior active token'
 );
 
-set local role authenticated;
 select set_config('request.jwt.claim.sub', '10000000-0000-0000-0000-000000000007', true);
 select set_config(
   'request.jwt.claims',
@@ -976,6 +1016,59 @@ select throws_like(
   $$select * from public.accept_invitation(repeat('b', 64))$$,
   '%INVITATION_INVALID%',
   'an accepted invitation cannot be replayed'
+);
+
+reset role;
+set local role authenticated;
+select set_config('request.jwt.claim.sub', '10000000-0000-0000-0000-000000000003', true);
+select set_config(
+  'request.jwt.claims',
+  '{"sub":"10000000-0000-0000-0000-000000000003","role":"authenticated"}',
+  true
+);
+select throws_like(
+  $$select * from public.stage_invitation('invited@example.test', 'admin', repeat('f', 64), now() + interval '7 days')$$,
+  '%INVITATION_INVALID%',
+  'admins cannot invite an email already mapped to an active membership'
+);
+
+reset role;
+insert into public.invitations (
+  organization_id, email, role, token_hash, invited_by, expires_at, delivery_status
+) values (
+  '20000000-0000-0000-0000-000000000002', 'invited@example.test', 'admin',
+  repeat('6', 64), '10000000-0000-0000-0000-000000000003',
+  now() + interval '7 days', 'active'
+);
+
+set local role authenticated;
+select set_config('request.jwt.claim.sub', '10000000-0000-0000-0000-000000000003', true);
+select set_config(
+  'request.jwt.claims',
+  '{"sub":"10000000-0000-0000-0000-000000000003","role":"authenticated"}',
+  true
+);
+select results_eq(
+  $$update public.organization_memberships set status = 'deactivated' where user_id = '10000000-0000-0000-0000-000000000007' returning status::text$$,
+  array['deactivated'],
+  'membership deactivation succeeds through the admin policy'
+);
+select results_eq(
+  $$select revoked_at is not null from public.invitations where token_hash = repeat('6', 64)$$,
+  array[true],
+  'membership deactivation atomically revokes outstanding matching invitations'
+);
+
+select set_config('request.jwt.claim.sub', '10000000-0000-0000-0000-000000000007', true);
+select set_config(
+  'request.jwt.claims',
+  '{"sub":"10000000-0000-0000-0000-000000000007","role":"authenticated"}',
+  true
+);
+select throws_like(
+  $$select * from public.accept_invitation(repeat('6', 64))$$,
+  '%INVITATION_INVALID%',
+  'a deactivation-revoked token cannot reactivate membership'
 );
 
 reset role;
