@@ -2,8 +2,18 @@ import type { MembershipContext } from '@/modules/members/context';
 
 type MembershipRole = MembershipContext['role'];
 
-const ADMIN_ONLY_PATHS = ['/dashboard', '/tasks', '/employees', '/reports'];
 const AUTH_LOOP_PATHS = ['/login', '/auth/callback'];
+const ROLE_PATHS: Record<MembershipRole, string[]> = {
+  admin: [
+    '/dashboard',
+    '/tasks',
+    '/employees',
+    '/reports',
+    '/notifications',
+    '/settings',
+  ],
+  employee: ['/my-day', '/my-tasks', '/notifications', '/profile'],
+};
 
 function isPathOrDescendant(pathname: string, roots: string[]) {
   return roots.some(
@@ -52,7 +62,7 @@ export function roleLandingPath(
   }
 
   const pathname = new URL(safePath, 'https://taskflow.local').pathname;
-  if (role === 'employee' && isPathOrDescendant(pathname, ADMIN_ONLY_PATHS)) {
+  if (!isPathOrDescendant(pathname, ROLE_PATHS[role])) {
     return fallback;
   }
 

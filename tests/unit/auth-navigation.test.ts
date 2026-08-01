@@ -31,6 +31,19 @@ describe('roleLandingPath', () => {
     expect(roleLandingPath('employee', '/reports')).toBe('/my-day');
   });
 
+  it.each(['/settings', '/settings/members'])(
+    'does not send an employee to admin settings destination %s',
+    (destination) => {
+      expect(roleLandingPath('employee', destination)).toBe('/my-day');
+    },
+  );
+
+  it('allows an admin to continue to settings', () => {
+    expect(roleLandingPath('admin', '/settings/members')).toBe(
+      '/settings/members',
+    );
+  });
+
   it('honors a safe authorized next path', () => {
     expect(roleLandingPath('employee', '/notifications')).toBe(
       '/notifications',
