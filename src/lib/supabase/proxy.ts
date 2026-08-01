@@ -6,6 +6,7 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { publicEnv } from '@/lib/env';
 
 import type { Database } from './database.types';
+import { synchronizeProxyCookies } from './proxy-cookies';
 
 export async function refreshSession(request: NextRequest) {
   let response = NextResponse.next({ request });
@@ -17,13 +18,14 @@ export async function refreshSession(request: NextRequest) {
       cookies: {
         getAll: () => request.cookies.getAll(),
         setAll: (values) => {
-          values.forEach(({ name, value }) => {
-            request.cookies.set(name, value);
-          });
-          response = NextResponse.next({ request });
-          values.forEach(({ name, value, options }) => {
-            response.cookies.set(name, value, options);
-          });
+          response = synchronizeProxyCookies(
+            values,
+            (name, value) => request.cookies.set(name, value),
+            () => NextResponse.next({ request }),
+            (nextResponse, name, value, options) => {
+              nextResponse.cookies.set(name, value, options);
+            },
+          );
         },
       },
     },

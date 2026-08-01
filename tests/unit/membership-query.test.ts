@@ -1,3 +1,9 @@
+import {
+  AuthApiError,
+  AuthInvalidJwtError,
+  AuthRetryableFetchError,
+  AuthSessionMissingError,
+} from '@supabase/supabase-js';
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -51,32 +57,80 @@ describe('resolveMembershipAccess', () => {
     expect(result).toEqual({ kind: 'redirect', location: '/login' });
   });
 
-  it('throws a safe auth context error when claim verification fails', async () => {
+  it.each([
+    new AuthInvalidJwtError('invalid signature detail'),
+    new AuthSessionMissingError(),
+    new AuthApiError('revoked session detail', 401, 'session_not_found'),
+  ])('sends a terminal invalid session to login', async (error) => {
+    const result = await resolveMembershipAccess(
+      async () => ({ data: null, error }),
+      async () => {
+        throw new Error('membership query must not run');
+      },
+    );
+
+    expect(result).toEqual({ kind: 'redirect', location: '/login' });
+  });
+
+  it('throws a safe auth context error with the operational cause', async () => {
+    const operationalError = new AuthRetryableFetchError(
+      'sensitive JWKS network detail',
+      503,
+    );
     const result = resolveMembershipAccess(
       async () => ({
         data: null,
-        error: new Error('sensitive claim detail'),
+        error: operationalError,
       }),
       async () => ({ data: [], error: null }),
     );
 
-    await expect(result).rejects.toBeInstanceOf(AuthContextError);
-    await expect(result).rejects.toThrow('CLAIM_VERIFICATION_FAILED');
-    await expect(result).rejects.not.toThrow('sensitive claim detail');
+    const error = await result.catch((caught: unknown) => caught);
+
+    expect(error).toBeInstanceOf(AuthContextError);
+    expect(error).toMatchObject({
+      message: 'CLAIM_VERIFICATION_FAILED',
+      cause: operationalError,
+    });
+    expect((error as Error).message).not.toContain('sensitive JWKS');
+  });
+
+  it('wraps a thrown claim-verification failure with its cause', async () => {
+    const operationalError = new Error('sensitive crypto failure');
+    const result = resolveMembershipAccess(
+      async () => {
+        throw operationalError;
+      },
+      async () => ({ data: [], error: null }),
+    );
+
+    const error = await result.catch((caught: unknown) => caught);
+
+    expect(error).toBeInstanceOf(AuthContextError);
+    expect(error).toMatchObject({
+      message: 'CLAIM_VERIFICATION_FAILED',
+      cause: operationalError,
+    });
   });
 
   it('throws a safe auth context error when the membership query fails', async () => {
+    const queryError = new Error('sensitive database detail');
     const result = resolveMembershipAccess(
       async () => ({ data: { claims: { sub: 'user' } }, error: null }),
       async () => ({
         data: null,
-        error: new Error('sensitive database detail'),
+        error: queryError,
       }),
     );
 
-    await expect(result).rejects.toBeInstanceOf(AuthContextError);
-    await expect(result).rejects.toThrow('MEMBERSHIP_QUERY_FAILED');
-    await expect(result).rejects.not.toThrow('sensitive database detail');
+    const error = await result.catch((caught: unknown) => caught);
+
+    expect(error).toBeInstanceOf(AuthContextError);
+    expect(error).toMatchObject({
+      message: 'MEMBERSHIP_QUERY_FAILED',
+      cause: queryError,
+    });
+    expect((error as Error).message).not.toContain('sensitive database');
   });
 
   it('maps the database membership role into application context', async () => {

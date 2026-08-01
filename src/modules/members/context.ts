@@ -1,3 +1,10 @@
+import {
+  AuthInvalidJwtError,
+  AuthSessionMissingError,
+  isAuthError,
+  isAuthRetryableFetchError,
+} from '@supabase/supabase-js';
+
 import type { Database } from '@/lib/supabase/database.types';
 
 type MembershipRole = Database['public']['Enums']['membership_role'];
@@ -26,8 +33,9 @@ export type MembershipContext = {
 export class AuthContextError extends Error {
   constructor(
     readonly code: 'CLAIM_VERIFICATION_FAILED' | 'MEMBERSHIP_QUERY_FAILED',
+    options?: ErrorOptions,
   ) {
-    super(code);
+    super(code, options);
     this.name = 'AuthContextError';
   }
 }
@@ -57,14 +65,42 @@ export function requireSingleMembership(
   return items[0];
 }
 
+function isTerminalAuthSessionError(error: unknown): boolean {
+  return (
+    error instanceof AuthInvalidJwtError ||
+    error instanceof AuthSessionMissingError ||
+    (isAuthError(error) &&
+      error.status === 401 &&
+      !isAuthRetryableFetchError(error))
+  );
+}
+
 export async function resolveMembershipAccess(
   getClaims: () => Promise<ClaimsResult>,
   getMemberships: (userId: string) => Promise<MembershipQueryResult>,
 ): Promise<MembershipAccess> {
-  const { data: claims, error: claimsError } = await getClaims();
+  let claimsResult: ClaimsResult;
+
+  try {
+    claimsResult = await getClaims();
+  } catch (error) {
+    if (isTerminalAuthSessionError(error)) {
+      return { kind: 'redirect', location: '/login' };
+    }
+
+    throw new AuthContextError('CLAIM_VERIFICATION_FAILED', { cause: error });
+  }
+
+  const { data: claims, error: claimsError } = claimsResult;
 
   if (claimsError) {
-    throw new AuthContextError('CLAIM_VERIFICATION_FAILED');
+    if (isTerminalAuthSessionError(claimsError)) {
+      return { kind: 'redirect', location: '/login' };
+    }
+
+    throw new AuthContextError('CLAIM_VERIFICATION_FAILED', {
+      cause: claimsError,
+    });
   }
 
   const userId = claims?.claims.sub;
@@ -76,7 +112,7 @@ export async function resolveMembershipAccess(
   const { data, error } = await getMemberships(userId);
 
   if (error || !data) {
-    throw new AuthContextError('MEMBERSHIP_QUERY_FAILED');
+    throw new AuthContextError('MEMBERSHIP_QUERY_FAILED', { cause: error });
   }
 
   if (data.length === 0) {
