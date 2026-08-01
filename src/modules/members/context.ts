@@ -1,6 +1,7 @@
 import {
   AuthInvalidJwtError,
   AuthSessionMissingError,
+  isAuthApiError,
   isAuthError,
   isAuthRetryableFetchError,
 } from '@supabase/supabase-js';
@@ -69,6 +70,10 @@ function isTerminalAuthSessionError(error: unknown): boolean {
   return (
     error instanceof AuthInvalidJwtError ||
     error instanceof AuthSessionMissingError ||
+    (isAuthApiError(error) &&
+      (error.code === 'refresh_token_not_found' ||
+        error.code === 'refresh_token_already_used' ||
+        error.code === 'session_expired')) ||
     (isAuthError(error) &&
       error.status === 401 &&
       !isAuthRetryableFetchError(error))

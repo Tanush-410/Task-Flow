@@ -72,6 +72,29 @@ describe('resolveMembershipAccess', () => {
     expect(result).toEqual({ kind: 'redirect', location: '/login' });
   });
 
+  it.each([
+    { code: 'refresh_token_not_found', status: 400 },
+    { code: 'refresh_token_already_used', status: 409 },
+    { code: 'session_expired', status: 503 },
+  ])(
+    'sends the dead refresh session $code to login regardless of status',
+    async ({ code, status }) => {
+      const error = new AuthApiError(
+        'dead refresh session detail',
+        status,
+        code,
+      );
+      const result = await resolveMembershipAccess(
+        async () => ({ data: null, error }),
+        async () => {
+          throw new Error('membership query must not run');
+        },
+      );
+
+      expect(result).toEqual({ kind: 'redirect', location: '/login' });
+    },
+  );
+
   it('throws a safe auth context error with the operational cause', async () => {
     const operationalError = new AuthRetryableFetchError(
       'sensitive JWKS network detail',
