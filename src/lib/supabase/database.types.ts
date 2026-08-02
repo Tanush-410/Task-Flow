@@ -436,6 +436,7 @@ export const Constants = {
   public: {
     Enums: {
       deployment_environment: ['development', 'staging', 'production'],
+      invitation_delivery_status: ['pending_delivery', 'active', 'failed'],
       membership_role: ['admin', 'employee'],
       membership_status: ['active', 'deactivated'],
     },
