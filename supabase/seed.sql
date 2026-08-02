@@ -10,43 +10,77 @@ insert into auth.users (
   email,
   encrypted_password,
   email_confirmed_at,
+  confirmation_token,
+  recovery_token,
+  email_change,
+  email_change_token_new,
+  email_change_token_current,
+  email_change_confirm_status,
+  phone_change,
+  phone_change_token,
+  reauthentication_token,
+  is_sso_user,
+  is_anonymous,
   raw_app_meta_data,
   raw_user_meta_data,
   created_at,
   updated_at
 )
-values
-  (
-    '00000000-0000-0000-0000-000000000001',
-    '00000000-0000-0000-0000-000000000000',
-    'authenticated',
-    'authenticated',
-    'admin@example.test',
-    crypt('Password123!', gen_salt('bf')),
-    '2026-08-01 00:00:00+00',
-    $json${"provider":"email","providers":["email"]}$json$::jsonb,
-    $json${"display_name":"Asha Admin"}$json$::jsonb,
-    '2026-08-01 00:00:00+00',
-    '2026-08-01 00:00:00+00'
-  ),
-  (
-    '00000000-0000-0000-0000-000000000002',
-    '00000000-0000-0000-0000-000000000000',
-    'authenticated',
-    'authenticated',
-    'employee@example.test',
-    crypt('Password123!', gen_salt('bf')),
-    '2026-08-01 00:00:00+00',
-    $json${"provider":"email","providers":["email"]}$json$::jsonb,
-    $json${"display_name":"Eshan Employee"}$json$::jsonb,
-    '2026-08-01 00:00:00+00',
-    '2026-08-01 00:00:00+00'
-  )
+select
+  fixture.id::uuid,
+  '00000000-0000-0000-0000-000000000000'::uuid,
+  'authenticated'::text,
+  'authenticated'::text,
+  fixture.email::text,
+  crypt('Password123!', gen_salt('bf')),
+  '2026-08-01 00:00:00+00'::timestamptz,
+  ''::text as confirmation_token,
+  ''::text as recovery_token,
+  ''::text as email_change,
+  ''::text as email_change_token_new,
+  ''::text as email_change_token_current,
+  0::smallint as email_change_confirm_status,
+  ''::text as phone_change,
+  ''::text as phone_change_token,
+  ''::text as reauthentication_token,
+  false as is_sso_user,
+  false as is_anonymous,
+  jsonb_build_object('provider', 'email', 'providers', jsonb_build_array('email')),
+  jsonb_build_object('display_name', fixture.display_name),
+  '2026-08-01 00:00:00+00'::timestamptz,
+  '2026-08-01 00:00:00+00'::timestamptz
+from (
+  values
+    (
+      '00000000-0000-0000-0000-000000000001',
+      'admin@example.test',
+      'Asha Admin'
+    ),
+    (
+      '00000000-0000-0000-0000-000000000002',
+      'employee@example.test',
+      'Eshan Employee'
+    )
+) as fixture (id, email, display_name)
 on conflict (id) do update
 set
+  instance_id = excluded.instance_id,
+  aud = excluded.aud,
+  role = excluded.role,
   email = excluded.email,
   encrypted_password = excluded.encrypted_password,
   email_confirmed_at = excluded.email_confirmed_at,
+  confirmation_token = excluded.confirmation_token,
+  recovery_token = excluded.recovery_token,
+  email_change = excluded.email_change,
+  email_change_token_new = excluded.email_change_token_new,
+  email_change_token_current = excluded.email_change_token_current,
+  email_change_confirm_status = excluded.email_change_confirm_status,
+  phone_change = excluded.phone_change,
+  phone_change_token = excluded.phone_change_token,
+  reauthentication_token = excluded.reauthentication_token,
+  is_sso_user = excluded.is_sso_user,
+  is_anonymous = excluded.is_anonymous,
   raw_app_meta_data = excluded.raw_app_meta_data,
   raw_user_meta_data = excluded.raw_user_meta_data,
   updated_at = excluded.updated_at;
