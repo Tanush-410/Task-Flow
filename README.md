@@ -1,5 +1,11 @@
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
+## Local development
+
+Follow the verified workflow in [docs/operations/local-development.md](docs/operations/local-development.md) before running the app or resetting Supabase locally.
+
+The Phase 0 release evidence template is in [docs/operations/phase-0-release.md](docs/operations/phase-0-release.md).
+
 ## Getting Started
 
 Use Node.js 22.22.1 or newer and npm 11.9.0. With `nvm`, select the
