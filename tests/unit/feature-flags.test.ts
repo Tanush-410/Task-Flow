@@ -78,6 +78,7 @@ describe('isInRollout', () => {
     expect(isInRollout('user', 'reports', Number.POSITIVE_INFINITY)).toBe(
       false,
     );
+    expect(isInRollout('user', 'reports', 50.5)).toBe(false);
   });
 });
 

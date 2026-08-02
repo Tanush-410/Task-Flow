@@ -54,7 +54,7 @@ export function isInRollout(
     typeof key !== 'string' ||
     key.length > 64 ||
     !FEATURE_KEY_PATTERN.test(key) ||
-    !Number.isFinite(percentage)
+    !Number.isInteger(percentage)
   ) {
     return false;
   }

@@ -5,10 +5,10 @@ vi.mock('server-only', () => ({}));
 import { recordError } from '@/lib/telemetry';
 
 describe('recordError', () => {
-  it('emits a structured error with safe scalar context', () => {
+  it('emits a structured error with only allowlisted public context', () => {
     const sink = vi.fn();
-    const error = Object.assign(new Error('Database unavailable'), {
-      code: 'DATABASE_UNAVAILABLE',
+    const error = Object.assign(new Error('untrusted message'), {
+      code: 'INVITATION_CLEANUP_FAILED',
     });
 
     recordError(
@@ -16,10 +16,11 @@ describe('recordError', () => {
       'trace-123',
       {
         operation: 'invitation_cleanup',
+        invitationId: '20000000-0000-0000-0000-000000000001',
         attempt: 2,
         retryable: true,
         result: null,
-      },
+      } as never,
       sink,
     );
 
@@ -29,15 +30,38 @@ describe('recordError', () => {
       ),
       level: 'error',
       traceId: 'trace-123',
-      code: 'DATABASE_UNAVAILABLE',
-      message: 'Database unavailable',
+      code: 'INVITATION_CLEANUP_FAILED',
+      message: 'Invitation cleanup failed',
       context: {
         operation: 'invitation_cleanup',
-        attempt: 2,
-        retryable: true,
-        result: null,
+        invitationId: '20000000-0000-0000-0000-000000000001',
       },
     });
+  });
+
+  it('uses fixed public messages and drops unrecognized error codes', () => {
+    const sink = vi.fn();
+    const error = Object.assign(
+      new Error(
+        'AWS_ACCESS_KEY_ID=AKIAEXAMPLE privateKey=private signingKey=signing accessKey=access amqps://user:pass@mq.example smtp://user:pass@mail.example ftp://user:pass@files.example',
+      ),
+      { code: 'AWS_ACCESS_KEY_ID' },
+    );
+
+    recordError(error, 'trace-fixed', {}, sink);
+
+    expect(sink).toHaveBeenCalledWith(
+      expect.objectContaining({
+        code: 'UNKNOWN_ERROR',
+        message: 'An operational error occurred',
+      }),
+    );
+    const serialized = JSON.stringify(sink.mock.calls[0]?.[0]);
+    expect(serialized).not.toContain('AKIAEXAMPLE');
+    expect(serialized).not.toContain('private');
+    expect(serialized).not.toContain('signing');
+    expect(serialized).not.toContain('access');
+    expect(serialized).not.toContain('user:pass');
   });
 
   it('excludes sensitive keys, non-scalars, and sensitive values', () => {
@@ -63,6 +87,14 @@ describe('recordError', () => {
         databaseCredential: 'database-credential',
         sessionId: 'session-secret',
         connectionString: 'postgres://db-user:db-password@db.example/tasks',
+        AWS_ACCESS_KEY_ID: 'aws-env-secret',
+        awsAccessKeyId: 'aws-camel-secret',
+        privateKey: 'private-key-secret',
+        signingKey: 'signing-key-secret',
+        accessKey: 'access-key-secret',
+        queueUrl: 'amqps://queue-user:queue-secret@mq.example',
+        mailUrl: 'smtp://mail-user:mail-secret@mail.example',
+        transferUrl: 'ftp://file-user:file-secret@files.example',
         detail:
           'contact person@example.com using Bearer "third-secret" with API_KEY="fourth-secret" and postgres://user:password@db.example/tasks',
         nested: { password: 'hidden' },
@@ -88,9 +120,17 @@ describe('recordError', () => {
     expect(serialized).not.toContain('session-secret');
     expect(serialized).not.toContain('db-password');
     expect(serialized).not.toContain('user:password');
+    expect(serialized).not.toContain('aws-env-secret');
+    expect(serialized).not.toContain('aws-camel-secret');
+    expect(serialized).not.toContain('private-key-secret');
+    expect(serialized).not.toContain('signing-key-secret');
+    expect(serialized).not.toContain('access-key-secret');
+    expect(serialized).not.toContain('queue-secret');
+    expect(serialized).not.toContain('mail-secret');
+    expect(serialized).not.toContain('file-secret');
     expect(serialized).not.toContain('hidden');
     expect(sink.mock.calls[0]?.[0]).toMatchObject({
-      context: { operation: 'invite_member' },
+      context: {},
     });
   });
 
@@ -110,7 +150,7 @@ describe('recordError', () => {
     expect(sink).toHaveBeenCalledWith(
       expect.objectContaining({
         code: 'UNKNOWN_ERROR',
-        message: 'Unknown error',
+        message: 'An operational error occurred',
         context: {},
       }),
     );
@@ -119,20 +159,31 @@ describe('recordError', () => {
     );
   });
 
-  it('bounds context entry count and total serialized size', () => {
+  it('drops arbitrary context keys instead of enumerating them', () => {
     const sink = vi.fn();
-    const context = Object.fromEntries(
-      Array.from({ length: 100 }, (_, index) => [
-        `safeField${index}`,
-        'x'.repeat(500),
-      ]),
+    const ownKeys = vi.fn(() =>
+      Array.from({ length: 10_000 }, (_, index) => `field${index}`),
     );
+    const context = new Proxy({ ignored: 'not public' }, { ownKeys });
 
-    recordError(new Error('bounded'), 'trace-bounded', context, sink);
+    recordError(new Error('bounded'), 'trace-bounded', context as never, sink);
 
     const record = sink.mock.calls[0]?.[0];
-    expect(Object.keys(record.context).length).toBeLessThanOrEqual(20);
-    expect(JSON.stringify(record).length).toBeLessThanOrEqual(4_096);
+    expect(record.context).toEqual({});
+    expect(ownKeys).not.toHaveBeenCalled();
+  });
+
+  it('never processes multi-megabyte raw error messages', () => {
+    const sink = vi.fn();
+    const secret = 'AWS_ACCESS_KEY_ID=AKIA_SHOULD_NEVER_BE_READ';
+    const error = new Error(`${'x'.repeat(2_000_000)}${secret}`);
+
+    recordError(error, 'trace-large', {}, sink);
+
+    expect(sink).toHaveBeenCalledWith(
+      expect.objectContaining({ message: 'An operational error occurred' }),
+    );
+    expect(JSON.stringify(sink.mock.calls[0]?.[0])).not.toContain(secret);
   });
 
   it('survives hostile errors and context objects', () => {
@@ -156,7 +207,10 @@ describe('recordError', () => {
       recordError(error, 'trace-hostile', context as never, sink),
     ).not.toThrow();
     expect(sink).toHaveBeenCalledWith(
-      expect.objectContaining({ message: 'Unknown error', context: {} }),
+      expect.objectContaining({
+        message: 'An operational error occurred',
+        context: {},
+      }),
     );
   });
 
