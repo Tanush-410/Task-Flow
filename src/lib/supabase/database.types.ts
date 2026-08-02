@@ -94,15 +94,7 @@ export type Database = {
           rollout_percentage?: number;
           updated_at?: string;
         };
-        Relationships: [
-          {
-            foreignKeyName: 'feature_flags_organization_id_fkey';
-            columns: ['organization_id'];
-            isOneToOne: false;
-            referencedRelation: 'organizations';
-            referencedColumns: ['id'];
-          },
-        ];
+        Relationships: [];
       };
       invitations: {
         Row: {
@@ -144,22 +136,7 @@ export type Database = {
           revoked_at?: string | null;
           token_hash?: string;
         };
-        Relationships: [
-          {
-            foreignKeyName: 'invitations_invited_by_fkey';
-            columns: ['invited_by'];
-            isOneToOne: false;
-            referencedRelation: 'profiles';
-            referencedColumns: ['id'];
-          },
-          {
-            foreignKeyName: 'invitations_organization_id_fkey';
-            columns: ['organization_id'];
-            isOneToOne: false;
-            referencedRelation: 'organizations';
-            referencedColumns: ['id'];
-          },
-        ];
+        Relationships: [];
       };
       organization_memberships: {
         Row: {
@@ -186,22 +163,7 @@ export type Database = {
           status?: Database['public']['Enums']['membership_status'];
           user_id?: string;
         };
-        Relationships: [
-          {
-            foreignKeyName: 'organization_memberships_organization_id_fkey';
-            columns: ['organization_id'];
-            isOneToOne: false;
-            referencedRelation: 'organizations';
-            referencedColumns: ['id'];
-          },
-          {
-            foreignKeyName: 'organization_memberships_user_id_fkey';
-            columns: ['user_id'];
-            isOneToOne: false;
-            referencedRelation: 'profiles';
-            referencedColumns: ['id'];
-          },
-        ];
+        Relationships: [];
       };
       organizations: {
         Row: {
@@ -228,15 +190,7 @@ export type Database = {
           timezone?: string;
           updated_at?: string;
         };
-        Relationships: [
-          {
-            foreignKeyName: 'organizations_created_by_fkey';
-            columns: ['created_by'];
-            isOneToOne: false;
-            referencedRelation: 'profiles';
-            referencedColumns: ['id'];
-          },
-        ];
+        Relationships: [];
       };
       profiles: {
         Row: {
@@ -255,6 +209,228 @@ export type Database = {
           created_at?: string;
           display_name?: string;
           id?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      task_acknowledgements: {
+        Row: {
+          acknowledged_at: string;
+          acknowledged_by: string;
+          activity_event_id: string;
+          assignee_id: string;
+          created_at: string;
+          id: string;
+          note: string | null;
+          organization_id: string;
+          task_id: string;
+        };
+        Insert: {
+          acknowledged_at?: string;
+          acknowledged_by: string;
+          activity_event_id: string;
+          assignee_id: string;
+          created_at?: string;
+          id?: string;
+          note?: string | null;
+          organization_id: string;
+          task_id: string;
+        };
+        Update: {
+          acknowledged_at?: string;
+          acknowledged_by?: string;
+          activity_event_id?: string;
+          assignee_id?: string;
+          created_at?: string;
+          id?: string;
+          note?: string | null;
+          organization_id?: string;
+          task_id?: string;
+        };
+        Relationships: [];
+      };
+      task_activity_events: {
+        Row: {
+          actor_id: string | null;
+          assignment_id: string | null;
+          after_record: Json | null;
+          before_record: Json | null;
+          created_at: string;
+          event_type: Database['public']['Enums']['task_activity_type'];
+          id: string;
+          organization_id: string;
+          summary: string;
+          task_id: string;
+        };
+        Insert: {
+          actor_id?: string | null;
+          assignment_id?: string | null;
+          after_record?: Json | null;
+          before_record?: Json | null;
+          created_at?: string;
+          event_type: Database['public']['Enums']['task_activity_type'];
+          id?: string;
+          organization_id: string;
+          summary: string;
+          task_id: string;
+        };
+        Update: {
+          actor_id?: string | null;
+          assignment_id?: string | null;
+          after_record?: Json | null;
+          before_record?: Json | null;
+          created_at?: string;
+          event_type?: Database['public']['Enums']['task_activity_type'];
+          id?: string;
+          organization_id?: string;
+          summary?: string;
+          task_id?: string;
+        };
+        Relationships: [];
+      };
+      task_assignments: {
+        Row: {
+          assigned_by: string;
+          assignee_id: string;
+          created_at: string;
+          delay_reason: string | null;
+          completed_at: string | null;
+          id: string;
+          organization_id: string;
+          override_reason: string | null;
+          progress: number;
+          started_at: string | null;
+          status: Database['public']['Enums']['assignment_status'];
+          task_id: string;
+          updated_at: string;
+        };
+        Insert: {
+          assigned_by: string;
+          assignee_id: string;
+          created_at?: string;
+          delay_reason?: string | null;
+          completed_at?: string | null;
+          id?: string;
+          organization_id: string;
+          override_reason?: string | null;
+          progress?: number;
+          started_at?: string | null;
+          status?: Database['public']['Enums']['assignment_status'];
+          task_id: string;
+          updated_at?: string;
+        };
+        Update: {
+          assigned_by?: string;
+          assignee_id?: string;
+          created_at?: string;
+          delay_reason?: string | null;
+          completed_at?: string | null;
+          id?: string;
+          organization_id?: string;
+          override_reason?: string | null;
+          progress?: number;
+          started_at?: string | null;
+          status?: Database['public']['Enums']['assignment_status'];
+          task_id?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      task_notifications: {
+        Row: {
+          assignment_id: string | null;
+          body: string;
+          created_at: string;
+          delivered_at: string | null;
+          id: string;
+          notification_type: Database['public']['Enums']['task_notification_type'];
+          organization_id: string;
+          payload: Json;
+          read_at: string | null;
+          recipient_id: string;
+          task_id: string | null;
+          title: string;
+          updated_at: string;
+        };
+        Insert: {
+          assignment_id?: string | null;
+          body: string;
+          created_at?: string;
+          delivered_at?: string | null;
+          id?: string;
+          notification_type: Database['public']['Enums']['task_notification_type'];
+          organization_id: string;
+          payload?: Json;
+          read_at?: string | null;
+          recipient_id: string;
+          task_id?: string | null;
+          title: string;
+          updated_at?: string;
+        };
+        Update: {
+          assignment_id?: string | null;
+          body?: string;
+          created_at?: string;
+          delivered_at?: string | null;
+          id?: string;
+          notification_type?: Database['public']['Enums']['task_notification_type'];
+          organization_id?: string;
+          payload?: Json;
+          read_at?: string | null;
+          recipient_id?: string;
+          task_id?: string | null;
+          title?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      tasks: {
+        Row: {
+          acknowledgement_required: boolean;
+          archived_at: string | null;
+          created_at: string;
+          created_by: string;
+          description: string;
+          due_at: string | null;
+          id: string;
+          organization_id: string;
+          priority: Database['public']['Enums']['task_priority'];
+          published_at: string | null;
+          start_at: string | null;
+          status: Database['public']['Enums']['task_status'];
+          title: string;
+          updated_at: string;
+        };
+        Insert: {
+          acknowledgement_required?: boolean;
+          archived_at?: string | null;
+          created_at?: string;
+          created_by: string;
+          description?: string;
+          due_at?: string | null;
+          id?: string;
+          organization_id: string;
+          priority?: Database['public']['Enums']['task_priority'];
+          published_at?: string | null;
+          start_at?: string | null;
+          status?: Database['public']['Enums']['task_status'];
+          title: string;
+          updated_at?: string;
+        };
+        Update: {
+          acknowledgement_required?: boolean;
+          archived_at?: string | null;
+          created_at?: string;
+          created_by?: string;
+          description?: string;
+          due_at?: string | null;
+          id?: string;
+          organization_id?: string;
+          priority?: Database['public']['Enums']['task_priority'];
+          published_at?: string | null;
+          start_at?: string | null;
+          status?: Database['public']['Enums']['task_status'];
+          title?: string;
           updated_at?: string;
         };
         Relationships: [];
@@ -296,6 +472,18 @@ export type Database = {
         Args: { target_organization_id: string };
         Returns: boolean;
       };
+      is_task_admin: {
+        Args: { target_task_id: string };
+        Returns: boolean;
+      };
+      is_task_assignment_owner: {
+        Args: { target_assignment_id: string };
+        Returns: boolean;
+      };
+      is_task_participant: {
+        Args: { target_task_id: string };
+        Returns: boolean;
+      };
       stage_invitation: {
         Args: {
           invitation_email: string;
@@ -311,6 +499,32 @@ export type Database = {
       invitation_delivery_status: 'pending_delivery' | 'active' | 'failed';
       membership_role: 'admin' | 'employee';
       membership_status: 'active' | 'deactivated';
+      assignment_status:
+        'not_started' | 'in_progress' | 'delayed' | 'completed';
+      task_activity_type:
+        | 'task_created'
+        | 'task_updated'
+        | 'task_published'
+        | 'task_archived'
+        | 'assignment_created'
+        | 'assignment_updated'
+        | 'assignment_progress_changed'
+        | 'assignment_status_changed'
+        | 'assignment_delayed'
+        | 'assignment_completed'
+        | 'assignment_reopened'
+        | 'task_acknowledgement_recorded';
+      task_notification_type:
+        | 'task_published'
+        | 'task_updated'
+        | 'assignment_created'
+        | 'assignment_progress_changed'
+        | 'assignment_status_changed'
+        | 'assignment_delayed'
+        | 'assignment_completed'
+        | 'acknowledgement_required';
+      task_priority: 'low' | 'medium' | 'high' | 'urgent';
+      task_status: 'draft' | 'published' | 'archived';
     };
     CompositeTypes: { [_ in never]: never };
   };
@@ -431,14 +645,3 @@ export type CompositeTypes<
   : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema['CompositeTypes']
     ? DefaultSchema['CompositeTypes'][PublicCompositeTypeNameOrOptions]
     : never;
-
-export const Constants = {
-  public: {
-    Enums: {
-      deployment_environment: ['development', 'staging', 'production'],
-      invitation_delivery_status: ['pending_delivery', 'active', 'failed'],
-      membership_role: ['admin', 'employee'],
-      membership_status: ['active', 'deactivated'],
-    },
-  },
-} as const;
