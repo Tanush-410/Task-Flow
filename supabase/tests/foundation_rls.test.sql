@@ -1,6 +1,6 @@
 begin;
 
-select plan(137);
+select plan(138);
 
 select has_table('public', 'profiles', 'profiles exists');
 select has_table('public', 'organizations', 'organizations exists');
@@ -25,6 +25,12 @@ select has_index(
   'invitations allow one normalized active usable token per organization and email'
 );
 select has_table('public', 'feature_flags', 'feature flags exist');
+select has_index(
+  'public',
+  'feature_flags',
+  'feature_flags_evaluation_lookup_idx',
+  'feature flags support scoped server evaluation lookups'
+);
 select has_table('public', 'feature_flag_audit_log', 'feature flag audit log exists');
 
 select has_function(

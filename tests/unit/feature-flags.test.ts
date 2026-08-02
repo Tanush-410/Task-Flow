@@ -22,6 +22,40 @@ describe('isInRollout', () => {
     expect(isInRollout('user', 'reports', 50)).toBe(firstEvaluation);
   });
 
+  it.each([
+    ['user', 'reports', 23],
+    ['alpha', 'reports', 58],
+    ['user', 'boards', 72],
+  ])('matches the known SHA-256 bucket for %s/%s', (userId, key, bucket) => {
+    expect(isInRollout(userId, key, bucket)).toBe(false);
+    expect(isInRollout(userId, key, bucket + 1)).toBe(true);
+  });
+
+  it('is monotonic as rollout percentage increases', () => {
+    const evaluations = Array.from({ length: 101 }, (_, percentage) =>
+      isInRollout('user', 'reports', percentage),
+    );
+    const firstIncluded = evaluations.indexOf(true);
+
+    expect(evaluations.slice(0, firstIncluded)).not.toContain(true);
+    expect(evaluations.slice(firstIncluded)).not.toContain(false);
+  });
+
+  it('separates user and key inputs', () => {
+    expect(isInRollout('user', 'reports', 50)).toBe(true);
+    expect(isInRollout('alpha', 'reports', 50)).toBe(false);
+    expect(isInRollout('user', 'boards', 50)).toBe(false);
+  });
+
+  it('distributes a 50 percent rollout across a representative population', () => {
+    const included = Array.from({ length: 1_000 }, (_, index) =>
+      isInRollout(`user-${index}`, 'reports', 50),
+    ).filter(Boolean).length;
+
+    expect(included).toBeGreaterThanOrEqual(400);
+    expect(included).toBeLessThanOrEqual(600);
+  });
+
   it('clamps percentages below and above the supported boundaries', () => {
     expect(isInRollout('user', 'reports', -1)).toBe(false);
     expect(isInRollout('user', 'reports', 101)).toBe(true);
@@ -30,8 +64,16 @@ describe('isInRollout', () => {
   it('fails closed for invalid rollout inputs', () => {
     expect(isInRollout('', 'reports', 50)).toBe(false);
     expect(isInRollout('   ', 'reports', 100)).toBe(false);
+    expect(isInRollout('user ', 'reports', 100)).toBe(false);
+    expect(isInRollout(null as never, 'reports', 50)).toBe(false);
+    expect(isInRollout(42 as never, 'reports', 50)).toBe(false);
+    expect(isInRollout('x'.repeat(129), 'reports', 100)).toBe(false);
     expect(isInRollout('user', '', 50)).toBe(false);
     expect(isInRollout('user', '   ', 100)).toBe(false);
+    expect(isInRollout('user', ' reports', 100)).toBe(false);
+    expect(isInRollout('user', 'Reports', 100)).toBe(false);
+    expect(isInRollout('user', 'x'.repeat(65), 100)).toBe(false);
+    expect(isInRollout('user', null as never, 50)).toBe(false);
     expect(isInRollout('user', 'reports', Number.NaN)).toBe(false);
     expect(isInRollout('user', 'reports', Number.POSITIVE_INFINITY)).toBe(
       false,
@@ -43,8 +85,8 @@ describe('evaluateFeatureFlag', () => {
   const input = {
     key: 'reports',
     environment: 'production' as const,
-    userId: 'user',
-    organizationId: 'organization-a',
+    userId: '10000000-0000-0000-0000-000000000001',
+    organizationId: 'abcdef00-0000-0000-0000-000000000001',
     role: 'admin' as const,
   };
 
@@ -58,7 +100,7 @@ describe('evaluateFeatureFlag', () => {
         expires_on: '2099-12-31',
       },
       {
-        organization_id: 'organization-a',
+        organization_id: input.organizationId,
         role_scope: 'admin',
         enabled: false,
         rollout_percentage: 100,
@@ -70,13 +112,15 @@ describe('evaluateFeatureFlag', () => {
     expect(query).toHaveBeenCalledWith({
       key: 'reports',
       environment: 'production',
+      organizationId: input.organizationId,
+      role: 'admin',
     });
   });
 
   it('ignores rows outside the requested organization and role', async () => {
     const query = vi.fn().mockResolvedValue([
       {
-        organization_id: 'organization-b',
+        organization_id: '20000000-0000-0000-0000-000000000002',
         role_scope: 'admin',
         enabled: true,
         rollout_percentage: 100,
@@ -123,6 +167,79 @@ describe('evaluateFeatureFlag', () => {
         now: () => new Date('2026-08-01T00:00:00.000Z'),
       }),
     ).resolves.toBe(false);
+  });
+
+  it('treats expires_on as inclusive through the matching UTC date', async () => {
+    const query = vi.fn().mockResolvedValue([
+      {
+        organization_id: null,
+        role_scope: null,
+        enabled: true,
+        rollout_percentage: 100,
+        expires_on: '2026-08-01',
+      },
+    ]);
+
+    await expect(
+      evaluateFeatureFlag(input, {
+        query,
+        now: () => new Date('2026-08-01T23:59:59.999Z'),
+      }),
+    ).resolves.toBe(true);
+    await expect(
+      evaluateFeatureFlag(input, {
+        query,
+        now: () => new Date('2026-08-01T23:30:00.000-02:00'),
+      }),
+    ).resolves.toBe(false);
+  });
+
+  it.each([
+    {
+      name: 'organization and role over organization-only',
+      rows: [
+        { organization: 'requested', role: null, enabled: true },
+        { organization: 'requested', role: 'admin', enabled: false },
+        { organization: null, role: 'admin', enabled: true },
+        { organization: null, role: null, enabled: true },
+      ],
+      expected: false,
+    },
+    {
+      name: 'organization-only over global role',
+      rows: [
+        { organization: 'requested', role: null, enabled: true },
+        { organization: null, role: 'admin', enabled: false },
+        { organization: null, role: null, enabled: false },
+      ],
+      expected: true,
+    },
+    {
+      name: 'global role over global unscoped',
+      rows: [
+        { organization: null, role: 'admin', enabled: true },
+        { organization: null, role: null, enabled: false },
+      ],
+      expected: true,
+    },
+    {
+      name: 'global unscoped as the final fallback',
+      rows: [{ organization: null, role: null, enabled: true }],
+      expected: true,
+    },
+  ])('orders $name', async ({ rows, expected }) => {
+    const query = vi.fn().mockResolvedValue(
+      rows.map((row) => ({
+        organization_id:
+          row.organization === 'requested' ? input.organizationId : null,
+        role_scope: row.role,
+        enabled: row.enabled,
+        rollout_percentage: 100,
+        expires_on: '2099-12-31',
+      })),
+    );
+
+    await expect(evaluateFeatureFlag(input, { query })).resolves.toBe(expected);
   });
 
   it('applies the deterministic user rollout to an active flag', async () => {
@@ -195,6 +312,27 @@ describe('evaluateFeatureFlag', () => {
         { ...input, environment: 'preview' as typeof input.environment },
         { query },
       ),
+    ).resolves.toBe(false);
+    expect(query).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    null,
+    {},
+    { ...input, key: 42 },
+    { ...input, key: ' reports' },
+    { ...input, key: 'Reports' },
+    { ...input, key: 'x'.repeat(65) },
+    { ...input, userId: null },
+    { ...input, userId: `${input.userId} ` },
+    { ...input, userId: 'not-a-uuid' },
+    { ...input, organizationId: 'not-a-uuid' },
+    { ...input, organizationId: input.organizationId.toUpperCase() },
+  ])('fails closed for malformed runtime input %#', async (candidate) => {
+    const query = vi.fn();
+
+    await expect(
+      evaluateFeatureFlag(candidate as never, { query }),
     ).resolves.toBe(false);
     expect(query).not.toHaveBeenCalled();
   });

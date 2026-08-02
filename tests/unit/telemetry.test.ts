@@ -59,7 +59,12 @@ describe('recordError', () => {
         rawProviderError: 'provider response',
         recipientEmail: 'person@example.com',
         authorization: 'Bearer another-secret',
-        detail: 'contact person@example.com using Bearer third-secret',
+        apiKey: 'api-key-value',
+        databaseCredential: 'database-credential',
+        sessionId: 'session-secret',
+        connectionString: 'postgres://db-user:db-password@db.example/tasks',
+        detail:
+          'contact person@example.com using Bearer "third-secret" with API_KEY="fourth-secret" and postgres://user:password@db.example/tasks',
         nested: { password: 'hidden' },
       } as never,
       sink,
@@ -77,6 +82,12 @@ describe('recordError', () => {
     expect(serialized).not.toContain('provider response');
     expect(serialized).not.toContain('another-secret');
     expect(serialized).not.toContain('third-secret');
+    expect(serialized).not.toContain('fourth-secret');
+    expect(serialized).not.toContain('api-key-value');
+    expect(serialized).not.toContain('database-credential');
+    expect(serialized).not.toContain('session-secret');
+    expect(serialized).not.toContain('db-password');
+    expect(serialized).not.toContain('user:password');
     expect(serialized).not.toContain('hidden');
     expect(sink.mock.calls[0]?.[0]).toMatchObject({
       context: { operation: 'invite_member' },
@@ -106,5 +117,54 @@ describe('recordError', () => {
     expect(JSON.stringify(sink.mock.calls[0]?.[0])).not.toContain(
       'private response',
     );
+  });
+
+  it('bounds context entry count and total serialized size', () => {
+    const sink = vi.fn();
+    const context = Object.fromEntries(
+      Array.from({ length: 100 }, (_, index) => [
+        `safeField${index}`,
+        'x'.repeat(500),
+      ]),
+    );
+
+    recordError(new Error('bounded'), 'trace-bounded', context, sink);
+
+    const record = sink.mock.calls[0]?.[0];
+    expect(Object.keys(record.context).length).toBeLessThanOrEqual(20);
+    expect(JSON.stringify(record).length).toBeLessThanOrEqual(4_096);
+  });
+
+  it('survives hostile errors and context objects', () => {
+    const sink = vi.fn();
+    const error = new Error('unreadable');
+    Object.defineProperty(error, 'message', {
+      get: () => {
+        throw new Error('message getter failure');
+      },
+    });
+    const context = new Proxy(
+      {},
+      {
+        ownKeys: () => {
+          throw new Error('context proxy failure');
+        },
+      },
+    );
+
+    expect(() =>
+      recordError(error, 'trace-hostile', context as never, sink),
+    ).not.toThrow();
+    expect(sink).toHaveBeenCalledWith(
+      expect.objectContaining({ message: 'Unknown error', context: {} }),
+    );
+  });
+
+  it('never lets a failing sink escape', () => {
+    expect(() =>
+      recordError(new Error('safe'), 'trace-sink', {}, () => {
+        throw new Error('sink unavailable');
+      }),
+    ).not.toThrow();
   });
 });

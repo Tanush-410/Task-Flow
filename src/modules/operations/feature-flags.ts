@@ -21,6 +21,8 @@ type FeatureFlagRecord = {
 type FeatureFlagQuery = (input: {
   key: string;
   environment: DeploymentEnvironment;
+  organizationId: string | null;
+  role: MembershipRole | null;
 }) => Promise<unknown>;
 
 type EvaluateFeatureFlagInput = {
@@ -36,12 +38,24 @@ type EvaluateFeatureFlagDependencies = {
   now?: () => Date;
 };
 
+const FEATURE_KEY_PATTERN = /^[a-z][a-z0-9]*(?:[._-][a-z0-9]+)*$/;
+const ROLLOUT_SUBJECT_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/;
+const UUID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+
 export function isInRollout(
   userId: string,
   key: string,
   percentage: number,
 ): boolean {
-  if (!userId.trim() || !key.trim() || !Number.isFinite(percentage)) {
+  if (
+    typeof userId !== 'string' ||
+    !ROLLOUT_SUBJECT_PATTERN.test(userId) ||
+    typeof key !== 'string' ||
+    key.length > 64 ||
+    !FEATURE_KEY_PATTERN.test(key) ||
+    !Number.isFinite(percentage)
+  ) {
     return false;
   }
   if (percentage <= 0) return false;
@@ -92,9 +106,11 @@ function isFeatureFlagRecord(value: unknown): value is FeatureFlagRecord {
 async function queryFeatureFlags(input: {
   key: string;
   environment: DeploymentEnvironment;
+  organizationId: string | null;
+  role: MembershipRole | null;
 }): Promise<FeatureFlagRecord[]> {
   const admin = createAdminSupabase();
-  const { data, error } = await admin
+  let query = admin
     .from('feature_flags')
     .select(
       'organization_id, role_scope, enabled, rollout_percentage, expires_on',
@@ -102,49 +118,88 @@ async function queryFeatureFlags(input: {
     .eq('key', input.key)
     .eq('environment', input.environment);
 
+  query = input.organizationId
+    ? query.or(
+        `organization_id.is.null,organization_id.eq.${input.organizationId}`,
+      )
+    : query.is('organization_id', null);
+  query = input.role
+    ? query.or(`role_scope.is.null,role_scope.eq.${input.role}`)
+    : query.is('role_scope', null);
+
+  const { data, error } = await query;
+
   if (error || !data) throw new Error('Feature flag query failed');
 
   return data;
 }
 
 function scopeSpecificity(record: FeatureFlagRecord): number {
+  // Precedence is org+role > org-only > global+role > global-unscoped.
+  // Organization specificity intentionally outranks global role specificity.
   return (
     (record.organization_id === null ? 0 : 2) +
     (record.role_scope === null ? 0 : 1)
   );
 }
 
+function parseEvaluationInput(value: unknown): {
+  key: string;
+  environment: DeploymentEnvironment;
+  userId: string;
+  organizationId: string | null;
+  role: MembershipRole | null;
+} | null {
+  if (!value || typeof value !== 'object') return null;
+
+  const input = value as Record<string, unknown>;
+  const key = input.key;
+  const environment = input.environment;
+  const userId = input.userId;
+  const organizationId = input.organizationId ?? null;
+  const role = input.role ?? null;
+
+  if (
+    typeof key !== 'string' ||
+    key.length > 64 ||
+    !FEATURE_KEY_PATTERN.test(key) ||
+    (environment !== 'development' &&
+      environment !== 'staging' &&
+      environment !== 'production') ||
+    typeof userId !== 'string' ||
+    !UUID_PATTERN.test(userId) ||
+    (organizationId !== null &&
+      (typeof organizationId !== 'string' ||
+        !UUID_PATTERN.test(organizationId))) ||
+    (role !== null && role !== 'admin' && role !== 'employee')
+  ) {
+    return null;
+  }
+
+  return { key, environment, userId, organizationId, role };
+}
+
 export async function evaluateFeatureFlag(
   input: EvaluateFeatureFlagInput,
   dependencies: EvaluateFeatureFlagDependencies = {},
 ): Promise<boolean> {
-  if (
-    !input.key.trim() ||
-    !input.userId.trim() ||
-    !['development', 'staging', 'production'].includes(input.environment) ||
-    (input.organizationId !== undefined &&
-      input.organizationId !== null &&
-      !input.organizationId.trim()) ||
-    (input.role !== undefined &&
-      input.role !== null &&
-      input.role !== 'admin' &&
-      input.role !== 'employee')
-  ) {
-    return false;
-  }
-
   try {
+    const validated = parseEvaluationInput(input);
+    if (!validated) return false;
+
     const rows = await (dependencies.query ?? queryFeatureFlags)({
-      key: input.key,
-      environment: input.environment,
+      key: validated.key,
+      environment: validated.environment,
+      organizationId: validated.organizationId,
+      role: validated.role,
     });
     if (!Array.isArray(rows) || !rows.every(isFeatureFlagRecord)) return false;
 
     const applicable = rows.filter(
       (row) =>
         (row.organization_id === null ||
-          row.organization_id === input.organizationId) &&
-        (row.role_scope === null || row.role_scope === input.role),
+          row.organization_id === validated.organizationId) &&
+        (row.role_scope === null || row.role_scope === validated.role),
     );
     if (applicable.length === 0) return false;
 
@@ -155,6 +210,7 @@ export async function evaluateFeatureFlag(
     if (selected.length !== 1) return false;
 
     const flag = selected[0];
+    // expires_on is inclusive for the current UTC calendar date.
     const today = (dependencies.now ?? (() => new Date()))()
       .toISOString()
       .slice(0, 10);
@@ -162,7 +218,7 @@ export async function evaluateFeatureFlag(
     return (
       flag.enabled &&
       flag.expires_on >= today &&
-      isInRollout(input.userId, input.key, flag.rollout_percentage)
+      isInRollout(validated.userId, validated.key, flag.rollout_percentage)
     );
   } catch {
     return false;
