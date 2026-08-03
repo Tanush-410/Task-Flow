@@ -6,10 +6,15 @@ import { useActionState, useEffect } from 'react';
 import type { ActionResult } from '@/lib/result';
 import type { OrganizationMember } from '@/modules/members/queries';
 import { createAndAssignTask } from '@/modules/tasks/actions';
-
-const fieldClassName =
-  'mt-2 w-full rounded-xl border border-slate-300 bg-white px-3.5 py-3 text-[15px] text-slate-950 outline-none transition-colors placeholder:text-slate-400 hover:border-slate-400 focus:border-slate-950 focus:ring-4 focus:ring-slate-950/10 disabled:cursor-not-allowed disabled:bg-slate-100';
-const labelClassName = 'text-sm font-medium text-slate-800';
+import { Button } from '@/components/ui/button';
+import {
+  Checkbox,
+  FieldError,
+  Label,
+  Select,
+  TextInput,
+  Textarea,
+} from '@/components/ui/field';
 
 async function submitTask(
   _previousState: ActionResult<{ taskId: string }> | null,
@@ -35,7 +40,25 @@ async function submitTask(
   });
 }
 
-export function TaskForm({ employees }: { employees: OrganizationMember[] }) {
+/** Converts an ISO/date-ish string to the value a `datetime-local` input needs. */
+function toDateTimeLocalValue(value: string): string {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return '';
+  }
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
+
+export function TaskForm({
+  employees,
+  defaultDueAt,
+  defaultAssigneeId,
+}: {
+  employees: OrganizationMember[];
+  defaultDueAt?: string;
+  defaultAssigneeId?: string;
+}) {
   const [state, formAction, pending] = useActionState(submitTask, null);
   const router = useRouter();
   const error = state && !state.ok ? state.error : null;
@@ -49,11 +72,8 @@ export function TaskForm({ employees }: { employees: OrganizationMember[] }) {
   return (
     <form action={formAction} aria-busy={pending} className="space-y-5">
       <div>
-        <label className={labelClassName} htmlFor="title">
-          Title
-        </label>
-        <input
-          className={fieldClassName}
+        <Label htmlFor="title">Title</Label>
+        <TextInput
           disabled={pending}
           id="title"
           maxLength={140}
@@ -62,17 +82,12 @@ export function TaskForm({ employees }: { employees: OrganizationMember[] }) {
           required
           type="text"
         />
-        {error?.fields?.title?.[0] ? (
-          <p className="mt-1.5 text-sm text-red-700">{error.fields.title[0]}</p>
-        ) : null}
+        <FieldError>{error?.fields?.title?.[0]}</FieldError>
       </div>
 
       <div>
-        <label className={labelClassName} htmlFor="description">
-          Description
-        </label>
-        <textarea
-          className={fieldClassName}
+        <Label htmlFor="description">Description</Label>
+        <Textarea
           disabled={pending}
           id="description"
           maxLength={10_000}
@@ -84,11 +99,8 @@ export function TaskForm({ employees }: { employees: OrganizationMember[] }) {
 
       <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
         <div>
-          <label className={labelClassName} htmlFor="priority">
-            Priority
-          </label>
-          <select
-            className={fieldClassName}
+          <Label htmlFor="priority">Priority</Label>
+          <Select
             defaultValue="medium"
             disabled={pending}
             id="priority"
@@ -98,15 +110,15 @@ export function TaskForm({ employees }: { employees: OrganizationMember[] }) {
             <option value="medium">Medium</option>
             <option value="high">High</option>
             <option value="urgent">Urgent</option>
-          </select>
+          </Select>
         </div>
 
         <div>
-          <label className={labelClassName} htmlFor="dueAt">
-            Due date
-          </label>
-          <input
-            className={fieldClassName}
+          <Label htmlFor="dueAt">Due date</Label>
+          <TextInput
+            defaultValue={
+              defaultDueAt ? toDateTimeLocalValue(defaultDueAt) : undefined
+            }
             disabled={pending}
             id="dueAt"
             name="dueAt"
@@ -116,12 +128,7 @@ export function TaskForm({ employees }: { employees: OrganizationMember[] }) {
       </div>
 
       <label className="flex items-center gap-2 text-sm text-slate-800">
-        <input
-          className="size-4 rounded border-slate-300"
-          disabled={pending}
-          name="acknowledgementRequired"
-          type="checkbox"
-        />
+        <Checkbox disabled={pending} name="acknowledgementRequired" />
         Require assignees to acknowledge this task
       </label>
 
@@ -131,29 +138,26 @@ export function TaskForm({ employees }: { employees: OrganizationMember[] }) {
         </p>
       ) : (
         <fieldset>
-          <legend className={labelClassName}>Assign to</legend>
+          <legend className="text-sm font-medium text-slate-800">
+            Assign to
+          </legend>
           <div className="mt-2 max-h-56 space-y-2 overflow-y-auto rounded-xl border border-slate-300 p-3">
             {employees.map((employee) => (
               <label
                 className="flex items-center gap-2 text-sm text-slate-800"
                 key={employee.userId}
               >
-                <input
-                  className="size-4 rounded border-slate-300"
+                <Checkbox
+                  defaultChecked={employee.userId === defaultAssigneeId}
                   disabled={pending}
                   name="assigneeIds"
-                  type="checkbox"
                   value={employee.userId}
                 />
                 {employee.displayName}
               </label>
             ))}
           </div>
-          {error?.fields?.assigneeIds?.[0] ? (
-            <p className="mt-1.5 text-sm text-red-700">
-              {error.fields.assigneeIds[0]}
-            </p>
-          ) : null}
+          <FieldError>{error?.fields?.assigneeIds?.[0]}</FieldError>
         </fieldset>
       )}
 
@@ -169,13 +173,13 @@ export function TaskForm({ employees }: { employees: OrganizationMember[] }) {
         </div>
       ) : null}
 
-      <button
-        className="flex h-12 w-full items-center justify-center rounded-xl bg-slate-950 px-4 text-sm font-semibold text-white transition-colors hover:bg-slate-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-950 disabled:cursor-not-allowed disabled:bg-slate-400 sm:w-auto"
+      <Button
+        className="w-full disabled:cursor-not-allowed sm:w-auto"
         disabled={pending || employees.length === 0}
         type="submit"
       >
         {pending ? 'Creating…' : 'Create & Assign'}
-      </button>
+      </Button>
     </form>
   );
 }

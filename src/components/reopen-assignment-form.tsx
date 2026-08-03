@@ -5,6 +5,7 @@ import { useActionState, useEffect, useState } from 'react';
 
 import type { ActionResult } from '@/lib/result';
 import { reopenAssignment } from '@/modules/assignments/actions';
+import { Button } from '@/components/ui/button';
 
 async function submitReopen(
   _previousState: ActionResult<{ assignmentId: string }> | null,
@@ -38,7 +39,7 @@ export function ReopenAssignmentForm({
   if (!open) {
     return (
       <button
-        className="text-sm font-semibold text-slate-950 underline underline-offset-2"
+        className="text-sm font-semibold text-accent-hover underline underline-offset-2"
         onClick={() => setOpen(true)}
         type="button"
       >
@@ -51,7 +52,7 @@ export function ReopenAssignmentForm({
     <form action={formAction} className="mt-2 space-y-2">
       <input name="assignmentId" type="hidden" value={assignmentId} />
       <textarea
-        className="w-full rounded-lg border border-slate-300 px-2.5 py-2 text-sm text-slate-950 outline-none focus:border-slate-950 focus:ring-4 focus:ring-slate-950/10"
+        className="w-full rounded-lg border border-slate-300 px-2.5 py-2 text-sm text-slate-950 outline-none focus:border-accent focus:ring-4 focus:ring-accent-soft"
         name="reason"
         placeholder="Reason for reopening"
         required
@@ -59,20 +60,17 @@ export function ReopenAssignmentForm({
       />
       {error ? <p className="text-xs text-red-700">{error.message}</p> : null}
       <div className="flex gap-2">
-        <button
-          className="rounded-lg bg-slate-950 px-3 py-1.5 text-xs font-semibold text-white hover:bg-slate-800 disabled:opacity-60"
-          disabled={pending}
-          type="submit"
-        >
+        <Button disabled={pending} size="sm" type="submit">
           Confirm reopen
-        </button>
-        <button
-          className="text-xs font-semibold text-slate-500 hover:text-slate-800"
+        </Button>
+        <Button
           onClick={() => setOpen(false)}
+          size="sm"
           type="button"
+          variant="ghost"
         >
           Cancel
-        </button>
+        </Button>
       </div>
     </form>
   );

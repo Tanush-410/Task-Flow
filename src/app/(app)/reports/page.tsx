@@ -1,22 +1,20 @@
+import { Card } from '@/components/ui/card';
+import { PageHeader } from '@/components/ui/page-header';
 import { getEmployeeCompletionReport } from '@/modules/reports/queries';
 
 export default async function ReportsPage() {
   const stats = await getEmployeeCompletionReport();
 
   return (
-    <section aria-labelledby="reports-heading">
-      <p className="text-sm font-medium text-slate-500">Organization</p>
-      <h1
-        className="mt-1 text-3xl font-semibold tracking-[-0.035em] text-slate-950"
-        id="reports-heading"
-      >
-        Reports
-      </h1>
-      <p className="mt-2 max-w-2xl text-base leading-7 text-slate-600">
-        Completed tasks by employee, and how many finished on time.
-      </p>
+    <section aria-labelledby="reports-heading" className="space-y-6">
+      <PageHeader
+        description="Completed tasks by employee, and how many finished on time."
+        eyebrow="Organization"
+        headingId="reports-heading"
+        title="Reports"
+      />
 
-      <div className="mt-6 overflow-x-auto rounded-2xl border border-slate-200 bg-white">
+      <Card className="overflow-x-auto p-0 sm:p-0">
         <table className="min-w-full divide-y divide-slate-200 text-sm">
           <thead>
             <tr className="text-left text-xs font-semibold tracking-wide text-slate-500 uppercase">
@@ -57,7 +55,7 @@ export default async function ReportsPage() {
             )}
           </tbody>
         </table>
-      </div>
+      </Card>
     </section>
   );
 }

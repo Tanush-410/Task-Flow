@@ -1,6 +1,7 @@
 import Link from 'next/link';
 
 import type { MyAssignmentWithTask } from '@/modules/assignments/queries';
+import { Badge } from '@/components/ui/badge';
 
 const STATUS_LABELS: Record<string, string> = {
   not_started: 'Not started',
@@ -9,11 +10,14 @@ const STATUS_LABELS: Record<string, string> = {
   completed: 'Completed',
 };
 
-const PRIORITY_LABELS: Record<string, string> = {
-  low: 'Low',
-  medium: 'Medium',
-  high: 'High',
-  urgent: 'Urgent',
+const STATUS_BADGE_VARIANT: Record<
+  string,
+  'neutral' | 'accent' | 'danger' | 'success'
+> = {
+  not_started: 'neutral',
+  in_progress: 'accent',
+  delayed: 'danger',
+  completed: 'success',
 };
 
 export function TaskAssignmentGroup({
@@ -54,10 +58,13 @@ export function TaskAssignmentGroup({
                     <p className="truncate text-sm font-semibold text-slate-950">
                       {task.title}
                     </p>
-                    <p className="mt-1 text-xs font-medium tracking-wide text-slate-500 uppercase">
-                      {PRIORITY_LABELS[task.priority]} priority ·{' '}
-                      {STATUS_LABELS[assignment.status]} · {assignment.progress}
-                      %
+                    <p className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                      <Badge variant={STATUS_BADGE_VARIANT[assignment.status]}>
+                        {STATUS_LABELS[assignment.status]}
+                      </Badge>
+                      <span className="text-xs font-medium text-slate-500">
+                        {assignment.progress}%
+                      </span>
                     </p>
                   </div>
                   <div className="shrink-0 text-right text-sm">

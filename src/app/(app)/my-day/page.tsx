@@ -1,6 +1,7 @@
 import Link from 'next/link';
 
 import { TaskAssignmentGroup } from '@/components/task-assignment-group';
+import { PageHeader } from '@/components/ui/page-header';
 import {
   listMyAssignmentsWithTasks,
   type MyAssignmentWithTask,
@@ -52,19 +53,12 @@ export default async function MyDayPage() {
 
   return (
     <section aria-labelledby="my-day-heading" className="space-y-8">
-      <div>
-        <p className="text-sm font-medium text-slate-500">Focus</p>
-        <h1
-          className="mt-1 text-3xl font-semibold tracking-[-0.035em] text-slate-950"
-          id="my-day-heading"
-        >
-          My Day
-        </h1>
-        <p className="mt-2 max-w-2xl text-base leading-7 text-slate-600">
-          Overdue work comes first, followed by what&apos;s due today or high
-          priority.
-        </p>
-      </div>
+      <PageHeader
+        description="Overdue work comes first, followed by what's due today or high priority."
+        eyebrow="Focus"
+        headingId="my-day-heading"
+        title="My Day"
+      />
 
       {rows.length === 0 ? (
         <p className="text-base text-slate-600">
@@ -84,7 +78,10 @@ export default async function MyDayPage() {
           {nothingUrgent ? (
             <p className="text-base text-slate-600">
               Nothing urgent right now — see{' '}
-              <Link className="underline underline-offset-2" href="/my-tasks">
+              <Link
+                className="text-accent-hover underline underline-offset-2"
+                href="/my-tasks"
+              >
                 My Tasks
               </Link>{' '}
               for everything assigned to you.

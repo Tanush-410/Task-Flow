@@ -1,5 +1,10 @@
+import { ListChecks } from 'lucide-react';
 import Link from 'next/link';
 
+import { Badge } from '@/components/ui/badge';
+import { Card } from '@/components/ui/card';
+import { EmptyState } from '@/components/ui/empty-state';
+import { PageHeader } from '@/components/ui/page-header';
 import {
   getDashboardSummary,
   listOrganizationTasks,
@@ -23,18 +28,17 @@ function MetricCard({
   tone?: 'default' | 'danger';
 }) {
   return (
-    <Link
-      className="rounded-2xl border border-slate-200 bg-white p-5 shadow-[0_18px_50px_-32px_rgba(15,23,42,0.45)] transition-colors hover:border-slate-300"
-      href={href}
-    >
-      <p className="text-sm font-medium text-slate-500">{label}</p>
-      <p
-        className={`mt-2 text-3xl font-semibold tracking-[-0.03em] ${
-          tone === 'danger' && value > 0 ? 'text-red-700' : 'text-slate-950'
-        }`}
-      >
-        {value}
-      </p>
+    <Link href={href}>
+      <Card className="p-5 transition-colors hover:border-slate-300 sm:p-5">
+        <p className="text-sm font-medium text-slate-500">{label}</p>
+        <p
+          className={`mt-2 text-3xl font-semibold tracking-[-0.03em] ${
+            tone === 'danger' && value > 0 ? 'text-red-700' : 'text-slate-950'
+          }`}
+        >
+          {value}
+        </p>
+      </Card>
     </Link>
   );
 }
@@ -48,16 +52,14 @@ export default async function DashboardPage() {
   const recentTasks = (tasks ?? []).slice(0, 5);
 
   return (
-    <section aria-labelledby="dashboard-heading">
-      <p className="text-sm font-medium text-slate-500">Overview</p>
-      <h1
-        className="mt-1 text-3xl font-semibold tracking-[-0.035em] text-slate-950"
-        id="dashboard-heading"
-      >
-        Dashboard
-      </h1>
+    <section aria-labelledby="dashboard-heading" className="space-y-6">
+      <PageHeader
+        eyebrow="Overview"
+        headingId="dashboard-heading"
+        title="Dashboard"
+      />
 
-      <div className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-4">
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
         <MetricCard
           href="/tasks"
           label="Active assignments"
@@ -81,13 +83,13 @@ export default async function DashboardPage() {
         />
       </div>
 
-      <div className="mt-8 rounded-2xl border border-slate-200 bg-white p-6 shadow-[0_18px_50px_-32px_rgba(15,23,42,0.45)]">
+      <Card>
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-semibold tracking-[-0.02em] text-slate-950">
             Recent tasks
           </h2>
           <Link
-            className="text-sm font-semibold text-slate-950 underline underline-offset-2"
+            className="text-sm font-semibold text-accent-hover underline underline-offset-2"
             href="/tasks"
           >
             View all
@@ -95,13 +97,20 @@ export default async function DashboardPage() {
         </div>
 
         {recentTasks.length === 0 ? (
-          <p className="mt-3 text-sm text-slate-600">
-            No tasks yet.{' '}
-            <Link className="underline underline-offset-2" href="/tasks/new">
-              Create one
-            </Link>
-            .
-          </p>
+          <EmptyState
+            action={
+              <Link
+                className="text-sm font-semibold text-accent-hover underline underline-offset-2"
+                href="/tasks/new"
+              >
+                Create your first task
+              </Link>
+            }
+            className="mt-4"
+            description="Tasks you create will show up here."
+            icon={ListChecks}
+            title="No tasks yet"
+          />
         ) : (
           <ul className="mt-4 divide-y divide-slate-200">
             {recentTasks.map((task) => (
@@ -113,15 +122,13 @@ export default async function DashboardPage() {
                   <span className="text-sm font-semibold text-slate-950">
                     {task.title}
                   </span>
-                  <span className="text-xs font-medium tracking-wide text-slate-500 uppercase">
-                    {STATUS_LABELS[task.status]}
-                  </span>
+                  <Badge>{STATUS_LABELS[task.status]}</Badge>
                 </Link>
               </li>
             ))}
           </ul>
         )}
-      </div>
+      </Card>
     </section>
   );
 }

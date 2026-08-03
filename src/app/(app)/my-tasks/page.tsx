@@ -1,4 +1,5 @@
 import { TaskAssignmentGroup } from '@/components/task-assignment-group';
+import { PageHeader } from '@/components/ui/page-header';
 import {
   listMyAssignmentsWithTasks,
   type MyAssignmentWithTask,
@@ -40,15 +41,11 @@ export default async function MyTasksPage() {
 
   return (
     <section aria-labelledby="my-tasks-heading" className="space-y-8">
-      <div>
-        <p className="text-sm font-medium text-slate-500">Assigned to you</p>
-        <h1
-          className="mt-1 text-3xl font-semibold tracking-[-0.035em] text-slate-950"
-          id="my-tasks-heading"
-        >
-          My Tasks
-        </h1>
-      </div>
+      <PageHeader
+        eyebrow="Assigned to you"
+        headingId="my-tasks-heading"
+        title="My Tasks"
+      />
 
       {rows.length === 0 ? (
         <p className="text-base text-slate-600">

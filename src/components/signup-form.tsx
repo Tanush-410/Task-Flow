@@ -4,10 +4,8 @@ import { useActionState, useState } from 'react';
 
 import { signUp } from '@/modules/auth/actions';
 import type { SignupOrganizationOption } from '@/modules/organizations/queries';
-
-const fieldClassName =
-  'mt-2 h-12 w-full rounded-xl border border-slate-300 bg-white px-3.5 text-[15px] text-slate-950 outline-none transition-colors placeholder:text-slate-400 hover:border-slate-400 focus:border-slate-950 focus:ring-4 focus:ring-slate-950/10 disabled:cursor-not-allowed disabled:bg-slate-100';
-const labelClassName = 'text-sm font-medium text-slate-800';
+import { Button } from '@/components/ui/button';
+import { FieldError, Label, Select, TextInput } from '@/components/ui/field';
 
 type Role = 'admin' | 'employee';
 
@@ -27,15 +25,15 @@ export function SignupForm({
       <input name="role" type="hidden" value={role} />
 
       <div
+        aria-label="Account type"
         className="grid grid-cols-2 gap-1.5 rounded-xl bg-slate-100 p-1.5"
         role="radiogroup"
-        aria-label="Account type"
       >
         <button
           aria-checked={role === 'admin'}
           className={`h-10 rounded-lg text-sm font-semibold transition-colors ${
             role === 'admin'
-              ? 'bg-white text-slate-950 shadow-sm'
+              ? 'bg-white text-accent-hover shadow-sm'
               : 'text-slate-500 hover:text-slate-800'
           }`}
           disabled={pending}
@@ -49,7 +47,7 @@ export function SignupForm({
           aria-checked={role === 'employee'}
           className={`h-10 rounded-lg text-sm font-semibold transition-colors ${
             role === 'employee'
-              ? 'bg-white text-slate-950 shadow-sm'
+              ? 'bg-white text-accent-hover shadow-sm'
               : 'text-slate-500 hover:text-slate-800'
           } disabled:cursor-not-allowed disabled:text-slate-300`}
           disabled={pending || organizations.length === 0}
@@ -69,12 +67,9 @@ export function SignupForm({
       ) : null}
 
       <div>
-        <label className={labelClassName} htmlFor="displayName">
-          Full name
-        </label>
-        <input
+        <Label htmlFor="displayName">Full name</Label>
+        <TextInput
           autoComplete="name"
-          className={fieldClassName}
           disabled={pending}
           id="displayName"
           maxLength={100}
@@ -83,20 +78,13 @@ export function SignupForm({
           required
           type="text"
         />
-        {error?.fields?.displayName?.[0] ? (
-          <p className="mt-1.5 text-sm text-red-700">
-            {error.fields.displayName[0]}
-          </p>
-        ) : null}
+        <FieldError>{error?.fields?.displayName?.[0]}</FieldError>
       </div>
 
       <div>
-        <label className={labelClassName} htmlFor="email">
-          Email
-        </label>
-        <input
+        <Label htmlFor="email">Email</Label>
+        <TextInput
           autoComplete="email"
-          className={fieldClassName}
           disabled={pending}
           id="email"
           name="email"
@@ -104,18 +92,13 @@ export function SignupForm({
           required
           type="email"
         />
-        {error?.fields?.email?.[0] ? (
-          <p className="mt-1.5 text-sm text-red-700">{error.fields.email[0]}</p>
-        ) : null}
+        <FieldError>{error?.fields?.email?.[0]}</FieldError>
       </div>
 
       <div>
-        <label className={labelClassName} htmlFor="password">
-          Password
-        </label>
-        <input
+        <Label htmlFor="password">Password</Label>
+        <TextInput
           autoComplete="new-password"
-          className={fieldClassName}
           disabled={pending}
           id="password"
           maxLength={128}
@@ -124,21 +107,14 @@ export function SignupForm({
           required
           type="password"
         />
-        {error?.fields?.password?.[0] ? (
-          <p className="mt-1.5 text-sm text-red-700">
-            {error.fields.password[0]}
-          </p>
-        ) : null}
+        <FieldError>{error?.fields?.password?.[0]}</FieldError>
       </div>
 
       {role === 'admin' ? (
         <div>
-          <label className={labelClassName} htmlFor="organizationName">
-            Organization name
-          </label>
-          <input
+          <Label htmlFor="organizationName">Organization name</Label>
+          <TextInput
             autoComplete="organization"
-            className={fieldClassName}
             disabled={pending}
             id="organizationName"
             maxLength={120}
@@ -147,19 +123,12 @@ export function SignupForm({
             required
             type="text"
           />
-          {error?.fields?.organizationName?.[0] ? (
-            <p className="mt-1.5 text-sm text-red-700">
-              {error.fields.organizationName[0]}
-            </p>
-          ) : null}
+          <FieldError>{error?.fields?.organizationName?.[0]}</FieldError>
         </div>
       ) : (
         <div>
-          <label className={labelClassName} htmlFor="organizationId">
-            Organization
-          </label>
-          <select
-            className={fieldClassName}
+          <Label htmlFor="organizationId">Organization</Label>
+          <Select
             defaultValue={organizations[0]?.id ?? ''}
             disabled={pending || organizations.length === 0}
             id="organizationId"
@@ -174,12 +143,8 @@ export function SignupForm({
                 {organization.name}
               </option>
             ))}
-          </select>
-          {error?.fields?.organizationId?.[0] ? (
-            <p className="mt-1.5 text-sm text-red-700">
-              {error.fields.organizationId[0]}
-            </p>
-          ) : null}
+          </Select>
+          <FieldError>{error?.fields?.organizationId?.[0]}</FieldError>
         </div>
       )}
 
@@ -195,15 +160,15 @@ export function SignupForm({
         </div>
       ) : null}
 
-      <button
-        className="flex h-12 w-full items-center justify-center rounded-xl bg-slate-950 px-4 text-sm font-semibold text-white transition-colors hover:bg-slate-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-950 active:bg-slate-900 disabled:cursor-wait disabled:bg-slate-500"
+      <Button
+        className="w-full disabled:cursor-wait"
         disabled={
           pending || (role === 'employee' && organizations.length === 0)
         }
         type="submit"
       >
         {pending ? 'Creating account…' : 'Create account'}
-      </button>
+      </Button>
       <span aria-live="polite" className="sr-only" role="status">
         {pending ? 'Creating your account, please wait.' : ''}
       </span>

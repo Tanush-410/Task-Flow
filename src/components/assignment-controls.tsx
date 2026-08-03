@@ -8,6 +8,7 @@ import {
   changeAssignmentStatus,
   updateAssignmentProgress,
 } from '@/modules/assignments/actions';
+import { Button } from '@/components/ui/button';
 
 type AssignmentStatus = 'not_started' | 'in_progress' | 'delayed' | 'completed';
 
@@ -41,9 +42,6 @@ async function submitProgress(
     progress: Number(formData.get('progress')),
   });
 }
-
-const buttonClassName =
-  'flex h-10 items-center justify-center rounded-lg px-4 text-sm font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-60';
 
 export function AssignmentControls({
   assignment,
@@ -90,13 +88,9 @@ export function AssignmentControls({
           <form action={statusAction}>
             <input name="assignmentId" type="hidden" value={assignment.id} />
             <input name="status" type="hidden" value="in_progress" />
-            <button
-              className={`${buttonClassName} bg-slate-950 text-white hover:bg-slate-800`}
-              disabled={pending}
-              type="submit"
-            >
+            <Button disabled={pending} size="sm" type="submit">
               Start task
-            </button>
+            </Button>
           </form>
         ) : null}
 
@@ -104,13 +98,9 @@ export function AssignmentControls({
           <form action={statusAction}>
             <input name="assignmentId" type="hidden" value={assignment.id} />
             <input name="status" type="hidden" value="in_progress" />
-            <button
-              className={`${buttonClassName} bg-slate-950 text-white hover:bg-slate-800`}
-              disabled={pending}
-              type="submit"
-            >
+            <Button disabled={pending} size="sm" type="submit">
               Resume task
-            </button>
+            </Button>
           </form>
         ) : null}
 
@@ -124,18 +114,20 @@ export function AssignmentControls({
                   value={assignment.id}
                 />
                 <input name="progress" type="hidden" value={value} />
-                <button
+                <Button
                   aria-pressed={assignment.progress === value}
-                  className={`${buttonClassName} border ${
+                  className={
                     assignment.progress === value
-                      ? 'border-slate-950 bg-slate-950 text-white'
-                      : 'border-slate-300 bg-white text-slate-800 hover:border-slate-400'
-                  }`}
+                      ? 'border-accent bg-accent text-white'
+                      : ''
+                  }
                   disabled={pending}
+                  size="sm"
                   type="submit"
+                  variant="secondary"
                 >
                   {value}%
-                </button>
+                </Button>
               </form>
             ))}
           </>
@@ -144,24 +136,26 @@ export function AssignmentControls({
         <form action={statusAction}>
           <input name="assignmentId" type="hidden" value={assignment.id} />
           <input name="status" type="hidden" value="completed" />
-          <button
-            className={`${buttonClassName} bg-emerald-700 text-white hover:bg-emerald-800`}
+          <Button
+            className="bg-emerald-700 hover:bg-emerald-800"
             disabled={pending}
+            size="sm"
             type="submit"
           >
             Mark complete
-          </button>
+          </Button>
         </form>
 
         {assignment.status !== 'delayed' ? (
-          <button
-            className={`${buttonClassName} border border-red-300 bg-white text-red-800 hover:border-red-400`}
+          <Button
             disabled={pending}
             onClick={() => setShowDelayForm((value) => !value)}
+            size="sm"
             type="button"
+            variant="destructive"
           >
             Report delay
-          </button>
+          </Button>
         ) : null}
       </div>
 
@@ -182,20 +176,16 @@ export function AssignmentControls({
             Reason for delay
           </label>
           <textarea
-            className="w-full rounded-xl border border-slate-300 px-3.5 py-2.5 text-[15px] text-slate-950 outline-none focus:border-slate-950 focus:ring-4 focus:ring-slate-950/10"
+            className="w-full rounded-xl border border-slate-300 px-3.5 py-2.5 text-[15px] text-slate-950 outline-none focus:border-accent focus:ring-4 focus:ring-accent-soft"
             id="reason"
             maxLength={2_000}
             name="reason"
             required
             rows={3}
           />
-          <button
-            className={`${buttonClassName} bg-slate-950 text-white hover:bg-slate-800`}
-            disabled={pending}
-            type="submit"
-          >
+          <Button disabled={pending} size="sm" type="submit">
             Submit delay
-          </button>
+          </Button>
         </form>
       ) : null}
 

@@ -1,5 +1,9 @@
+import { ListChecks } from 'lucide-react';
 import Link from 'next/link';
 
+import { Badge } from '@/components/ui/badge';
+import { EmptyState } from '@/components/ui/empty-state';
+import { PageHeader } from '@/components/ui/page-header';
 import { listOrganizationTasks } from '@/modules/tasks/queries';
 
 const STATUS_LABELS: Record<string, string> = {
@@ -40,35 +44,31 @@ export default async function TasksPage({
   );
 
   return (
-    <section aria-labelledby="tasks-heading">
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <p className="text-sm font-medium text-slate-500">Organization</p>
-          <h1
-            className="mt-1 text-3xl font-semibold tracking-[-0.035em] text-slate-950"
-            id="tasks-heading"
+    <section aria-labelledby="tasks-heading" className="space-y-6">
+      <PageHeader
+        action={
+          <Link
+            className="flex h-10 items-center justify-center rounded-lg bg-accent px-4 text-sm font-semibold text-white hover:bg-accent-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+            href="/tasks/new"
           >
-            All Tasks
-          </h1>
-        </div>
-        <Link
-          className="flex h-10 items-center justify-center rounded-lg bg-slate-950 px-4 text-sm font-semibold text-white hover:bg-slate-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-950"
-          href="/tasks/new"
-        >
-          Create Task
-        </Link>
-      </div>
+            Create Task
+          </Link>
+        }
+        eyebrow="Organization"
+        headingId="tasks-heading"
+        title="All Tasks"
+      />
 
       <div
         aria-label="Filter tasks by status"
-        className="mt-6 flex flex-wrap gap-2"
+        className="flex flex-wrap gap-2"
         role="group"
       >
         {STATUS_FILTERS.map((value) => (
           <Link
             className={`rounded-lg px-3 py-1.5 text-sm font-semibold transition-colors ${
               activeFilter === value
-                ? 'bg-slate-950 text-white'
+                ? 'bg-accent text-white'
                 : 'border border-slate-300 bg-white text-slate-700 hover:border-slate-400'
             }`}
             href={value === 'all' ? '/tasks' : `/tasks?status=${value}`}
@@ -80,9 +80,13 @@ export default async function TasksPage({
       </div>
 
       {filtered.length === 0 ? (
-        <p className="mt-8 text-base text-slate-600">No tasks yet.</p>
+        <EmptyState
+          description="Tasks matching this filter will show up here."
+          icon={ListChecks}
+          title="No tasks yet"
+        />
       ) : (
-        <ul className="mt-6 divide-y divide-slate-200 rounded-2xl border border-slate-200 bg-white">
+        <ul className="divide-y divide-slate-200 rounded-2xl border border-slate-200 bg-white">
           {filtered.map((task) => {
             const overdue = isOverdue(task.due_at, task.status);
 
@@ -96,9 +100,17 @@ export default async function TasksPage({
                     <p className="truncate text-sm font-semibold text-slate-950">
                       {task.title}
                     </p>
-                    <p className="mt-1 text-xs font-medium tracking-wide text-slate-500 uppercase">
-                      {PRIORITY_LABELS[task.priority]} priority ·{' '}
-                      {STATUS_LABELS[task.status]}
+                    <p className="mt-1.5 flex items-center gap-2">
+                      <Badge variant="neutral">
+                        {PRIORITY_LABELS[task.priority]}
+                      </Badge>
+                      <Badge
+                        variant={
+                          task.status === 'archived' ? 'neutral' : 'accent'
+                        }
+                      >
+                        {STATUS_LABELS[task.status]}
+                      </Badge>
                     </p>
                   </div>
                   <div className="shrink-0 text-right text-sm">

@@ -1,8 +1,13 @@
 import 'server-only';
 
 import { createServerSupabase } from '@/lib/supabase/server';
+import type { Database } from '@/lib/supabase/database.types';
 
-import { requireAdmin, requireMembership } from '../members/queries';
+import {
+  listDisplayNames,
+  requireAdmin,
+  requireMembership,
+} from '../members/queries';
 
 export async function listOrganizationTasks() {
   const membership = await requireAdmin();
@@ -98,4 +103,67 @@ export async function getDashboardSummary(): Promise<DashboardSummary> {
     delayedCount,
     completedThisMonth,
   };
+}
+
+export type CalendarTask = {
+  task: Database['public']['Tables']['tasks']['Row'];
+  assignees: { userId: string; displayName: string }[];
+};
+
+export function rangeFilter(startISO: string, endISO: string): string {
+  return (
+    `and(due_at.gte.${startISO},due_at.lte.${endISO}),` +
+    `and(due_at.is.null,start_at.gte.${startISO},start_at.lte.${endISO})`
+  );
+}
+
+/** Every org task whose due date (or start date, if no due date) falls in range. */
+export async function listOrganizationTasksInRange(
+  startISO: string,
+  endISO: string,
+): Promise<CalendarTask[]> {
+  const membership = await requireAdmin();
+  const supabase = await createServerSupabase();
+
+  const { data: tasks, error } = await supabase
+    .from('tasks')
+    .select('*')
+    .eq('organization_id', membership.organizationId)
+    .neq('status', 'archived')
+    .or(rangeFilter(startISO, endISO))
+    .order('due_at', { ascending: true });
+
+  if (error || !tasks || tasks.length === 0) {
+    return [];
+  }
+
+  const taskIds = tasks.map((task) => task.id);
+  const { data: assignments } = await supabase
+    .from('task_assignments')
+    .select('task_id,assignee_id')
+    .in('task_id', taskIds);
+
+  const assigneeIds = Array.from(
+    new Set((assignments ?? []).map((row) => row.assignee_id)),
+  );
+  const displayNames = await listDisplayNames(assigneeIds);
+
+  const assigneesByTaskId = new Map<
+    string,
+    { userId: string; displayName: string }[]
+  >();
+
+  for (const row of assignments ?? []) {
+    const list = assigneesByTaskId.get(row.task_id) ?? [];
+    list.push({
+      userId: row.assignee_id,
+      displayName: displayNames.get(row.assignee_id) ?? 'Unknown',
+    });
+    assigneesByTaskId.set(row.task_id, list);
+  }
+
+  return tasks.map((task) => ({
+    task,
+    assignees: assigneesByTaskId.get(task.id) ?? [],
+  }));
 }

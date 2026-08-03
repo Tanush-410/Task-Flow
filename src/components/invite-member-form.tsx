@@ -4,6 +4,8 @@ import { useActionState } from 'react';
 
 import type { ActionResult } from '@/lib/result';
 import { inviteMember } from '@/modules/members/actions';
+import { Button } from '@/components/ui/button';
+import { Select, TextInput } from '@/components/ui/field';
 
 type InviteResult = ActionResult<{
   invitationId: string;
@@ -27,30 +29,26 @@ export function InviteMemberForm() {
   return (
     <form action={formAction} className="space-y-3">
       <div className="flex flex-col gap-3 sm:flex-row">
-        <input
-          className="h-11 flex-1 rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-950 outline-none focus:border-slate-950 focus:ring-4 focus:ring-slate-950/10 disabled:bg-slate-100"
+        <TextInput
+          className="mt-0 h-11 flex-1"
           disabled={pending}
           name="email"
           placeholder="employee@company.com"
           required
           type="email"
         />
-        <select
-          className="h-11 rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-950 outline-none focus:border-slate-950 focus:ring-4 focus:ring-slate-950/10 disabled:bg-slate-100"
+        <Select
+          className="mt-0 h-11 sm:w-40"
           defaultValue="employee"
           disabled={pending}
           name="role"
         >
           <option value="employee">Employee</option>
           <option value="admin">Admin</option>
-        </select>
-        <button
-          className="h-11 rounded-lg bg-slate-950 px-4 text-sm font-semibold whitespace-nowrap text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
-          disabled={pending}
-          type="submit"
-        >
+        </Select>
+        <Button className="whitespace-nowrap" disabled={pending} type="submit">
           {pending ? 'Sending…' : 'Send invite'}
-        </button>
+        </Button>
       </div>
       {state && !state.ok ? (
         <p className="text-sm text-red-700" role="alert">

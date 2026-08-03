@@ -12,7 +12,12 @@ afterEach(cleanup);
 describe('AppShell', () => {
   it('shows admin navigation without employee-only links', () => {
     render(
-      <AppShell role="admin" unreadNotificationCount={0} userId="user-1">
+      <AppShell
+        displayName="Asha Admin"
+        role="admin"
+        unreadNotificationCount={0}
+        userId="user-1"
+      >
         Admin content
       </AppShell>,
     );
@@ -20,6 +25,7 @@ describe('AppShell', () => {
     expect(screen.getByRole('navigation', { name: 'Primary' })).toBeVisible();
     expect(screen.getByRole('link', { name: 'Dashboard' })).toBeVisible();
     expect(screen.getByRole('link', { name: 'All Tasks' })).toBeVisible();
+    expect(screen.getByRole('link', { name: 'Calendar' })).toBeVisible();
     expect(screen.getByRole('link', { name: 'Employees' })).toBeVisible();
     expect(screen.getByRole('link', { name: 'Reports' })).toBeVisible();
     expect(screen.queryByRole('link', { name: 'My Day' })).toBeNull();
@@ -28,13 +34,19 @@ describe('AppShell', () => {
 
   it('shows employee navigation without admin-only links', () => {
     render(
-      <AppShell role="employee" unreadNotificationCount={0} userId="user-1">
+      <AppShell
+        displayName="Priya Employee"
+        role="employee"
+        unreadNotificationCount={0}
+        userId="user-1"
+      >
         Employee content
       </AppShell>,
     );
 
     expect(screen.getByRole('link', { name: 'My Day' })).toBeVisible();
     expect(screen.getByRole('link', { name: 'My Tasks' })).toBeVisible();
+    expect(screen.getByRole('link', { name: 'Calendar' })).toBeVisible();
     expect(screen.getByRole('link', { name: 'Notifications' })).toBeVisible();
     expect(screen.getByRole('link', { name: 'Profile' })).toBeVisible();
     expect(screen.queryByRole('link', { name: 'Dashboard' })).toBeNull();

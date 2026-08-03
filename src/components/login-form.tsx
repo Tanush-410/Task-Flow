@@ -3,9 +3,8 @@
 import { useActionState, useState } from 'react';
 
 import { login } from '@/modules/auth/actions';
-
-const fieldClassName =
-  'mt-2 h-12 w-full rounded-xl border border-slate-300 bg-white px-3.5 text-[15px] text-slate-950 outline-none transition-colors placeholder:text-slate-400 hover:border-slate-400 focus:border-slate-950 focus:ring-4 focus:ring-slate-950/10 disabled:cursor-not-allowed disabled:bg-slate-100';
+import { Button } from '@/components/ui/button';
+import { FieldError, Label, TextInput } from '@/components/ui/field';
 
 type Portal = 'manager' | 'employee';
 
@@ -29,7 +28,7 @@ export function LoginForm({ nextPath }: { nextPath?: string }) {
           aria-checked={portal === 'manager'}
           className={`h-10 rounded-lg text-sm font-semibold transition-colors ${
             portal === 'manager'
-              ? 'bg-white text-slate-950 shadow-sm'
+              ? 'bg-white text-accent-hover shadow-sm'
               : 'text-slate-500 hover:text-slate-800'
           }`}
           disabled={pending}
@@ -43,7 +42,7 @@ export function LoginForm({ nextPath }: { nextPath?: string }) {
           aria-checked={portal === 'employee'}
           className={`h-10 rounded-lg text-sm font-semibold transition-colors ${
             portal === 'employee'
-              ? 'bg-white text-slate-950 shadow-sm'
+              ? 'bg-white text-accent-hover shadow-sm'
               : 'text-slate-500 hover:text-slate-800'
           }`}
           disabled={pending}
@@ -56,14 +55,11 @@ export function LoginForm({ nextPath }: { nextPath?: string }) {
       </div>
 
       <div>
-        <label className="text-sm font-medium text-slate-800" htmlFor="email">
-          Email
-        </label>
-        <input
+        <Label htmlFor="email">Email</Label>
+        <TextInput
           aria-describedby={emailError ? 'email-error' : undefined}
           aria-invalid={Boolean(emailError)}
           autoComplete="email"
-          className={fieldClassName}
           disabled={pending}
           id="email"
           name="email"
@@ -72,24 +68,16 @@ export function LoginForm({ nextPath }: { nextPath?: string }) {
           type="email"
         />
         {emailError ? (
-          <p className="mt-1.5 text-sm text-red-700" id="email-error">
-            {emailError}
-          </p>
+          <FieldError id="email-error">{emailError}</FieldError>
         ) : null}
       </div>
 
       <div>
-        <label
-          className="text-sm font-medium text-slate-800"
-          htmlFor="password"
-        >
-          Password
-        </label>
-        <input
+        <Label htmlFor="password">Password</Label>
+        <TextInput
           aria-describedby={passwordError ? 'password-error' : undefined}
           aria-invalid={Boolean(passwordError)}
           autoComplete="current-password"
-          className={fieldClassName}
           disabled={pending}
           id="password"
           maxLength={128}
@@ -99,9 +87,7 @@ export function LoginForm({ nextPath }: { nextPath?: string }) {
           type="password"
         />
         {passwordError ? (
-          <p className="mt-1.5 text-sm text-red-700" id="password-error">
-            {passwordError}
-          </p>
+          <FieldError id="password-error">{passwordError}</FieldError>
         ) : null}
       </div>
 
@@ -117,13 +103,13 @@ export function LoginForm({ nextPath }: { nextPath?: string }) {
         </div>
       ) : null}
 
-      <button
-        className="flex h-12 w-full items-center justify-center rounded-xl bg-slate-950 px-4 text-sm font-semibold text-white transition-colors hover:bg-slate-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-950 active:bg-slate-900 disabled:cursor-wait disabled:bg-slate-500"
+      <Button
+        className="w-full disabled:cursor-wait"
         disabled={pending}
         type="submit"
       >
         {pending ? 'Signing in…' : 'Sign in'}
-      </button>
+      </Button>
       <span aria-live="polite" className="sr-only" role="status">
         {pending ? 'Signing in, please wait.' : ''}
       </span>

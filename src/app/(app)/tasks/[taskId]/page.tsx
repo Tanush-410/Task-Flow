@@ -3,6 +3,9 @@ import { notFound } from 'next/navigation';
 
 import { AssignmentControls } from '@/components/assignment-controls';
 import { ReopenAssignmentForm } from '@/components/reopen-assignment-form';
+import { Avatar } from '@/components/ui/avatar';
+import { Badge } from '@/components/ui/badge';
+import { Card } from '@/components/ui/card';
 import { listTaskActivity } from '@/modules/activity/queries';
 import { listDisplayNames, requireMembership } from '@/modules/members/queries';
 import { getTaskById, listTaskAssignments } from '@/modules/tasks/queries';
@@ -21,8 +24,15 @@ const STATUS_LABELS: Record<string, string> = {
   completed: 'Completed',
 };
 
-const cardClassName =
-  'rounded-2xl border border-slate-200 bg-white p-6 shadow-[0_18px_50px_-32px_rgba(15,23,42,0.45)]';
+const STATUS_BADGE_VARIANT: Record<
+  string,
+  'neutral' | 'accent' | 'danger' | 'success'
+> = {
+  not_started: 'neutral',
+  in_progress: 'accent',
+  delayed: 'danger',
+  completed: 'success',
+};
 
 export default async function TaskDetailPage({
   params,
@@ -69,7 +79,7 @@ export default async function TaskDetailPage({
       : Boolean(myAssignment) && myAssignment!.status !== 'completed');
 
   return (
-    <section aria-labelledby="task-heading" className="space-y-8">
+    <section aria-labelledby="task-heading" className="space-y-6">
       <div>
         <Link
           className="text-sm font-semibold text-slate-500 hover:text-slate-800"
@@ -85,9 +95,7 @@ export default async function TaskDetailPage({
           {task.title}
         </h1>
         <p className="mt-2 flex flex-wrap items-center gap-2 text-sm text-slate-600">
-          <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold tracking-wide text-slate-700 uppercase">
-            {PRIORITY_LABELS[task.priority]} priority
-          </span>
+          <Badge>{PRIORITY_LABELS[task.priority]} priority</Badge>
           {dueDate ? (
             <span className={overdue ? 'font-semibold text-red-700' : ''}>
               {overdue ? 'Overdue · ' : 'Due '}
@@ -106,13 +114,15 @@ export default async function TaskDetailPage({
       </div>
 
       {myAssignment ? (
-        <div className={cardClassName}>
+        <Card>
           <h2 className="text-lg font-semibold tracking-[-0.02em] text-slate-950">
             Your assignment
           </h2>
-          <p className="mt-1 text-sm text-slate-600">
-            Status: {STATUS_LABELS[myAssignment.status]} · Progress:{' '}
-            {myAssignment.progress}%
+          <p className="mt-1 flex items-center gap-2 text-sm text-slate-600">
+            <Badge variant={STATUS_BADGE_VARIANT[myAssignment.status]}>
+              {STATUS_LABELS[myAssignment.status]}
+            </Badge>
+            {myAssignment.progress}% complete
           </p>
           <div className="mt-4">
             <AssignmentControls
@@ -124,11 +134,11 @@ export default async function TaskDetailPage({
               }}
             />
           </div>
-        </div>
+        </Card>
       ) : null}
 
       {membership.role === 'admin' ? (
-        <div className={cardClassName}>
+        <Card>
           <h2 className="text-lg font-semibold tracking-[-0.02em] text-slate-950">
             Assignees (
             {assignmentRows.filter((row) => row.status === 'completed').length}{' '}
@@ -142,23 +152,34 @@ export default async function TaskDetailPage({
             <ul className="mt-4 divide-y divide-slate-200">
               {assignmentRows.map((row) => {
                 const rowOverdue = isPastDue && row.status !== 'completed';
+                const name = displayNames.get(row.assignee_id) ?? 'Unknown';
 
                 return (
                   <li className="py-3" key={row.id}>
                     <div className="flex flex-wrap items-center justify-between gap-2">
-                      <div>
-                        <p className="text-sm font-semibold text-slate-950">
-                          {displayNames.get(row.assignee_id) ?? 'Unknown'}
-                        </p>
-                        <p className="mt-0.5 text-xs text-slate-500">
-                          {STATUS_LABELS[row.status]} · {row.progress}%
-                          {rowOverdue ? ' · Overdue' : ''}
-                        </p>
-                        {row.status === 'delayed' && row.delay_reason ? (
-                          <p className="mt-1 text-xs text-red-700">
-                            Delay reason: {row.delay_reason}
+                      <div className="flex items-center gap-3">
+                        <Avatar displayName={name} userId={row.assignee_id} />
+                        <div>
+                          <p className="text-sm font-semibold text-slate-950">
+                            {name}
                           </p>
-                        ) : null}
+                          <p className="mt-0.5 flex items-center gap-1.5 text-xs text-slate-500">
+                            <Badge variant={STATUS_BADGE_VARIANT[row.status]}>
+                              {STATUS_LABELS[row.status]}
+                            </Badge>
+                            {row.progress}%
+                            {rowOverdue ? (
+                              <span className="font-semibold text-red-700">
+                                Overdue
+                              </span>
+                            ) : null}
+                          </p>
+                          {row.status === 'delayed' && row.delay_reason ? (
+                            <p className="mt-1 text-xs text-red-700">
+                              Delay reason: {row.delay_reason}
+                            </p>
+                          ) : null}
+                        </div>
                       </div>
                       {row.status === 'completed' ? (
                         <ReopenAssignmentForm assignmentId={row.id} />
@@ -169,10 +190,10 @@ export default async function TaskDetailPage({
               })}
             </ul>
           )}
-        </div>
+        </Card>
       ) : null}
 
-      <div className={cardClassName}>
+      <Card>
         <h2 className="text-lg font-semibold tracking-[-0.02em] text-slate-950">
           Activity
         </h2>
@@ -197,7 +218,7 @@ export default async function TaskDetailPage({
             ))}
           </ul>
         )}
-      </div>
+      </Card>
     </section>
   );
 }
