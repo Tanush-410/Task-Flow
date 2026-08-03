@@ -1,25 +1,20 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 
-import { LoginForm } from '@/components/login-form';
-import { sanitizeNextPath } from '@/modules/auth/navigation';
+import { SignupForm } from '@/components/signup-form';
+import { listOrganizationsForSignup } from '@/modules/organizations/queries';
 
 export const metadata: Metadata = {
-  title: 'Sign in | TaskFlow',
+  title: 'Create account | TaskFlow',
 };
 
-export default async function LoginPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ error?: string; next?: string }>;
-}) {
-  const { error, next } = await searchParams;
-  const nextPath = sanitizeNextPath(next ?? null) ?? undefined;
+export default async function SignupPage() {
+  const organizations = await listOrganizationsForSignup();
 
   return (
     <main className="grid min-h-screen place-items-center bg-[#f4f4f1] px-5 py-12">
       <section
-        aria-labelledby="login-heading"
+        aria-labelledby="signup-heading"
         className="w-full max-w-[420px] rounded-2xl border border-slate-200 bg-white px-6 py-8 shadow-[0_18px_50px_-32px_rgba(15,23,42,0.45)] sm:px-9 sm:py-10"
       >
         <div className="mb-8">
@@ -34,33 +29,25 @@ export default async function LoginPage({
           </div>
           <h1
             className="text-3xl font-semibold tracking-[-0.035em] text-slate-950"
-            id="login-heading"
+            id="signup-heading"
           >
-            Welcome back
+            Create your account
           </h1>
           <p className="mt-2 text-[15px] leading-6 text-slate-600">
-            Sign in to continue to your workspace.
+            Sign up as an Admin to start a new workspace, or as an Employee to
+            join one that already exists.
           </p>
         </div>
 
-        {error ? (
-          <p
-            className="mb-5 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950"
-            role="alert"
-          >
-            We could not complete that sign-in request. Please try again.
-          </p>
-        ) : null}
-
-        <LoginForm nextPath={nextPath} />
+        <SignupForm organizations={organizations} />
 
         <p className="mt-7 text-center text-sm text-slate-600">
-          New to TaskFlow?{' '}
+          Already have an account?{' '}
           <Link
             className="font-semibold text-slate-950 underline underline-offset-2"
-            href="/signup"
+            href="/login"
           >
-            Create an account
+            Sign in
           </Link>
         </p>
       </section>

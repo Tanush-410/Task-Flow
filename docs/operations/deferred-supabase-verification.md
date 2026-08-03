@@ -59,3 +59,13 @@ git diff --check
 Confirm that reset applies migrations `202608010001` through `202608010007_service_role_finalize.sql`; all 137 pgTAP assertions pass; and database lint reports no security or correctness findings. The authorization contract additionally covers the stage/discard/finalize privilege matrix, malformed-email denial, staged-token denial, failed-resend preservation, finalize activation, active-member rejection, deactivation revocation, and denial of token-based reactivation. Exercise concurrent finalization, acceptance, and deactivation against the local Auth runtime as part of this gate; static contracts check shared advisory locking and the active-only unique index but do not execute concurrency.
 
 Confirm that regenerated declarations contain the six public tables, invitation `revoked_at` and `delivery_status`, all four enums, and the bootstrap, stage, finalize, discard, acceptance, and membership helper functions. Review any generated type diff before committing it.
+
+## Open self-service registration (deferred verification)
+
+`supabase/migrations/202608010011_self_service_registration.sql` adds `register_organization_admin` and `join_organization_as_employee` — an intentionally open alternative to `bootstrap_organization` that lets any authenticated user found a new organization as Admin or join an existing one as Employee, without the `can_bootstrap_org` app-metadata gate. It also adds `task_notifications` to the `supabase_realtime` publication. `supabase/config.toml` now sets `[auth] enable_signup = true`, `[auth.email] enable_signup = true`, and `[auth.email] enable_confirmations = false` to match.
+
+This migration was written and hand-reflected into `src/lib/supabase/database.types.ts` under the same constraint as the rest of this document: no local Supabase runtime has executed it. Before relying on it:
+
+- Run the deferred command sequence above (migrate, pgTAP, regenerate types) and confirm `register_organization_admin`/`join_organization_as_employee` behave per the migration's guard clauses (no profile row, an existing active membership, or an unknown organization id must all be denied).
+- Confirm the `alter publication supabase_realtime add table public.task_notifications;` statement applies cleanly and that a realtime `postgres_changes` subscription filtered by `recipient_id` actually receives inserts under RLS.
+- Re-confirm this is the intended production posture: open self-registration is a deliberate deviation from the platform design spec's invitation-only model, requested and accepted by the product owner in exchange for a simpler account-creation flow. `bootstrap_organization` and the invitation flow remain available unchanged alongside it.

@@ -1,5 +1,9 @@
 import { cleanup, render, screen } from '@testing-library/react';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+
+vi.mock('@/components/notification-bell', () => ({
+  NotificationBell: () => null,
+}));
 
 import { AppShell } from '@/components/app-shell';
 
@@ -7,7 +11,11 @@ afterEach(cleanup);
 
 describe('AppShell', () => {
   it('shows admin navigation without employee-only links', () => {
-    render(<AppShell role="admin">Admin content</AppShell>);
+    render(
+      <AppShell role="admin" unreadNotificationCount={0} userId="user-1">
+        Admin content
+      </AppShell>,
+    );
 
     expect(screen.getByRole('navigation', { name: 'Primary' })).toBeVisible();
     expect(screen.getByRole('link', { name: 'Dashboard' })).toBeVisible();
@@ -19,7 +27,11 @@ describe('AppShell', () => {
   });
 
   it('shows employee navigation without admin-only links', () => {
-    render(<AppShell role="employee">Employee content</AppShell>);
+    render(
+      <AppShell role="employee" unreadNotificationCount={0} userId="user-1">
+        Employee content
+      </AppShell>,
+    );
 
     expect(screen.getByRole('link', { name: 'My Day' })).toBeVisible();
     expect(screen.getByRole('link', { name: 'My Tasks' })).toBeVisible();

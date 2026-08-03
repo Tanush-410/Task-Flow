@@ -15,6 +15,7 @@ import type { ComponentType, ReactNode } from 'react';
 import type { MembershipContext } from '@/modules/members/context';
 
 import { AppNavLink } from './app-nav-link';
+import { NotificationBell } from './notification-bell';
 
 type Role = MembershipContext['role'];
 type NavigationItem = {
@@ -42,9 +43,13 @@ const employeeItems: NavigationItem[] = [
 export function AppShell({
   children,
   role,
+  userId,
+  unreadNotificationCount,
 }: {
   children: ReactNode;
   role: Role;
+  userId: string;
+  unreadNotificationCount: number;
 }) {
   const items = role === 'admin' ? adminItems : employeeItems;
   const home = role === 'admin' ? '/dashboard' : '/my-day';
@@ -65,9 +70,15 @@ export function AppShell({
             </span>
             <span>TaskFlow</span>
           </Link>
-          <span className="rounded-md bg-slate-100 px-2 py-1 text-[11px] font-semibold uppercase tracking-wider text-slate-600 md:hidden">
-            {role}
-          </span>
+          <div className="flex items-center gap-2">
+            <NotificationBell
+              initialUnreadCount={unreadNotificationCount}
+              userId={userId}
+            />
+            <span className="rounded-md bg-slate-100 px-2 py-1 text-[11px] font-semibold uppercase tracking-wider text-slate-600 md:hidden">
+              {role}
+            </span>
+          </div>
         </div>
 
         <nav

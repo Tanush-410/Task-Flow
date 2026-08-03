@@ -484,6 +484,17 @@ export type Database = {
         Args: { target_task_id: string };
         Returns: boolean;
       };
+      join_organization_as_employee: {
+        Args: { target_organization_id: string };
+        Returns: string;
+      };
+      register_organization_admin: {
+        Args: {
+          organization_name: string;
+          organization_timezone: string;
+        };
+        Returns: string;
+      };
       stage_invitation: {
         Args: {
           invitation_email: string;

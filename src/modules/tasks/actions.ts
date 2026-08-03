@@ -6,11 +6,13 @@ import type { ActionResult } from '@/lib/result';
 import { createServerSupabase } from '@/lib/supabase/server';
 
 import { requireAdmin } from '../members/queries';
+import { queueTaskNotifications } from '../notifications/actions';
 import {
   type TaskPriority,
   type TaskStatus,
   taskArchiveSchema,
   taskCreateSchema,
+  taskCreateWithAssigneesSchema,
   taskPublishSchema,
   taskUpdateSchema,
 } from './schemas';
@@ -22,6 +24,10 @@ const TASK_CREATE_ERROR = {
 const TASK_UPDATE_ERROR = {
   code: 'TASK_UPDATE_FAILED',
   message: 'The task could not be updated.',
+} as const;
+const TASK_ASSIGN_ERROR = {
+  code: 'TASK_ASSIGN_FAILED',
+  message: 'The task could not be created and assigned.',
 } as const;
 
 export async function createTask(
@@ -180,6 +186,87 @@ export async function publishTask(
     return { ok: true, data: { taskId: data.id } };
   } catch {
     return { ok: false, error: { ...TASK_UPDATE_ERROR, traceId } };
+  }
+}
+
+export async function createAndAssignTask(
+  input: unknown,
+): Promise<ActionResult<{ taskId: string }>> {
+  const traceId = randomUUID();
+  const parsed = taskCreateWithAssigneesSchema.safeParse(input);
+
+  if (!parsed.success) {
+    return {
+      ok: false,
+      error: {
+        code: 'INVALID_TASK',
+        message: 'Check the task details.',
+        traceId,
+        fields: parsed.error.flatten().fieldErrors,
+      },
+    };
+  }
+
+  try {
+    const membership = await requireAdmin();
+    const supabase = await createServerSupabase();
+    const now = new Date().toISOString();
+
+    const { data: task, error: taskError } = await supabase
+      .from('tasks')
+      .insert({
+        organization_id: membership.organizationId,
+        created_by: membership.userId,
+        title: parsed.data.title,
+        description: parsed.data.description,
+        priority: parsed.data.priority,
+        due_at: parsed.data.dueAt ?? null,
+        start_at: parsed.data.startAt ?? null,
+        acknowledgement_required: parsed.data.acknowledgementRequired,
+        status: 'published',
+        published_at: now,
+      })
+      .select('id,title')
+      .single();
+
+    if (taskError || !task) {
+      return { ok: false, error: { ...TASK_ASSIGN_ERROR, traceId } };
+    }
+
+    const assigneeIds = Array.from(new Set(parsed.data.assigneeIds));
+    const { data: assignments, error: assignmentError } = await supabase
+      .from('task_assignments')
+      .insert(
+        assigneeIds.map((assigneeId) => ({
+          organization_id: membership.organizationId,
+          task_id: task.id,
+          assignee_id: assigneeId,
+          assigned_by: membership.userId,
+          status: 'not_started' as const,
+          progress: 0,
+        })),
+      )
+      .select('id,assignee_id');
+
+    if (assignmentError || !assignments) {
+      return { ok: false, error: { ...TASK_ASSIGN_ERROR, traceId } };
+    }
+
+    await queueTaskNotifications(
+      assignments.map((assignment) => ({
+        organizationId: membership.organizationId,
+        recipientId: assignment.assignee_id,
+        taskId: task.id,
+        assignmentId: assignment.id,
+        notificationType: 'assignment_created',
+        title: 'New task assigned',
+        body: `You have been assigned a new task: ${task.title}`,
+      })),
+    );
+
+    return { ok: true, data: { taskId: task.id } };
+  } catch {
+    return { ok: false, error: { ...TASK_ASSIGN_ERROR, traceId } };
   }
 }
 

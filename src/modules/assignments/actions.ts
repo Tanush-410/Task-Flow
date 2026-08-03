@@ -5,7 +5,12 @@ import { randomUUID } from 'node:crypto';
 import type { ActionResult } from '@/lib/result';
 import { createServerSupabase } from '@/lib/supabase/server';
 
-import { requireAdmin, requireMembership } from '../members/queries';
+import {
+  listOrganizationAdmins,
+  requireAdmin,
+  requireMembership,
+} from '../members/queries';
+import { queueTaskNotifications } from '../notifications/actions';
 import {
   type AssignmentStatus,
   assignmentCreateSchema,
@@ -200,17 +205,77 @@ export async function changeAssignmentStatus(
       .from('task_assignments')
       .update(patch)
       .eq('id', parsed.data.assignmentId)
-      .select('id')
+      .select('id,task_id,organization_id,assignee_id')
       .single();
 
     if (error || !data) {
       return { ok: false, error: { ...ASSIGNMENT_UPDATE_ERROR, traceId } };
     }
 
+    if (
+      parsed.data.status === 'completed' ||
+      parsed.data.status === 'delayed'
+    ) {
+      await notifyAdminsOfAssignmentChange(supabase, {
+        organizationId: data.organization_id,
+        taskId: data.task_id,
+        assignmentId: data.id,
+        assigneeId: data.assignee_id,
+        status: parsed.data.status,
+        reason: parsed.data.reason,
+      });
+    }
+
     return { ok: true, data: { assignmentId: data.id } };
   } catch {
     return { ok: false, error: { ...ASSIGNMENT_UPDATE_ERROR, traceId } };
   }
+}
+
+async function notifyAdminsOfAssignmentChange(
+  supabase: Awaited<ReturnType<typeof createServerSupabase>>,
+  input: {
+    organizationId: string;
+    taskId: string;
+    assignmentId: string;
+    assigneeId: string;
+    status: 'completed' | 'delayed';
+    reason?: string;
+  },
+) {
+  const [{ data: task }, { data: assignee }, adminIds] = await Promise.all([
+    supabase.from('tasks').select('title').eq('id', input.taskId).maybeSingle(),
+    supabase
+      .from('profiles')
+      .select('display_name')
+      .eq('id', input.assigneeId)
+      .maybeSingle(),
+    listOrganizationAdmins(input.organizationId),
+  ]);
+
+  const taskTitle = task?.title ?? 'a task';
+  const assigneeName = assignee?.display_name ?? 'An employee';
+  const body =
+    input.status === 'completed'
+      ? `${assigneeName} has completed: ${taskTitle}`
+      : `${assigneeName} reported a delay on: ${taskTitle}${
+          input.reason ? ` — ${input.reason}` : ''
+        }`;
+
+  await queueTaskNotifications(
+    adminIds.map((adminId) => ({
+      organizationId: input.organizationId,
+      recipientId: adminId,
+      taskId: input.taskId,
+      assignmentId: input.assignmentId,
+      notificationType:
+        input.status === 'completed'
+          ? 'assignment_completed'
+          : 'assignment_delayed',
+      title: input.status === 'completed' ? 'Task completed' : 'Task delayed',
+      body,
+    })),
+  );
 }
 
 export async function reopenAssignment(
@@ -232,7 +297,7 @@ export async function reopenAssignment(
   }
 
   try {
-    await requireAdmin();
+    const membership = await requireAdmin();
     const supabase = await createServerSupabase();
     const { data, error } = await supabase
       .from('task_assignments')
@@ -244,12 +309,30 @@ export async function reopenAssignment(
         override_reason: parsed.data.reason,
       })
       .eq('id', parsed.data.assignmentId)
-      .select('id')
+      .select('id,task_id,assignee_id')
       .single();
 
     if (error || !data) {
       return { ok: false, error: { ...ASSIGNMENT_UPDATE_ERROR, traceId } };
     }
+
+    const { data: task } = await supabase
+      .from('tasks')
+      .select('title')
+      .eq('id', data.task_id)
+      .maybeSingle();
+
+    await queueTaskNotifications([
+      {
+        organizationId: membership.organizationId,
+        recipientId: data.assignee_id,
+        taskId: data.task_id,
+        assignmentId: data.id,
+        notificationType: 'assignment_status_changed',
+        title: 'Task reopened',
+        body: `An admin reopened your completed task: ${task?.title ?? 'a task'} — ${parsed.data.reason}`,
+      },
+    ]);
 
     return { ok: true, data: { assignmentId: data.id } };
   } catch {
