@@ -79,7 +79,7 @@ export default async function MyDayPage() {
             <p className="text-base text-slate-600">
               Nothing urgent right now — see{' '}
               <Link
-                className="text-accent-hover underline underline-offset-2"
+                className="text-primary underline underline-offset-2"
                 href="/my-tasks"
               >
                 My Tasks

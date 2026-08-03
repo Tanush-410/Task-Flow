@@ -5,7 +5,17 @@ import { useActionState, useState } from 'react';
 import { signUp } from '@/modules/auth/actions';
 import type { SignupOrganizationOption } from '@/modules/organizations/queries';
 import { Button } from '@/components/ui/button';
-import { FieldError, Label, Select, TextInput } from '@/components/ui/field';
+import { FieldError } from '@/components/ui/field-error';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 type Role = 'admin' | 'employee';
 
@@ -24,40 +34,19 @@ export function SignupForm({
     <form action={formAction} aria-busy={pending} className="space-y-5">
       <input name="role" type="hidden" value={role} />
 
-      <div
-        aria-label="Account type"
-        className="grid grid-cols-2 gap-1.5 rounded-xl bg-slate-100 p-1.5"
-        role="radiogroup"
-      >
-        <button
-          aria-checked={role === 'admin'}
-          className={`h-10 rounded-lg text-sm font-semibold transition-colors ${
-            role === 'admin'
-              ? 'bg-white text-accent-hover shadow-sm'
-              : 'text-slate-500 hover:text-slate-800'
-          }`}
-          disabled={pending}
-          onClick={() => setRole('admin')}
-          role="radio"
-          type="button"
-        >
-          Admin / Founder
-        </button>
-        <button
-          aria-checked={role === 'employee'}
-          className={`h-10 rounded-lg text-sm font-semibold transition-colors ${
-            role === 'employee'
-              ? 'bg-white text-accent-hover shadow-sm'
-              : 'text-slate-500 hover:text-slate-800'
-          } disabled:cursor-not-allowed disabled:text-slate-300`}
-          disabled={pending || organizations.length === 0}
-          onClick={() => setRole('employee')}
-          role="radio"
-          type="button"
-        >
-          Employee / Intern
-        </button>
-      </div>
+      <Tabs onValueChange={(value) => setRole(value as Role)} value={role}>
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger disabled={pending} value="admin">
+            Admin / Founder
+          </TabsTrigger>
+          <TabsTrigger
+            disabled={pending || organizations.length === 0}
+            value="employee"
+          >
+            Employee / Intern
+          </TabsTrigger>
+        </TabsList>
+      </Tabs>
 
       {role === 'employee' && organizations.length === 0 ? (
         <p className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950">
@@ -68,8 +57,9 @@ export function SignupForm({
 
       <div>
         <Label htmlFor="displayName">Full name</Label>
-        <TextInput
+        <Input
           autoComplete="name"
+          className="mt-2 h-11"
           disabled={pending}
           id="displayName"
           maxLength={100}
@@ -83,8 +73,9 @@ export function SignupForm({
 
       <div>
         <Label htmlFor="email">Email</Label>
-        <TextInput
+        <Input
           autoComplete="email"
+          className="mt-2 h-11"
           disabled={pending}
           id="email"
           name="email"
@@ -97,8 +88,9 @@ export function SignupForm({
 
       <div>
         <Label htmlFor="password">Password</Label>
-        <TextInput
+        <Input
           autoComplete="new-password"
+          className="mt-2 h-11"
           disabled={pending}
           id="password"
           maxLength={128}
@@ -113,8 +105,9 @@ export function SignupForm({
       {role === 'admin' ? (
         <div>
           <Label htmlFor="organizationName">Organization name</Label>
-          <TextInput
+          <Input
             autoComplete="organization"
+            className="mt-2 h-11"
             disabled={pending}
             id="organizationName"
             maxLength={120}
@@ -129,20 +122,21 @@ export function SignupForm({
         <div>
           <Label htmlFor="organizationId">Organization</Label>
           <Select
-            defaultValue={organizations[0]?.id ?? ''}
+            defaultValue={organizations[0]?.id}
             disabled={pending || organizations.length === 0}
-            id="organizationId"
             name="organizationId"
             required
           >
-            <option disabled hidden value="">
-              Select an organization
-            </option>
-            {organizations.map((organization) => (
-              <option key={organization.id} value={organization.id}>
-                {organization.name}
-              </option>
-            ))}
+            <SelectTrigger className="mt-2 h-11 w-full" id="organizationId">
+              <SelectValue placeholder="Select an organization" />
+            </SelectTrigger>
+            <SelectContent>
+              {organizations.map((organization) => (
+                <SelectItem key={organization.id} value={organization.id}>
+                  {organization.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
           </Select>
           <FieldError>{error?.fields?.organizationId?.[0]}</FieldError>
         </div>
@@ -165,6 +159,7 @@ export function SignupForm({
         disabled={
           pending || (role === 'employee' && organizations.length === 0)
         }
+        size="lg"
         type="submit"
       >
         {pending ? 'Creating account…' : 'Create account'}

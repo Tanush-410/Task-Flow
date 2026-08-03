@@ -5,6 +5,10 @@ vi.mock('@/components/notification-bell', () => ({
   NotificationBell: () => null,
 }));
 
+vi.mock('@/components/sign-out-menu-item', () => ({
+  SignOutMenuItem: () => null,
+}));
+
 import { AppShell } from '@/components/app-shell';
 
 afterEach(cleanup);

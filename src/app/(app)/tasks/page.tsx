@@ -48,7 +48,7 @@ export default async function TasksPage({
       <PageHeader
         action={
           <Link
-            className="flex h-10 items-center justify-center rounded-lg bg-accent px-4 text-sm font-semibold text-white hover:bg-accent-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+            className="flex h-10 items-center justify-center rounded-lg bg-primary px-4 text-sm font-semibold text-white hover:bg-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
             href="/tasks/new"
           >
             Create Task
@@ -68,7 +68,7 @@ export default async function TasksPage({
           <Link
             className={`rounded-lg px-3 py-1.5 text-sm font-semibold transition-colors ${
               activeFilter === value
-                ? 'bg-accent text-white'
+                ? 'bg-primary text-white'
                 : 'border border-slate-300 bg-white text-slate-700 hover:border-slate-400'
             }`}
             href={value === 'all' ? '/tasks' : `/tasks?status=${value}`}
@@ -101,12 +101,12 @@ export default async function TasksPage({
                       {task.title}
                     </p>
                     <p className="mt-1.5 flex items-center gap-2">
-                      <Badge variant="neutral">
+                      <Badge variant="secondary">
                         {PRIORITY_LABELS[task.priority]}
                       </Badge>
                       <Badge
                         variant={
-                          task.status === 'archived' ? 'neutral' : 'accent'
+                          task.status === 'archived' ? 'secondary' : 'default'
                         }
                       >
                         {STATUS_LABELS[task.status]}

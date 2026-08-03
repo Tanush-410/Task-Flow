@@ -4,6 +4,7 @@ import {
   CalendarDays,
   ChartNoAxesCombined,
   CheckSquare2,
+  ChevronsUpDown,
   LayoutDashboard,
   ListChecks,
   Settings,
@@ -14,10 +15,18 @@ import Link from 'next/link';
 import type { ComponentType, ReactNode } from 'react';
 
 import type { MembershipContext } from '@/modules/members/context';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 
 import { AppNavLink } from './app-nav-link';
 import { NotificationBell } from './notification-bell';
-import { Avatar } from './ui/avatar';
+import { PersonAvatar } from './person-avatar';
+import { SignOutMenuItem } from './sign-out-menu-item';
 
 type Role = MembershipContext['role'];
 type NavigationItem = {
@@ -65,12 +74,12 @@ export function AppShell({
       <aside className="border-b border-slate-200 bg-white md:sticky md:top-0 md:flex md:h-screen md:flex-col md:border-r md:border-b-0">
         <div className="flex min-h-16 items-center justify-between px-5 md:min-h-20 md:px-6">
           <Link
-            className="inline-flex items-center gap-2.5 rounded-md font-semibold tracking-[-0.02em] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent"
+            className="inline-flex items-center gap-2.5 rounded-md font-semibold tracking-[-0.02em] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-primary"
             href={home}
           >
             <span
               aria-hidden="true"
-              className="grid size-8 place-items-center rounded-lg bg-accent text-sm text-white"
+              className="grid size-8 place-items-center rounded-lg bg-primary text-sm text-white"
             >
               T
             </span>
@@ -95,28 +104,50 @@ export function AppShell({
             <AppNavLink href={href} key={href}>
               <Icon
                 aria-hidden={true}
-                className="size-[18px] text-slate-400 transition-colors group-hover:text-slate-700 group-aria-[current=page]:text-accent-hover"
+                className="size-[18px] text-slate-400 transition-colors group-hover:text-slate-700 group-aria-[current=page]:text-primary"
               />
               {label}
             </AppNavLink>
           ))}
         </nav>
 
-        <div className="hidden border-t border-slate-200 px-4 py-4 md:block">
-          <Link
-            className="flex items-center gap-3 rounded-xl px-2 py-2 transition-colors hover:bg-slate-100 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-accent"
-            href={role === 'admin' ? '/settings' : '/profile'}
-          >
-            <Avatar displayName={displayName} userId={userId} />
-            <span className="min-w-0">
-              <span className="block truncate text-sm font-semibold text-slate-900">
-                {displayName}
-              </span>
-              <span className="block text-xs font-medium text-slate-500 capitalize">
-                {role}
-              </span>
-            </span>
-          </Link>
+        <div className="hidden border-t border-slate-200 px-3 py-3 md:block">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                className="flex w-full items-center gap-3 rounded-xl px-2 py-2 text-left transition-colors hover:bg-slate-100 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-primary"
+                type="button"
+              >
+                <PersonAvatar displayName={displayName} userId={userId} />
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-sm font-semibold text-slate-900">
+                    {displayName}
+                  </span>
+                  <span className="block text-xs font-medium text-slate-500 capitalize">
+                    {role}
+                  </span>
+                </span>
+                <ChevronsUpDown
+                  aria-hidden
+                  className="size-4 shrink-0 text-slate-400"
+                />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="w-56">
+              <DropdownMenuItem asChild>
+                <Link href={role === 'admin' ? '/settings' : '/profile'}>
+                  {role === 'admin' ? (
+                    <Settings aria-hidden />
+                  ) : (
+                    <UserRound aria-hidden />
+                  )}
+                  {role === 'admin' ? 'Settings' : 'Profile'}
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <SignOutMenuItem />
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </aside>
 

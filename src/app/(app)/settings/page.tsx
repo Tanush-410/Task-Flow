@@ -2,7 +2,7 @@ import { signOut } from '@/modules/auth/actions';
 import { requireAdmin } from '@/modules/members/queries';
 import { getCurrentOrganization } from '@/modules/organizations/queries';
 import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { PageHeader } from '@/components/ui/page-header';
 
 export default async function SettingsPage() {
@@ -18,34 +18,38 @@ export default async function SettingsPage() {
       />
 
       <Card className="max-w-xl">
-        <h2 className="text-lg font-semibold tracking-[-0.02em] text-slate-950">
-          Organization details
-        </h2>
-        <dl className="mt-4 space-y-3 text-sm">
-          <div className="flex justify-between gap-4">
-            <dt className="text-slate-500">Name</dt>
-            <dd className="font-semibold text-slate-950">
-              {organization?.name ?? '—'}
-            </dd>
-          </div>
-          <div className="flex justify-between gap-4">
-            <dt className="text-slate-500">Timezone</dt>
-            <dd className="font-semibold text-slate-950">
-              {organization?.timezone ?? '—'}
-            </dd>
-          </div>
-        </dl>
+        <CardHeader>
+          <CardTitle>Organization details</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <dl className="space-y-3 text-sm">
+            <div className="flex justify-between gap-4">
+              <dt className="text-slate-500">Name</dt>
+              <dd className="font-semibold text-slate-950">
+                {organization?.name ?? '—'}
+              </dd>
+            </div>
+            <div className="flex justify-between gap-4">
+              <dt className="text-slate-500">Timezone</dt>
+              <dd className="font-semibold text-slate-950">
+                {organization?.timezone ?? '—'}
+              </dd>
+            </div>
+          </dl>
+        </CardContent>
       </Card>
 
       <Card className="max-w-xl">
-        <h2 className="text-lg font-semibold tracking-[-0.02em] text-slate-950">
-          Account
-        </h2>
-        <form action={signOut} className="mt-4">
-          <Button size="sm" type="submit" variant="secondary">
-            Sign out
-          </Button>
-        </form>
+        <CardHeader>
+          <CardTitle>Account</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <form action={signOut}>
+            <Button size="sm" type="submit" variant="outline">
+              Sign out
+            </Button>
+          </form>
+        </CardContent>
       </Card>
     </section>
   );

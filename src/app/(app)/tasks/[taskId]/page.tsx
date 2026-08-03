@@ -5,9 +5,9 @@ import { AddAssigneeForm } from '@/components/add-assignee-form';
 import { AssignmentControls } from '@/components/assignment-controls';
 import { RemoveAssignmentButton } from '@/components/remove-assignment-button';
 import { ReopenAssignmentForm } from '@/components/reopen-assignment-form';
-import { Avatar } from '@/components/ui/avatar';
+import { PersonAvatar } from '@/components/person-avatar';
 import { Badge } from '@/components/ui/badge';
-import { Card } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { listTaskActivity } from '@/modules/activity/queries';
 import {
   listDisplayNames,
@@ -32,11 +32,11 @@ const STATUS_LABELS: Record<string, string> = {
 
 const STATUS_BADGE_VARIANT: Record<
   string,
-  'neutral' | 'accent' | 'danger' | 'success'
+  'secondary' | 'default' | 'destructive' | 'success'
 > = {
-  not_started: 'neutral',
-  in_progress: 'accent',
-  delayed: 'danger',
+  not_started: 'secondary',
+  in_progress: 'default',
+  delayed: 'destructive',
   completed: 'success',
 };
 
@@ -131,122 +131,131 @@ export default async function TaskDetailPage({
 
       {myAssignment ? (
         <Card>
-          <h2 className="text-lg font-semibold tracking-[-0.02em] text-slate-950">
-            Your assignment
-          </h2>
-          <p className="mt-1 flex items-center gap-2 text-sm text-slate-600">
-            <Badge variant={STATUS_BADGE_VARIANT[myAssignment.status]}>
-              {STATUS_LABELS[myAssignment.status]}
-            </Badge>
-            {myAssignment.progress}% complete
-          </p>
-          <div className="mt-4">
-            <AssignmentControls
-              assignment={{
-                id: myAssignment.id,
-                status: myAssignment.status,
-                progress: myAssignment.progress,
-                delayReason: myAssignment.delay_reason,
-              }}
-            />
-          </div>
+          <CardHeader>
+            <CardTitle>Your assignment</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="flex items-center gap-2 text-sm text-slate-600">
+              <Badge variant={STATUS_BADGE_VARIANT[myAssignment.status]}>
+                {STATUS_LABELS[myAssignment.status]}
+              </Badge>
+              {myAssignment.progress}% complete
+            </p>
+            <div className="mt-4">
+              <AssignmentControls
+                assignment={{
+                  id: myAssignment.id,
+                  status: myAssignment.status,
+                  progress: myAssignment.progress,
+                  delayReason: myAssignment.delay_reason,
+                }}
+              />
+            </div>
+          </CardContent>
         </Card>
       ) : null}
 
       {membership.role === 'admin' ? (
         <Card>
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <h2 className="text-lg font-semibold tracking-[-0.02em] text-slate-950">
-              Assignees (
-              {
-                assignmentRows.filter((row) => row.status === 'completed')
-                  .length
-              }{' '}
-              of {assignmentRows.length} completed)
-            </h2>
-            <AddAssigneeForm
-              availableEmployees={availableEmployees}
-              taskId={task.id}
-            />
-          </div>
-          {assignmentRows.length === 0 ? (
-            <p className="mt-3 text-sm text-slate-600">
-              No one is assigned to this task yet.
-            </p>
-          ) : (
-            <ul className="mt-4 divide-y divide-slate-200">
-              {assignmentRows.map((row) => {
-                const rowOverdue = isPastDue && row.status !== 'completed';
-                const name = displayNames.get(row.assignee_id) ?? 'Unknown';
+          <CardHeader>
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <CardTitle>
+                Assignees (
+                {
+                  assignmentRows.filter((row) => row.status === 'completed')
+                    .length
+                }{' '}
+                of {assignmentRows.length} completed)
+              </CardTitle>
+              <AddAssigneeForm
+                availableEmployees={availableEmployees}
+                taskId={task.id}
+              />
+            </div>
+          </CardHeader>
+          <CardContent>
+            {assignmentRows.length === 0 ? (
+              <p className="text-sm text-slate-600">
+                No one is assigned to this task yet.
+              </p>
+            ) : (
+              <ul className="divide-y divide-slate-200">
+                {assignmentRows.map((row) => {
+                  const rowOverdue = isPastDue && row.status !== 'completed';
+                  const name = displayNames.get(row.assignee_id) ?? 'Unknown';
 
-                return (
-                  <li className="py-3" key={row.id}>
-                    <div className="flex flex-wrap items-center justify-between gap-2">
-                      <div className="flex items-center gap-3">
-                        <Avatar displayName={name} userId={row.assignee_id} />
-                        <div>
-                          <p className="text-sm font-semibold text-slate-950">
-                            {name}
-                          </p>
-                          <p className="mt-0.5 flex items-center gap-1.5 text-xs text-slate-500">
-                            <Badge variant={STATUS_BADGE_VARIANT[row.status]}>
-                              {STATUS_LABELS[row.status]}
-                            </Badge>
-                            {row.progress}%
-                            {rowOverdue ? (
-                              <span className="font-semibold text-red-700">
-                                Overdue
-                              </span>
-                            ) : null}
-                          </p>
-                          {row.status === 'delayed' && row.delay_reason ? (
-                            <p className="mt-1 text-xs text-red-700">
-                              Delay reason: {row.delay_reason}
+                  return (
+                    <li className="py-3" key={row.id}>
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <div className="flex items-center gap-3">
+                          <PersonAvatar
+                            displayName={name}
+                            userId={row.assignee_id}
+                          />
+                          <div>
+                            <p className="text-sm font-semibold text-slate-950">
+                              {name}
                             </p>
-                          ) : null}
+                            <p className="mt-0.5 flex items-center gap-1.5 text-xs text-slate-500">
+                              <Badge variant={STATUS_BADGE_VARIANT[row.status]}>
+                                {STATUS_LABELS[row.status]}
+                              </Badge>
+                              {row.progress}%
+                              {rowOverdue ? (
+                                <span className="font-semibold text-red-700">
+                                  Overdue
+                                </span>
+                              ) : null}
+                            </p>
+                            {row.status === 'delayed' && row.delay_reason ? (
+                              <p className="mt-1 text-xs text-red-700">
+                                Delay reason: {row.delay_reason}
+                              </p>
+                            ) : null}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          {row.status === 'completed' ? (
+                            <ReopenAssignmentForm assignmentId={row.id} />
+                          ) : (
+                            <RemoveAssignmentButton assignmentId={row.id} />
+                          )}
                         </div>
                       </div>
-                      <div className="flex items-center gap-3">
-                        {row.status === 'completed' ? (
-                          <ReopenAssignmentForm assignmentId={row.id} />
-                        ) : (
-                          <RemoveAssignmentButton assignmentId={row.id} />
-                        )}
-                      </div>
-                    </div>
-                  </li>
-                );
-              })}
-            </ul>
-          )}
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </CardContent>
         </Card>
       ) : null}
 
       <Card>
-        <h2 className="text-lg font-semibold tracking-[-0.02em] text-slate-950">
-          Activity
-        </h2>
-        {activityRows.length === 0 ? (
-          <p className="mt-3 text-sm text-slate-600">
-            No activity recorded yet.
-          </p>
-        ) : (
-          <ul className="mt-4 space-y-3">
-            {activityRows.map((event) => (
-              <li className="text-sm text-slate-600" key={event.id}>
-                <span className="font-semibold text-slate-950">
-                  {event.actor_id
-                    ? (displayNames.get(event.actor_id) ?? 'Someone')
-                    : 'System'}
-                </span>{' '}
-                — {event.summary} ·{' '}
-                <span className="text-slate-400">
-                  {new Date(event.created_at).toLocaleString()}
-                </span>
-              </li>
-            ))}
-          </ul>
-        )}
+        <CardHeader>
+          <CardTitle>Activity</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {activityRows.length === 0 ? (
+            <p className="text-sm text-slate-600">No activity recorded yet.</p>
+          ) : (
+            <ul className="space-y-3">
+              {activityRows.map((event) => (
+                <li className="text-sm text-slate-600" key={event.id}>
+                  <span className="font-semibold text-slate-950">
+                    {event.actor_id
+                      ? (displayNames.get(event.actor_id) ?? 'Someone')
+                      : 'System'}
+                  </span>{' '}
+                  — {event.summary} ·{' '}
+                  <span className="text-slate-400">
+                    {new Date(event.created_at).toLocaleString()}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </CardContent>
       </Card>
     </section>
   );

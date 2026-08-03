@@ -1,6 +1,5 @@
 'use client';
 
-import { X } from 'lucide-react';
 import Link from 'next/link';
 import { useActionState, useEffect, useRef } from 'react';
 
@@ -9,14 +8,24 @@ import { toDateTimeLocalValue } from '@/lib/calendar-dates';
 import type { OrganizationMember } from '@/modules/members/queries';
 import { createAndAssignTask } from '@/modules/tasks/actions';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
-  Checkbox,
-  FieldError,
-  Label,
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { FieldError } from '@/components/ui/field-error';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import {
   Select,
-  TextInput,
-  Textarea,
-} from '@/components/ui/field';
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
 
 async function submitQuickTask(
   _previousState: ActionResult<{ taskId: string }> | null,
@@ -51,11 +60,6 @@ export function QuickCreatePopover({
   const [state, formAction, pending] = useActionState(submitQuickTask, null);
   const error = state && !state.ok ? state.error : null;
   const titleRef = useRef<HTMLInputElement>(null);
-  const dialogRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    titleRef.current?.focus();
-  }, []);
 
   useEffect(() => {
     if (state?.ok) {
@@ -66,57 +70,34 @@ export function QuickCreatePopover({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state]);
 
-  useEffect(() => {
-    function handleKeyDown(event: KeyboardEvent) {
-      if (event.key === 'Escape') {
-        onClose();
-      }
-    }
-
-    document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [onClose]);
-
   const prefillHref = `/tasks/new?date=${encodeURIComponent(defaultDate.toISOString())}`;
 
   return (
-    <div
-      aria-labelledby="quick-create-heading"
-      aria-modal="true"
-      className="animate-overlay-in fixed inset-0 z-50 flex items-start justify-center bg-slate-950/30 px-4 pt-20 backdrop-blur-[2px]"
-      onMouseDown={(event) => {
-        if (!dialogRef.current?.contains(event.target as Node)) {
-          onClose();
-        }
+    <Dialog
+      onOpenChange={(open) => {
+        if (!open) onClose();
       }}
-      role="dialog"
+      open
     >
-      <div
-        className="animate-popover-in w-full max-w-md rounded-2xl border border-slate-200 bg-white p-5 shadow-popover"
-        ref={dialogRef}
+      <DialogContent
+        className="sm:max-w-md"
+        onOpenAutoFocus={(event) => {
+          event.preventDefault();
+          titleRef.current?.focus();
+        }}
       >
+        <DialogTitle className="sr-only">Create task</DialogTitle>
         <form action={formAction} className="space-y-4">
-          <div className="flex items-start justify-between gap-3">
-            <input
-              className="w-full border-b border-transparent pb-1.5 text-lg font-semibold text-slate-950 outline-none placeholder:font-normal placeholder:text-slate-400 focus:border-accent"
-              disabled={pending}
-              id="quick-create-heading"
-              maxLength={140}
-              name="title"
-              placeholder="Add title"
-              ref={titleRef}
-              required
-              type="text"
-            />
-            <button
-              aria-label="Close"
-              className="mt-0.5 shrink-0 rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
-              onClick={onClose}
-              type="button"
-            >
-              <X aria-hidden className="size-4" />
-            </button>
-          </div>
+          <Input
+            className="h-auto border-none bg-transparent px-0 text-lg font-semibold shadow-none placeholder:font-normal focus-visible:ring-0"
+            disabled={pending}
+            maxLength={140}
+            name="title"
+            placeholder="Add title"
+            ref={titleRef}
+            required
+            type="text"
+          />
           <FieldError>{error?.fields?.title?.[0]}</FieldError>
 
           <div className="grid grid-cols-2 gap-3">
@@ -124,8 +105,8 @@ export function QuickCreatePopover({
               <Label className="text-xs" htmlFor="dueAt">
                 Date &amp; time
               </Label>
-              <TextInput
-                className="mt-1.5 py-2 text-sm"
+              <Input
+                className="mt-1.5"
                 defaultValue={toDateTimeLocalValue(defaultDate)}
                 disabled={pending}
                 id="dueAt"
@@ -137,17 +118,16 @@ export function QuickCreatePopover({
               <Label className="text-xs" htmlFor="priority">
                 Priority
               </Label>
-              <Select
-                className="mt-1.5 py-2 text-sm"
-                defaultValue="medium"
-                disabled={pending}
-                id="priority"
-                name="priority"
-              >
-                <option value="low">Low</option>
-                <option value="medium">Medium</option>
-                <option value="high">High</option>
-                <option value="urgent">Urgent</option>
+              <Select defaultValue="medium" disabled={pending} name="priority">
+                <SelectTrigger className="mt-1.5 w-full" id="priority">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="low">Low</SelectItem>
+                  <SelectItem value="medium">Medium</SelectItem>
+                  <SelectItem value="high">High</SelectItem>
+                  <SelectItem value="urgent">Urgent</SelectItem>
+                </SelectContent>
               </Select>
             </div>
           </div>
@@ -175,7 +155,6 @@ export function QuickCreatePopover({
           )}
 
           <Textarea
-            className="py-2 text-sm"
             disabled={pending}
             maxLength={10_000}
             name="description"
@@ -189,9 +168,9 @@ export function QuickCreatePopover({
             </p>
           ) : null}
 
-          <div className="flex items-center justify-between pt-1">
+          <DialogFooter className="border-none bg-transparent p-0 sm:justify-between">
             <Link
-              className="text-sm font-semibold text-accent-hover underline underline-offset-2"
+              className="self-center text-sm font-semibold text-primary underline underline-offset-2"
               href={prefillHref}
             >
               More options
@@ -207,9 +186,9 @@ export function QuickCreatePopover({
                 {pending ? 'Saving…' : 'Save'}
               </Button>
             </div>
-          </div>
+          </DialogFooter>
         </form>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }

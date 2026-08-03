@@ -72,7 +72,7 @@ export default async function InvitationPage({
         </form>
       ) : (
         <Link
-          className="mt-7 flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-accent px-4.5 text-sm font-semibold text-white transition-colors hover:bg-accent-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+          className="mt-7 flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-primary px-4.5 text-sm font-semibold text-white transition-colors hover:bg-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
           href={`/login?next=${encodeURIComponent(invitationPath)}`}
         >
           Sign in to continue

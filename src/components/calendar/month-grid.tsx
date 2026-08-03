@@ -1,7 +1,7 @@
 'use client';
 
 import { addDays, isSameDay, startOfMonthGrid } from '@/lib/calendar-dates';
-import { cn } from '@/lib/cn';
+import { cn } from '@/lib/utils';
 import type { CalendarTask } from '@/modules/tasks/queries';
 
 import { EventChip } from './event-chip';
@@ -69,7 +69,7 @@ export function MonthGrid({
               {canCreate ? (
                 <button
                   aria-label={`Create task on ${day.toLocaleDateString()}`}
-                  className="absolute inset-0 z-0 rounded-sm transition-colors hover:bg-accent-soft/40 focus-visible:bg-accent-soft/40 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent"
+                  className="absolute inset-0 z-0 rounded-sm transition-colors hover:bg-primary-soft/40 focus-visible:bg-primary-soft/40 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-primary"
                   onClick={() =>
                     onCreateAt(
                       new Date(
@@ -90,7 +90,7 @@ export function MonthGrid({
                   className={cn(
                     'flex size-6 items-center justify-center rounded-full text-xs font-semibold transition-colors',
                     isToday
-                      ? 'bg-accent text-white'
+                      ? 'bg-primary text-white'
                       : isCurrentMonth
                         ? 'text-slate-700 hover:bg-slate-200/70'
                         : 'text-slate-400 hover:bg-slate-200/70',

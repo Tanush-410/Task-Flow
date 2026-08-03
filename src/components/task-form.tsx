@@ -8,14 +8,18 @@ import { toDateTimeLocalValue } from '@/lib/calendar-dates';
 import type { OrganizationMember } from '@/modules/members/queries';
 import { createAndAssignTask } from '@/modules/tasks/actions';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
+import { FieldError } from '@/components/ui/field-error';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import {
-  Checkbox,
-  FieldError,
-  Label,
   Select,
-  TextInput,
-  Textarea,
-} from '@/components/ui/field';
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
 
 async function submitTask(
   _previousState: ActionResult<{ taskId: string }> | null,
@@ -64,7 +68,8 @@ export function TaskForm({
     <form action={formAction} aria-busy={pending} className="space-y-5">
       <div>
         <Label htmlFor="title">Title</Label>
-        <TextInput
+        <Input
+          className="mt-2"
           disabled={pending}
           id="title"
           maxLength={140}
@@ -79,6 +84,7 @@ export function TaskForm({
       <div>
         <Label htmlFor="description">Description</Label>
         <Textarea
+          className="mt-2"
           disabled={pending}
           id="description"
           maxLength={10_000}
@@ -91,22 +97,23 @@ export function TaskForm({
       <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
         <div>
           <Label htmlFor="priority">Priority</Label>
-          <Select
-            defaultValue="medium"
-            disabled={pending}
-            id="priority"
-            name="priority"
-          >
-            <option value="low">Low</option>
-            <option value="medium">Medium</option>
-            <option value="high">High</option>
-            <option value="urgent">Urgent</option>
+          <Select defaultValue="medium" disabled={pending} name="priority">
+            <SelectTrigger className="mt-2 w-full" id="priority">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="low">Low</SelectItem>
+              <SelectItem value="medium">Medium</SelectItem>
+              <SelectItem value="high">High</SelectItem>
+              <SelectItem value="urgent">Urgent</SelectItem>
+            </SelectContent>
           </Select>
         </div>
 
         <div>
           <Label htmlFor="dueAt">Due date</Label>
-          <TextInput
+          <Input
+            className="mt-2"
             defaultValue={
               defaultDueAt ? toDateTimeLocalValue(defaultDueAt) : undefined
             }
@@ -167,6 +174,7 @@ export function TaskForm({
       <Button
         className="w-full disabled:cursor-not-allowed sm:w-auto"
         disabled={pending || employees.length === 0}
+        size="lg"
         type="submit"
       >
         {pending ? 'Creating…' : 'Create & Assign'}

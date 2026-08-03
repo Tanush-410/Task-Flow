@@ -2,7 +2,7 @@ import { ListChecks } from 'lucide-react';
 import Link from 'next/link';
 
 import { Badge } from '@/components/ui/badge';
-import { Card } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { EmptyState } from '@/components/ui/empty-state';
 import { PageHeader } from '@/components/ui/page-header';
 import {
@@ -84,50 +84,51 @@ export default async function DashboardPage() {
       </div>
 
       <Card>
-        <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold tracking-[-0.02em] text-slate-950">
-            Recent tasks
-          </h2>
-          <Link
-            className="text-sm font-semibold text-accent-hover underline underline-offset-2"
-            href="/tasks"
-          >
-            View all
-          </Link>
-        </div>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <CardTitle>Recent tasks</CardTitle>
+            <Link
+              className="text-sm font-semibold text-primary underline underline-offset-2"
+              href="/tasks"
+            >
+              View all
+            </Link>
+          </div>
+        </CardHeader>
 
-        {recentTasks.length === 0 ? (
-          <EmptyState
-            action={
-              <Link
-                className="text-sm font-semibold text-accent-hover underline underline-offset-2"
-                href="/tasks/new"
-              >
-                Create your first task
-              </Link>
-            }
-            className="mt-4"
-            description="Tasks you create will show up here."
-            icon={ListChecks}
-            title="No tasks yet"
-          />
-        ) : (
-          <ul className="mt-4 divide-y divide-slate-200">
-            {recentTasks.map((task) => (
-              <li key={task.id}>
+        <CardContent>
+          {recentTasks.length === 0 ? (
+            <EmptyState
+              action={
                 <Link
-                  className="flex items-center justify-between gap-4 py-3 hover:bg-slate-50"
-                  href={`/tasks/${task.id}`}
+                  className="text-sm font-semibold text-primary underline underline-offset-2"
+                  href="/tasks/new"
                 >
-                  <span className="text-sm font-semibold text-slate-950">
-                    {task.title}
-                  </span>
-                  <Badge>{STATUS_LABELS[task.status]}</Badge>
+                  Create your first task
                 </Link>
-              </li>
-            ))}
-          </ul>
-        )}
+              }
+              description="Tasks you create will show up here."
+              icon={ListChecks}
+              title="No tasks yet"
+            />
+          ) : (
+            <ul className="divide-y divide-slate-200">
+              {recentTasks.map((task) => (
+                <li key={task.id}>
+                  <Link
+                    className="flex items-center justify-between gap-4 py-3 hover:bg-slate-50"
+                    href={`/tasks/${task.id}`}
+                  >
+                    <span className="text-sm font-semibold text-slate-950">
+                      {task.title}
+                    </span>
+                    <Badge>{STATUS_LABELS[task.status]}</Badge>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          )}
+        </CardContent>
       </Card>
     </section>
   );

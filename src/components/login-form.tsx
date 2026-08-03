@@ -4,7 +4,10 @@ import { useActionState, useState } from 'react';
 
 import { login } from '@/modules/auth/actions';
 import { Button } from '@/components/ui/button';
-import { FieldError, Label, TextInput } from '@/components/ui/field';
+import { FieldError } from '@/components/ui/field-error';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 type Portal = 'manager' | 'employee';
 
@@ -19,47 +22,27 @@ export function LoginForm({ nextPath }: { nextPath?: string }) {
     <form action={formAction} aria-busy={pending} className="space-y-5">
       {nextPath ? <input name="next" type="hidden" value={nextPath} /> : null}
 
-      <div
-        aria-label="Sign in as"
-        className="grid grid-cols-2 gap-1.5 rounded-xl bg-slate-100 p-1.5"
-        role="radiogroup"
+      <Tabs
+        onValueChange={(value) => setPortal(value as Portal)}
+        value={portal}
       >
-        <button
-          aria-checked={portal === 'manager'}
-          className={`h-10 rounded-lg text-sm font-semibold transition-colors ${
-            portal === 'manager'
-              ? 'bg-white text-accent-hover shadow-sm'
-              : 'text-slate-500 hover:text-slate-800'
-          }`}
-          disabled={pending}
-          onClick={() => setPortal('manager')}
-          role="radio"
-          type="button"
-        >
-          Admin / Manager
-        </button>
-        <button
-          aria-checked={portal === 'employee'}
-          className={`h-10 rounded-lg text-sm font-semibold transition-colors ${
-            portal === 'employee'
-              ? 'bg-white text-accent-hover shadow-sm'
-              : 'text-slate-500 hover:text-slate-800'
-          }`}
-          disabled={pending}
-          onClick={() => setPortal('employee')}
-          role="radio"
-          type="button"
-        >
-          Employee / Intern
-        </button>
-      </div>
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger disabled={pending} value="manager">
+            Admin / Manager
+          </TabsTrigger>
+          <TabsTrigger disabled={pending} value="employee">
+            Employee / Intern
+          </TabsTrigger>
+        </TabsList>
+      </Tabs>
 
       <div>
         <Label htmlFor="email">Email</Label>
-        <TextInput
+        <Input
           aria-describedby={emailError ? 'email-error' : undefined}
           aria-invalid={Boolean(emailError)}
           autoComplete="email"
+          className="mt-2 h-11"
           disabled={pending}
           id="email"
           name="email"
@@ -74,10 +57,11 @@ export function LoginForm({ nextPath }: { nextPath?: string }) {
 
       <div>
         <Label htmlFor="password">Password</Label>
-        <TextInput
+        <Input
           aria-describedby={passwordError ? 'password-error' : undefined}
           aria-invalid={Boolean(passwordError)}
           autoComplete="current-password"
+          className="mt-2 h-11"
           disabled={pending}
           id="password"
           maxLength={128}
@@ -106,6 +90,7 @@ export function LoginForm({ nextPath }: { nextPath?: string }) {
       <Button
         className="w-full disabled:cursor-wait"
         disabled={pending}
+        size="lg"
         type="submit"
       >
         {pending ? 'Signing in…' : 'Sign in'}

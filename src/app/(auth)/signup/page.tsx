@@ -33,7 +33,7 @@ export default async function SignupPage() {
       <p className="mt-7 text-center text-sm text-slate-600">
         Already have an account?{' '}
         <Link
-          className="font-semibold text-accent-hover underline underline-offset-2"
+          className="font-semibold text-primary underline underline-offset-2"
           href="/login"
         >
           Sign in

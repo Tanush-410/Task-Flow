@@ -1,5 +1,5 @@
 import { TaskForm } from '@/components/task-form';
-import { Card } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { PageHeader } from '@/components/ui/page-header';
 import { listOrganizationMembers } from '@/modules/members/queries';
 
@@ -26,11 +26,13 @@ export default async function NewTaskPage({
       />
 
       <Card className="max-w-2xl">
-        <TaskForm
-          defaultAssigneeId={assignee}
-          defaultDueAt={date}
-          employees={employees}
-        />
+        <CardContent>
+          <TaskForm
+            defaultAssigneeId={assignee}
+            defaultDueAt={date}
+            employees={employees}
+          />
+        </CardContent>
       </Card>
     </section>
   );

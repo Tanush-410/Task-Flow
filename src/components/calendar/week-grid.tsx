@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useEffect, useRef } from 'react';
 
 import { addDays, isSameDay } from '@/lib/calendar-dates';
-import { cn } from '@/lib/cn';
+import { cn } from '@/lib/utils';
 import { getPersonTag } from '@/lib/person-tag';
 import type { CalendarTask } from '@/modules/tasks/queries';
 
@@ -83,7 +83,7 @@ export function WeekGrid({
               className={cn(
                 'mx-auto mt-1 flex size-7 items-center justify-center rounded-full text-sm font-semibold',
                 isSameDay(day, today)
-                  ? 'bg-accent text-white'
+                  ? 'bg-primary text-white'
                   : 'text-slate-900',
               )}
             >

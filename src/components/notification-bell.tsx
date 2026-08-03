@@ -50,7 +50,7 @@ export function NotificationBell({
           ? `Notifications, ${unreadCount} unread`
           : 'Notifications'
       }
-      className="relative inline-flex size-9 items-center justify-center rounded-lg text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+      className="relative inline-flex size-9 items-center justify-center rounded-lg text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
       href="/notifications"
     >
       <Bell aria-hidden="true" className="size-[18px]" />

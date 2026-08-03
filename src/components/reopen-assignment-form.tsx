@@ -6,6 +6,7 @@ import { useActionState, useEffect, useState } from 'react';
 import type { ActionResult } from '@/lib/result';
 import { reopenAssignment } from '@/modules/assignments/actions';
 import { Button } from '@/components/ui/button';
+import { Textarea } from '@/components/ui/textarea';
 
 async function submitReopen(
   _previousState: ActionResult<{ assignmentId: string }> | null,
@@ -39,7 +40,7 @@ export function ReopenAssignmentForm({
   if (!open) {
     return (
       <button
-        className="text-sm font-semibold text-accent-hover underline underline-offset-2"
+        className="text-sm font-semibold text-primary underline underline-offset-2"
         onClick={() => setOpen(true)}
         type="button"
       >
@@ -51,8 +52,7 @@ export function ReopenAssignmentForm({
   return (
     <form action={formAction} className="mt-2 space-y-2">
       <input name="assignmentId" type="hidden" value={assignmentId} />
-      <textarea
-        className="w-full rounded-lg border border-slate-300 px-2.5 py-2 text-sm text-slate-950 outline-none focus:border-accent focus:ring-4 focus:ring-accent-soft"
+      <Textarea
         name="reason"
         placeholder="Reason for reopening"
         required

@@ -21,7 +21,7 @@ export default async function NotificationsPage() {
       <PageHeader
         action={
           <form action={markAllRead}>
-            <Button size="sm" type="submit" variant="secondary">
+            <Button size="sm" type="submit" variant="outline">
               Mark all read
             </Button>
           </form>
@@ -53,7 +53,7 @@ export default async function NotificationsPage() {
                     {isUnread ? (
                       <span
                         aria-hidden="true"
-                        className="size-2 rounded-full bg-accent"
+                        className="size-2 rounded-full bg-primary"
                       />
                     ) : null}
                     <p
@@ -67,7 +67,7 @@ export default async function NotificationsPage() {
                   </p>
                   {notification.task_id ? (
                     <Link
-                      className="mt-2 inline-block text-sm font-semibold text-accent-hover underline underline-offset-2"
+                      className="mt-2 inline-block text-sm font-semibold text-primary underline underline-offset-2"
                       href={`/tasks/${notification.task_id}`}
                     >
                       View task
@@ -76,7 +76,7 @@ export default async function NotificationsPage() {
                 </div>
                 {isUnread ? (
                   <form action={markRead}>
-                    <Button size="sm" type="submit" variant="secondary">
+                    <Button size="sm" type="submit" variant="outline">
                       Mark read
                     </Button>
                   </form>

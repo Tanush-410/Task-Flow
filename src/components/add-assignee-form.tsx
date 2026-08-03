@@ -7,7 +7,14 @@ import type { ActionResult } from '@/lib/result';
 import type { OrganizationMember } from '@/modules/members/queries';
 import { createAssignment } from '@/modules/assignments/actions';
 import { Button } from '@/components/ui/button';
-import { FieldError, Select } from '@/components/ui/field';
+import { FieldError } from '@/components/ui/field-error';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 async function submitAddAssignee(
   _previousState: ActionResult<{ assignmentId: string }> | null,
@@ -46,7 +53,7 @@ export function AddAssigneeForm({
 
   if (!open) {
     return (
-      <Button onClick={() => setOpen(true)} size="sm" variant="secondary">
+      <Button onClick={() => setOpen(true)} size="sm" variant="outline">
         Add assignee
       </Button>
     );
@@ -56,21 +63,17 @@ export function AddAssigneeForm({
     <form action={formAction} className="flex flex-wrap items-start gap-2">
       <input name="taskId" type="hidden" value={taskId} />
       <div>
-        <Select
-          className="h-9 py-1.5 text-sm"
-          defaultValue=""
-          disabled={pending}
-          name="assigneeId"
-          required
-        >
-          <option disabled value="">
-            Select employee
-          </option>
-          {availableEmployees.map((employee) => (
-            <option key={employee.userId} value={employee.userId}>
-              {employee.displayName}
-            </option>
-          ))}
+        <Select disabled={pending} name="assigneeId" required>
+          <SelectTrigger className="h-9 text-sm">
+            <SelectValue placeholder="Select employee" />
+          </SelectTrigger>
+          <SelectContent>
+            {availableEmployees.map((employee) => (
+              <SelectItem key={employee.userId} value={employee.userId}>
+                {employee.displayName}
+              </SelectItem>
+            ))}
+          </SelectContent>
         </Select>
         <FieldError>{error?.fields?.assigneeId?.[0]}</FieldError>
       </div>

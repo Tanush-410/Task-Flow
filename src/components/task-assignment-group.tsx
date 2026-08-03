@@ -12,11 +12,11 @@ const STATUS_LABELS: Record<string, string> = {
 
 const STATUS_BADGE_VARIANT: Record<
   string,
-  'neutral' | 'accent' | 'danger' | 'success'
+  'secondary' | 'default' | 'destructive' | 'success'
 > = {
-  not_started: 'neutral',
-  in_progress: 'accent',
-  delayed: 'danger',
+  not_started: 'secondary',
+  in_progress: 'default',
+  delayed: 'destructive',
   completed: 'success',
 };
 

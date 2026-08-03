@@ -24,7 +24,7 @@ export function AuthLogo() {
     <div className="mb-7 flex items-center gap-2.5 font-semibold tracking-[-0.02em] text-slate-950">
       <span
         aria-hidden="true"
-        className="grid size-8 place-items-center rounded-lg bg-accent text-sm text-white"
+        className="grid size-8 place-items-center rounded-lg bg-primary text-sm text-white"
       >
         T
       </span>

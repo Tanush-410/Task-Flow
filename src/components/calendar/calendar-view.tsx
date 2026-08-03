@@ -12,7 +12,7 @@ import {
 import { getCalendarEvents } from '@/modules/calendar/actions';
 import type { OrganizationMember } from '@/modules/members/queries';
 import type { CalendarTask } from '@/modules/tasks/queries';
-import { Avatar } from '@/components/ui/avatar';
+import { PersonAvatar } from '@/components/person-avatar';
 import { Button } from '@/components/ui/button';
 
 import { MonthGrid } from './month-grid';
@@ -111,7 +111,7 @@ export function CalendarView({
           <Button
             onClick={() => setCurrentDate(new Date())}
             size="sm"
-            variant="secondary"
+            variant="outline"
           >
             Today
           </Button>
@@ -150,7 +150,7 @@ export function CalendarView({
               aria-checked={viewMode === mode}
               className={`rounded-md px-3 py-1.5 text-sm font-semibold capitalize transition-colors ${
                 viewMode === mode
-                  ? 'bg-white text-accent-hover shadow-sm'
+                  ? 'bg-white text-primary shadow-sm'
                   : 'text-slate-500 hover:text-slate-800'
               }`}
               key={mode}
@@ -176,11 +176,11 @@ export function CalendarView({
                   <label className="flex items-center gap-2 text-sm text-slate-700">
                     <input
                       checked={!hiddenPeople.has(person.userId)}
-                      className="size-3.5 rounded border-slate-300 text-accent focus:ring-accent"
+                      className="size-3.5 rounded border-slate-300 text-primary focus:ring-primary"
                       onChange={() => togglePerson(person.userId)}
                       type="checkbox"
                     />
-                    <Avatar
+                    <PersonAvatar
                       displayName={person.displayName}
                       size="sm"
                       userId={person.userId}

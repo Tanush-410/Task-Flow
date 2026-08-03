@@ -9,6 +9,8 @@ import {
   updateAssignmentProgress,
 } from '@/modules/assignments/actions';
 import { Button } from '@/components/ui/button';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 
 type AssignmentStatus = 'not_started' | 'in_progress' | 'delayed' | 'completed';
 
@@ -118,13 +120,13 @@ export function AssignmentControls({
                   aria-pressed={assignment.progress === value}
                   className={
                     assignment.progress === value
-                      ? 'border-accent bg-accent text-white'
+                      ? 'border-primary bg-primary text-white'
                       : ''
                   }
                   disabled={pending}
                   size="sm"
                   type="submit"
-                  variant="secondary"
+                  variant="outline"
                 >
                   {value}%
                 </Button>
@@ -169,14 +171,8 @@ export function AssignmentControls({
         <form action={statusAction} className="space-y-2">
           <input name="assignmentId" type="hidden" value={assignment.id} />
           <input name="status" type="hidden" value="delayed" />
-          <label
-            className="text-sm font-medium text-slate-800"
-            htmlFor="reason"
-          >
-            Reason for delay
-          </label>
-          <textarea
-            className="w-full rounded-xl border border-slate-300 px-3.5 py-2.5 text-[15px] text-slate-950 outline-none focus:border-accent focus:ring-4 focus:ring-accent-soft"
+          <Label htmlFor="reason">Reason for delay</Label>
+          <Textarea
             id="reason"
             maxLength={2_000}
             name="reason"
