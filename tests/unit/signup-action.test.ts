@@ -2,14 +2,19 @@ import { AuthApiError, AuthRetryableFetchError } from '@supabase/supabase-js';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
+  createAdminSupabase: vi.fn(),
   createServerSupabase: vi.fn(),
   redirect: vi.fn(),
-  signUp: vi.fn(),
+  createUser: vi.fn(),
+  signInWithPassword: vi.fn(),
   rpc: vi.fn(),
 }));
 
 vi.mock('server-only', () => ({}));
 vi.mock('next/navigation', () => ({ redirect: mocks.redirect }));
+vi.mock('@/lib/supabase/admin', () => ({
+  createAdminSupabase: mocks.createAdminSupabase,
+}));
 vi.mock('@/lib/supabase/server', () => ({
   createServerSupabase: mocks.createServerSupabase,
 }));
@@ -45,14 +50,18 @@ function employeeSignupData(overrides: Record<string, string> = {}) {
 describe('signUp', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mocks.createAdminSupabase.mockReturnValue({
+      auth: { admin: { createUser: mocks.createUser } },
+    });
     mocks.createServerSupabase.mockResolvedValue({
-      auth: { signUp: mocks.signUp },
+      auth: { signInWithPassword: mocks.signInWithPassword },
       rpc: mocks.rpc,
     });
-    mocks.signUp.mockResolvedValue({
-      data: { session: { access_token: 'token' } },
+    mocks.createUser.mockResolvedValue({
+      data: { user: { id: 'user-1' } },
       error: null,
     });
+    mocks.signInWithPassword.mockResolvedValue({ error: null });
     mocks.rpc.mockResolvedValue({ data: 'org-1', error: null });
   });
 
@@ -66,7 +75,7 @@ describe('signUp', () => {
       ok: false,
       error: { code: 'INVALID_SIGNUP', message: 'Check the account details.' },
     });
-    expect(mocks.signUp).not.toHaveBeenCalled();
+    expect(mocks.createUser).not.toHaveBeenCalled();
   });
 
   it('returns field errors for an invalid admin payload', async () => {
@@ -82,16 +91,21 @@ describe('signUp', () => {
         fields: { email: expect.any(Array) },
       },
     });
-    expect(mocks.signUp).not.toHaveBeenCalled();
+    expect(mocks.createUser).not.toHaveBeenCalled();
   });
 
   it('registers a new organization for an admin sign up', async () => {
     await signUp(null, adminSignupData());
 
-    expect(mocks.signUp).toHaveBeenCalledWith({
+    expect(mocks.createUser).toHaveBeenCalledWith({
       email: 'asha@example.com',
       password: 'password123',
-      options: { data: { display_name: 'Asha Admin' } },
+      email_confirm: true,
+      user_metadata: { display_name: 'Asha Admin' },
+    });
+    expect(mocks.signInWithPassword).toHaveBeenCalledWith({
+      email: 'asha@example.com',
+      password: 'password123',
     });
     expect(mocks.rpc).toHaveBeenCalledWith('register_organization_admin', {
       organization_name: 'Acme Inc.',
@@ -110,12 +124,12 @@ describe('signUp', () => {
   });
 
   it('returns a safe error when the email is already registered', async () => {
-    mocks.signUp.mockResolvedValue({
-      data: { session: null },
+    mocks.createUser.mockResolvedValue({
+      data: { user: null },
       error: new AuthApiError(
         'sensitive duplicate detail',
         422,
-        'user_already_exists',
+        'email_exists',
       ),
     });
 
@@ -129,12 +143,13 @@ describe('signUp', () => {
       },
     });
     expect(JSON.stringify(result)).not.toContain('sensitive duplicate');
+    expect(mocks.signInWithPassword).not.toHaveBeenCalled();
     expect(mocks.rpc).not.toHaveBeenCalled();
   });
 
   it('returns a safe unavailable state for operational provider errors', async () => {
-    mocks.signUp.mockResolvedValue({
-      data: { session: null },
+    mocks.createUser.mockResolvedValue({
+      data: { user: null },
       error: new AuthRetryableFetchError('sensitive network detail', 0),
     });
 
@@ -148,6 +163,21 @@ describe('signUp', () => {
       },
     });
     expect(JSON.stringify(result)).not.toContain('sensitive network');
+    expect(mocks.rpc).not.toHaveBeenCalled();
+  });
+
+  it('returns a safe unavailable state when the immediate sign-in fails', async () => {
+    mocks.signInWithPassword.mockResolvedValue({
+      error: new Error('sensitive sign-in detail'),
+    });
+
+    const result = await signUp(null, adminSignupData());
+
+    expect(result).toMatchObject({
+      ok: false,
+      error: { code: 'SIGNUP_UNAVAILABLE' },
+    });
+    expect(JSON.stringify(result)).not.toContain('sensitive sign-in');
     expect(mocks.rpc).not.toHaveBeenCalled();
   });
 

@@ -13,6 +13,6 @@ export function proxy(request: NextRequest) {
 
 export const config = {
   matcher: [
-    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:avif|css|eot|gif|ico|jpe?g|js|map|png|svg|ttf|txt|webmanifest|webp|woff2?|xml)$).*)',
+    '/((?!_next/static|_next/image|_next/hmr|_next/webpack-hmr|favicon.ico|.*\\.(?:avif|css|eot|gif|ico|jpe?g|js|map|png|svg|ttf|txt|webmanifest|webp|woff2?|xml)$).*)',
   ],
 };

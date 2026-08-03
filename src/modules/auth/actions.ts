@@ -8,6 +8,7 @@ import {
 } from '@supabase/supabase-js';
 import { redirect } from 'next/navigation';
 
+import { createAdminSupabase } from '@/lib/supabase/admin';
 import { createServerSupabase } from '@/lib/supabase/server';
 import type { ActionResult } from '@/lib/result';
 import { getMembershipAccess } from '@/modules/members/queries';
@@ -209,27 +210,32 @@ export async function signUp(
     };
   }
 
-  const supabase = await createServerSupabase();
-  let signUpError: unknown;
-  let hasSession = false;
+  // Self-service signup is deliberately implemented as a privileged,
+  // server-only account creation (via the service-role admin client) rather
+  // than the public Supabase Auth signup endpoint. This keeps that public
+  // endpoint free to stay locked down, sidesteps whatever "confirm email"
+  // setting the project happens to have, and creates the account already
+  // confirmed so the user can sign in immediately in the same request.
+  let creationError: unknown;
 
   try {
-    const { data, error } = await supabase.auth.signUp({
+    const admin = createAdminSupabase();
+    const { error } = await admin.auth.admin.createUser({
       email,
       password,
-      options: { data: { display_name: displayName } },
+      email_confirm: true,
+      user_metadata: { display_name: displayName },
     });
-    signUpError = error;
-    hasSession = Boolean(data.session);
+    creationError = error;
   } catch {
     return unavailableSignup(traceId);
   }
 
   if (
-    isAuthApiError(signUpError) &&
-    (signUpError.status === 422 ||
-      (signUpError.code !== undefined &&
-        EMAIL_IN_USE_CODES.has(signUpError.code)))
+    isAuthApiError(creationError) &&
+    (creationError.status === 422 ||
+      (creationError.code !== undefined &&
+        EMAIL_IN_USE_CODES.has(creationError.code)))
   ) {
     return {
       ok: false,
@@ -237,11 +243,28 @@ export async function signUp(
     };
   }
 
-  if (isOperationalAuthError(signUpError)) {
+  if (isOperationalAuthError(creationError)) {
     return unavailableSignup(traceId);
   }
 
-  if (signUpError || !hasSession) {
+  if (creationError) {
+    return unavailableSignup(traceId);
+  }
+
+  const supabase = await createServerSupabase();
+  let signInError: unknown;
+
+  try {
+    const { error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+    signInError = error;
+  } catch {
+    return unavailableSignup(traceId);
+  }
+
+  if (signInError) {
     return unavailableSignup(traceId);
   }
 

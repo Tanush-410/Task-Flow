@@ -13,6 +13,8 @@ describe('shouldRefreshSession', () => {
   it.each([
     '/_next/static/chunks/app.js',
     '/_next/image',
+    '/_next/hmr',
+    '/_next/webpack-hmr',
     '/favicon.ico',
     '/logo.svg',
     '/images/avatar.png',
