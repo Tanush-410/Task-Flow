@@ -20,5 +20,5 @@ export const signUpEmployeeSchema = z.object({
   displayName: displayNameSchema,
   email: emailSchema,
   password: passwordSchema,
-  organizationId: z.string().uuid(),
+  organizationId: z.string().uuid('Select an organization to join.'),
 });

@@ -1,14 +1,17 @@
 'use client';
 
-import { useActionState } from 'react';
+import { useActionState, useState } from 'react';
 
 import { login } from '@/modules/auth/actions';
 
 const fieldClassName =
   'mt-2 h-12 w-full rounded-xl border border-slate-300 bg-white px-3.5 text-[15px] text-slate-950 outline-none transition-colors placeholder:text-slate-400 hover:border-slate-400 focus:border-slate-950 focus:ring-4 focus:ring-slate-950/10 disabled:cursor-not-allowed disabled:bg-slate-100';
 
+type Portal = 'manager' | 'employee';
+
 export function LoginForm({ nextPath }: { nextPath?: string }) {
   const [state, formAction, pending] = useActionState(login, null);
+  const [portal, setPortal] = useState<Portal>('manager');
   const error = state && !state.ok ? state.error : null;
   const emailError = error?.fields?.email?.[0];
   const passwordError = error?.fields?.password?.[0];
@@ -16,6 +19,42 @@ export function LoginForm({ nextPath }: { nextPath?: string }) {
   return (
     <form action={formAction} aria-busy={pending} className="space-y-5">
       {nextPath ? <input name="next" type="hidden" value={nextPath} /> : null}
+
+      <div
+        aria-label="Sign in as"
+        className="grid grid-cols-2 gap-1.5 rounded-xl bg-slate-100 p-1.5"
+        role="radiogroup"
+      >
+        <button
+          aria-checked={portal === 'manager'}
+          className={`h-10 rounded-lg text-sm font-semibold transition-colors ${
+            portal === 'manager'
+              ? 'bg-white text-slate-950 shadow-sm'
+              : 'text-slate-500 hover:text-slate-800'
+          }`}
+          disabled={pending}
+          onClick={() => setPortal('manager')}
+          role="radio"
+          type="button"
+        >
+          Admin / Manager
+        </button>
+        <button
+          aria-checked={portal === 'employee'}
+          className={`h-10 rounded-lg text-sm font-semibold transition-colors ${
+            portal === 'employee'
+              ? 'bg-white text-slate-950 shadow-sm'
+              : 'text-slate-500 hover:text-slate-800'
+          }`}
+          disabled={pending}
+          onClick={() => setPortal('employee')}
+          role="radio"
+          type="button"
+        >
+          Employee / Intern
+        </button>
+      </div>
+
       <div>
         <label className="text-sm font-medium text-slate-800" htmlFor="email">
           Email

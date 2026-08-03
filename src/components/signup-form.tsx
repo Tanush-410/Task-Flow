@@ -160,12 +160,15 @@ export function SignupForm({
           </label>
           <select
             className={fieldClassName}
+            defaultValue={organizations[0]?.id ?? ''}
             disabled={pending || organizations.length === 0}
             id="organizationId"
             name="organizationId"
             required
           >
-            <option value="">Select an organization</option>
+            <option disabled hidden value="">
+              Select an organization
+            </option>
             {organizations.map((organization) => (
               <option key={organization.id} value={organization.id}>
                 {organization.name}
