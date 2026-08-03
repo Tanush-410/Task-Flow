@@ -1,8 +1,5 @@
 'use client';
 
-import { Plus } from 'lucide-react';
-import Link from 'next/link';
-
 import { addDays, isSameDay, startOfMonthGrid } from '@/lib/calendar-dates';
 import { cn } from '@/lib/cn';
 import type { CalendarTask } from '@/modules/tasks/queries';
@@ -12,25 +9,18 @@ import { EventChip } from './event-chip';
 const WEEKDAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const MAX_VISIBLE_EVENTS = 3;
 
-function createTaskHref(day: Date): string {
-  const dueAt = new Date(
-    day.getFullYear(),
-    day.getMonth(),
-    day.getDate(),
-    9,
-    0,
-  );
-  return `/tasks/new?date=${encodeURIComponent(dueAt.toISOString())}`;
-}
-
 export function MonthGrid({
   month,
   events,
+  canCreate,
   onSelectDay,
+  onCreateAt,
 }: {
   month: Date;
   events: CalendarTask[];
+  canCreate: boolean;
   onSelectDay: (day: Date) => void;
+  onCreateAt: (date: Date) => void;
 }) {
   const gridStart = startOfMonthGrid(month);
   const today = new Date();
@@ -50,7 +40,7 @@ export function MonthGrid({
 
   return (
     <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
-      <div className="grid grid-cols-7 border-b border-slate-200 bg-slate-50">
+      <div className="grid grid-cols-7 border-b border-slate-200 bg-slate-50/80">
         {WEEKDAY_LABELS.map((label) => (
           <div
             className="px-2 py-2 text-center text-xs font-semibold text-slate-500 uppercase"
@@ -71,35 +61,47 @@ export function MonthGrid({
           return (
             <div
               className={cn(
-                'group relative min-h-[112px] border-r border-b border-slate-100 p-1.5',
-                !isCurrentMonth && 'bg-slate-50/60',
+                'group relative min-h-[112px] border-r border-b border-slate-100 p-1.5 transition-colors',
+                !isCurrentMonth && 'bg-slate-50/50',
               )}
               key={day.toISOString()}
             >
-              <div className="flex items-center justify-between">
+              {canCreate ? (
+                <button
+                  aria-label={`Create task on ${day.toLocaleDateString()}`}
+                  className="absolute inset-0 z-0 rounded-sm transition-colors hover:bg-accent-soft/40 focus-visible:bg-accent-soft/40 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent"
+                  onClick={() =>
+                    onCreateAt(
+                      new Date(
+                        day.getFullYear(),
+                        day.getMonth(),
+                        day.getDate(),
+                        9,
+                        0,
+                      ),
+                    )
+                  }
+                  type="button"
+                />
+              ) : null}
+
+              <div className="relative z-10 flex items-center justify-between">
                 <button
                   className={cn(
                     'flex size-6 items-center justify-center rounded-full text-xs font-semibold transition-colors',
                     isToday
                       ? 'bg-accent text-white'
                       : isCurrentMonth
-                        ? 'text-slate-700 hover:bg-slate-100'
-                        : 'text-slate-400 hover:bg-slate-100',
+                        ? 'text-slate-700 hover:bg-slate-200/70'
+                        : 'text-slate-400 hover:bg-slate-200/70',
                   )}
                   onClick={() => onSelectDay(day)}
                   type="button"
                 >
                   {day.getDate()}
                 </button>
-                <Link
-                  aria-label={`Create task on ${day.toLocaleDateString()}`}
-                  className="flex size-6 items-center justify-center rounded-full text-slate-300 opacity-0 transition-opacity hover:bg-slate-100 hover:text-accent-hover group-hover:opacity-100"
-                  href={createTaskHref(day)}
-                >
-                  <Plus aria-hidden className="size-3.5" />
-                </Link>
               </div>
-              <div className="mt-1 space-y-1">
+              <div className="relative z-10 mt-1 space-y-1">
                 {visible.map((event) => (
                   <EventChip event={event} key={event.task.id} />
                 ))}

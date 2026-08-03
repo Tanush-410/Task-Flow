@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import { useActionState, useEffect } from 'react';
 
 import type { ActionResult } from '@/lib/result';
+import { toDateTimeLocalValue } from '@/lib/calendar-dates';
 import type { OrganizationMember } from '@/modules/members/queries';
 import { createAndAssignTask } from '@/modules/tasks/actions';
 import { Button } from '@/components/ui/button';
@@ -38,16 +39,6 @@ async function submitTask(
     acknowledgementRequired: formData.get('acknowledgementRequired') === 'on',
     assigneeIds: formData.getAll('assigneeIds'),
   });
-}
-
-/** Converts an ISO/date-ish string to the value a `datetime-local` input needs. */
-function toDateTimeLocalValue(value: string): string {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) {
-    return '';
-  }
-  const pad = (n: number) => String(n).padStart(2, '0');
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
 }
 
 export function TaskForm({

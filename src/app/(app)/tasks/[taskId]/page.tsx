@@ -1,13 +1,19 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 
+import { AddAssigneeForm } from '@/components/add-assignee-form';
 import { AssignmentControls } from '@/components/assignment-controls';
+import { RemoveAssignmentButton } from '@/components/remove-assignment-button';
 import { ReopenAssignmentForm } from '@/components/reopen-assignment-form';
 import { Avatar } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { listTaskActivity } from '@/modules/activity/queries';
-import { listDisplayNames, requireMembership } from '@/modules/members/queries';
+import {
+  listDisplayNames,
+  listOrganizationMembers,
+  requireMembership,
+} from '@/modules/members/queries';
 import { getTaskById, listTaskAssignments } from '@/modules/tasks/queries';
 
 const PRIORITY_LABELS: Record<string, string> = {
@@ -58,6 +64,16 @@ export default async function TaskDetailPage({
   const myAssignment = assignmentRows.find(
     (row) => row.assignee_id === membership.userId,
   );
+
+  const availableEmployees =
+    membership.role === 'admin'
+      ? (await listOrganizationMembers()).filter(
+          (member) =>
+            member.role === 'employee' &&
+            member.status === 'active' &&
+            !assignmentRows.some((row) => row.assignee_id === member.userId),
+        )
+      : [];
 
   const displayNames = await listDisplayNames([
     ...assignmentRows.map((row) => row.assignee_id),
@@ -139,11 +155,20 @@ export default async function TaskDetailPage({
 
       {membership.role === 'admin' ? (
         <Card>
-          <h2 className="text-lg font-semibold tracking-[-0.02em] text-slate-950">
-            Assignees (
-            {assignmentRows.filter((row) => row.status === 'completed').length}{' '}
-            of {assignmentRows.length} completed)
-          </h2>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <h2 className="text-lg font-semibold tracking-[-0.02em] text-slate-950">
+              Assignees (
+              {
+                assignmentRows.filter((row) => row.status === 'completed')
+                  .length
+              }{' '}
+              of {assignmentRows.length} completed)
+            </h2>
+            <AddAssigneeForm
+              availableEmployees={availableEmployees}
+              taskId={task.id}
+            />
+          </div>
           {assignmentRows.length === 0 ? (
             <p className="mt-3 text-sm text-slate-600">
               No one is assigned to this task yet.
@@ -181,9 +206,13 @@ export default async function TaskDetailPage({
                           ) : null}
                         </div>
                       </div>
-                      {row.status === 'completed' ? (
-                        <ReopenAssignmentForm assignmentId={row.id} />
-                      ) : null}
+                      <div className="flex items-center gap-3">
+                        {row.status === 'completed' ? (
+                          <ReopenAssignmentForm assignmentId={row.id} />
+                        ) : (
+                          <RemoveAssignmentButton assignmentId={row.id} />
+                        )}
+                      </div>
                     </div>
                   </li>
                 );

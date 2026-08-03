@@ -1,10 +1,12 @@
 import { z } from 'zod';
 
+import { uuidSchema } from '@/lib/schemas';
+
 const taskPrioritySchema = z.enum(['low', 'medium', 'high', 'urgent']);
 const taskStatusSchema = z.enum(['draft', 'published', 'archived']);
 
 export const taskCreateSchema = z.object({
-  organizationId: z.string().uuid(),
+  organizationId: uuidSchema,
   title: z.string().trim().min(1).max(140),
   description: z.string().trim().max(10_000).default(''),
   priority: taskPrioritySchema.default('medium'),
@@ -14,7 +16,7 @@ export const taskCreateSchema = z.object({
 });
 
 export const taskUpdateSchema = z.object({
-  taskId: z.string().uuid(),
+  taskId: uuidSchema,
   title: z.string().trim().min(1).max(140).optional(),
   description: z.string().trim().max(10_000).optional(),
   priority: taskPrioritySchema.optional(),
@@ -25,12 +27,12 @@ export const taskUpdateSchema = z.object({
 });
 
 export const taskPublishSchema = z.object({
-  taskId: z.string().uuid(),
+  taskId: uuidSchema,
   publishedAt: z.string().datetime().optional(),
 });
 
 export const taskArchiveSchema = z.object({
-  taskId: z.string().uuid(),
+  taskId: uuidSchema,
   archivedAt: z.string().datetime().optional(),
 });
 
@@ -41,7 +43,7 @@ export const taskCreateWithAssigneesSchema = z.object({
   dueAt: z.string().datetime().nullish(),
   startAt: z.string().datetime().nullish(),
   acknowledgementRequired: z.boolean().default(false),
-  assigneeIds: z.array(z.string().uuid()).min(1).max(50),
+  assigneeIds: z.array(uuidSchema).min(1).max(50),
 });
 
 export type TaskPriority = z.infer<typeof taskPrioritySchema>;

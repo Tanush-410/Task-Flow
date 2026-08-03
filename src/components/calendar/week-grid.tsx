@@ -35,24 +35,18 @@ function eventTimes(event: CalendarTask): { start: Date; end: Date } | null {
   };
 }
 
-function createTaskHref(day: Date, hour: number): string {
-  const dueAt = new Date(
-    day.getFullYear(),
-    day.getMonth(),
-    day.getDate(),
-    hour,
-  );
-  return `/tasks/new?date=${encodeURIComponent(dueAt.toISOString())}`;
-}
-
 export function WeekGrid({
   startDate,
   dayCount,
   events,
+  canCreate,
+  onCreateAt,
 }: {
   startDate: Date;
   dayCount: 1 | 7;
   events: CalendarTask[];
+  canCreate: boolean;
+  onCreateAt: (date: Date) => void;
 }) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const days = Array.from({ length: dayCount }, (_, index) =>
@@ -123,14 +117,33 @@ export function WeekGrid({
               key={day.toISOString()}
               style={{ height: HOUR_HEIGHT * 24 }}
             >
-              {Array.from({ length: 24 }, (_, hour) => (
-                <Link
-                  className="absolute inset-x-0 border-t border-slate-100 hover:bg-slate-50"
-                  href={createTaskHref(day, hour)}
-                  key={hour}
-                  style={{ top: hour * HOUR_HEIGHT, height: HOUR_HEIGHT }}
-                />
-              ))}
+              {Array.from({ length: 24 }, (_, hour) =>
+                canCreate ? (
+                  <button
+                    aria-label={`Create task at ${hour}:00 on ${day.toLocaleDateString()}`}
+                    className="absolute inset-x-0 border-t border-slate-100 text-left hover:bg-slate-50"
+                    key={hour}
+                    onClick={() =>
+                      onCreateAt(
+                        new Date(
+                          day.getFullYear(),
+                          day.getMonth(),
+                          day.getDate(),
+                          hour,
+                        ),
+                      )
+                    }
+                    style={{ top: hour * HOUR_HEIGHT, height: HOUR_HEIGHT }}
+                    type="button"
+                  />
+                ) : (
+                  <div
+                    className="absolute inset-x-0 border-t border-slate-100"
+                    key={hour}
+                    style={{ top: hour * HOUR_HEIGHT, height: HOUR_HEIGHT }}
+                  />
+                ),
+              )}
 
               {eventsByDay[dayIndex].map((event) => {
                 const times = eventTimes(event);

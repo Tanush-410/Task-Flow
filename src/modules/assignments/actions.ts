@@ -15,6 +15,7 @@ import {
   type AssignmentStatus,
   assignmentCreateSchema,
   assignmentProgressSchema,
+  assignmentRemoveSchema,
   assignmentReopenSchema,
   assignmentStatusChangeSchema,
 } from './schemas';
@@ -63,12 +64,95 @@ export async function createAssignment(
       .single();
 
     if (error || !data) {
+      console.error('createAssignment insert failed', traceId, error);
       return { ok: false, error: { ...ASSIGNMENT_CREATE_ERROR, traceId } };
     }
 
+    const { data: task } = await supabase
+      .from('tasks')
+      .select('title')
+      .eq('id', parsed.data.taskId)
+      .maybeSingle();
+
+    await queueTaskNotifications([
+      {
+        organizationId: membership.organizationId,
+        recipientId: parsed.data.assigneeId,
+        taskId: parsed.data.taskId,
+        assignmentId: data.id,
+        notificationType: 'assignment_created',
+        title: 'New task assigned',
+        body: `You have been assigned a task: ${task?.title ?? 'a task'}`,
+      },
+    ]);
+
     return { ok: true, data: { assignmentId: data.id } };
-  } catch {
+  } catch (caught) {
+    console.error('createAssignment threw', traceId, caught);
     return { ok: false, error: { ...ASSIGNMENT_CREATE_ERROR, traceId } };
+  }
+}
+
+export async function removeAssignment(
+  input: unknown,
+): Promise<ActionResult<null>> {
+  const traceId = randomUUID();
+  const parsed = assignmentRemoveSchema.safeParse(input);
+
+  if (!parsed.success) {
+    return {
+      ok: false,
+      error: {
+        code: 'INVALID_ASSIGNMENT',
+        message: 'Check the assignment details.',
+        traceId,
+        fields: parsed.error.flatten().fieldErrors,
+      },
+    };
+  }
+
+  try {
+    const membership = await requireAdmin();
+    const supabase = await createServerSupabase();
+    const { data: assignment } = await supabase
+      .from('task_assignments')
+      .select('task_id,assignee_id')
+      .eq('id', parsed.data.assignmentId)
+      .maybeSingle();
+
+    const { error } = await supabase
+      .from('task_assignments')
+      .delete()
+      .eq('id', parsed.data.assignmentId);
+
+    if (error) {
+      console.error('removeAssignment delete failed', traceId, error);
+      return { ok: false, error: { ...ASSIGNMENT_UPDATE_ERROR, traceId } };
+    }
+
+    if (assignment) {
+      const { data: task } = await supabase
+        .from('tasks')
+        .select('title')
+        .eq('id', assignment.task_id)
+        .maybeSingle();
+
+      await queueTaskNotifications([
+        {
+          organizationId: membership.organizationId,
+          recipientId: assignment.assignee_id,
+          taskId: assignment.task_id,
+          notificationType: 'assignment_status_changed',
+          title: 'Removed from task',
+          body: `An admin removed you from: ${task?.title ?? 'a task'}`,
+        },
+      ]);
+    }
+
+    return { ok: true, data: null };
+  } catch (caught) {
+    console.error('removeAssignment threw', traceId, caught);
+    return { ok: false, error: { ...ASSIGNMENT_UPDATE_ERROR, traceId } };
   }
 }
 

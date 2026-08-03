@@ -52,6 +52,16 @@ export function getRangeForView(
   return { start, end: addDays(start, 1) };
 }
 
+/** Converts a Date (or ISO/date-ish string) to the value a `datetime-local` input needs. */
+export function toDateTimeLocalValue(value: string | Date): string {
+  const date = typeof value === 'string' ? new Date(value) : value;
+  if (Number.isNaN(date.getTime())) {
+    return '';
+  }
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
+
 export function navigateDate(
   date: Date,
   viewMode: ViewMode,

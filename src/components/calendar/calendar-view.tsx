@@ -1,7 +1,7 @@
 'use client';
 
 import { ChevronLeft, ChevronRight } from 'lucide-react';
-import { useEffect, useRef, useState, useTransition } from 'react';
+import { useCallback, useEffect, useRef, useState, useTransition } from 'react';
 
 import {
   getRangeForView,
@@ -16,6 +16,7 @@ import { Avatar } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 
 import { MonthGrid } from './month-grid';
+import { QuickCreatePopover } from './quick-create-popover';
 import { WeekGrid } from './week-grid';
 
 const VIEW_MODES: ViewMode[] = ['month', 'week', 'day'];
@@ -35,11 +36,23 @@ export function CalendarView({
   const [viewMode, setViewMode] = useState<ViewMode>('month');
   const [events, setEvents] = useState(initialEvents);
   const [hiddenPeople, setHiddenPeople] = useState<Set<string>>(new Set());
+  const [quickCreateDate, setQuickCreateDate] = useState<Date | null>(null);
   const [isPending, startTransition] = useTransition();
   const isFirstRender = useRef(true);
 
   const range = getRangeForView(currentDate, viewMode);
   const rangeKey = `${viewMode}-${range.start.getTime()}-${range.end.getTime()}`;
+
+  const refetchEvents = useCallback(() => {
+    startTransition(() => {
+      getCalendarEvents(
+        range.start.toISOString(),
+        range.end.toISOString(),
+      ).then(setEvents);
+    });
+    // rangeKey captures the same range.start/range.end this closure reads.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rangeKey]);
 
   useEffect(() => {
     if (isFirstRender.current) {
@@ -47,12 +60,7 @@ export function CalendarView({
       return;
     }
 
-    startTransition(() => {
-      getCalendarEvents(
-        range.start.toISOString(),
-        range.end.toISOString(),
-      ).then(setEvents);
-    });
+    refetchEvents();
     // Re-fetch only when the visible range actually changes.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rangeKey]);
@@ -190,8 +198,10 @@ export function CalendarView({
         >
           {viewMode === 'month' ? (
             <MonthGrid
+              canCreate={role === 'admin'}
               events={visibleEvents}
               month={currentDate}
+              onCreateAt={setQuickCreateDate}
               onSelectDay={(day) => {
                 setCurrentDate(day);
                 setViewMode('day');
@@ -199,8 +209,10 @@ export function CalendarView({
             />
           ) : (
             <WeekGrid
+              canCreate={role === 'admin'}
               dayCount={viewMode === 'week' ? 7 : 1}
               events={visibleEvents}
+              onCreateAt={setQuickCreateDate}
               startDate={
                 viewMode === 'week' ? startOfWeek(currentDate) : currentDate
               }
@@ -208,6 +220,18 @@ export function CalendarView({
           )}
         </div>
       </div>
+
+      {quickCreateDate ? (
+        <QuickCreatePopover
+          defaultDate={quickCreateDate}
+          employees={people.filter(
+            (person) =>
+              person.role === 'employee' && person.status === 'active',
+          )}
+          onClose={() => setQuickCreateDate(null)}
+          onCreated={refetchEvents}
+        />
+      ) : null}
     </div>
   );
 }
