@@ -61,10 +61,10 @@
      Pure-black shadows still read as depth against the warm charcoal
      surfaces since card/popover are lighter than the page background. */
   --shadow-card:
-    0 1px 0 rgba(255, 255, 255, 0.03) inset,
+    0 1px 0 rgba(255, 255, 255, 0.06) inset,
     0 18px 50px -32px rgba(0, 0, 0, 0.7);
   --shadow-card-lg:
-    0 1px 0 rgba(255, 255, 255, 0.03) inset,
+    0 1px 0 rgba(255, 255, 255, 0.09) inset,
     0 24px 60px -28px rgba(0, 0, 0, 0.75);
   --shadow-popover: 0 24px 60px -20px rgba(0, 0, 0, 0.8);
   --font-heading: var(--font-sans);

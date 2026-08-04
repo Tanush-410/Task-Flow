@@ -1,7 +1,9 @@
+import { CalendarX, CheckCircle2, Clock, TrendingUp } from 'lucide-react';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 
 import { PersonAvatar } from '@/components/person-avatar';
+import { StatTile } from '@/components/stat-tile';
 import { TaskBreakdownChart } from '@/components/task-breakdown-chart';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { requireAdmin } from '@/modules/members/queries';
@@ -57,38 +59,29 @@ export default async function EmployeeDetailPage({
       </div>
 
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-        <Card className="p-5 sm:p-5">
-          <p className="text-sm font-medium text-muted-foreground">Completed</p>
-          <p className="mt-2 text-3xl font-semibold tracking-[-0.03em] text-foreground">
-            {completedCount}
-          </p>
-        </Card>
-        <Card className="p-5 sm:p-5">
-          <p className="text-sm font-medium text-muted-foreground">Missed</p>
-          <p
-            className={`mt-2 text-3xl font-semibold tracking-[-0.03em] ${
-              breakdown.missedCount > 0 ? 'text-red-400' : 'text-foreground'
-            }`}
-          >
-            {breakdown.missedCount}
-          </p>
-        </Card>
-        <Card className="p-5 sm:p-5">
-          <p className="text-sm font-medium text-muted-foreground">
-            In progress
-          </p>
-          <p className="mt-2 text-3xl font-semibold tracking-[-0.03em] text-foreground">
-            {breakdown.activeCount}
-          </p>
-        </Card>
-        <Card className="p-5 sm:p-5">
-          <p className="text-sm font-medium text-muted-foreground">
-            On-time rate
-          </p>
-          <p className="mt-2 text-3xl font-semibold tracking-[-0.03em] text-foreground">
-            {onTimePercentage === null ? '—' : `${onTimePercentage}%`}
-          </p>
-        </Card>
+        <StatTile
+          icon={CheckCircle2}
+          label="Completed"
+          tone="success"
+          value={completedCount}
+        />
+        <StatTile
+          icon={CalendarX}
+          label="Missed"
+          tone="danger"
+          value={breakdown.missedCount}
+        />
+        <StatTile
+          icon={Clock}
+          label="In progress"
+          value={breakdown.activeCount}
+        />
+        <StatTile
+          icon={TrendingUp}
+          label="On-time rate"
+          tone="success"
+          value={onTimePercentage === null ? '—' : `${onTimePercentage}%`}
+        />
       </div>
 
       <Card>

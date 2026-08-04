@@ -1,6 +1,13 @@
-import { ListChecks } from 'lucide-react';
+import {
+  AlertTriangle,
+  CheckCircle2,
+  Hourglass,
+  ListChecks,
+} from 'lucide-react';
 import Link from 'next/link';
+import type { ComponentType } from 'react';
 
+import { StatTile } from '@/components/stat-tile';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { EmptyState } from '@/components/ui/empty-state';
@@ -21,25 +28,21 @@ function MetricCard({
   label,
   value,
   href,
+  icon,
   tone = 'default',
 }: {
   label: string;
   value: number;
   href: string;
-  tone?: 'default' | 'danger';
+  icon: ComponentType<{ 'aria-hidden'?: boolean; className?: string }>;
+  tone?: 'default' | 'danger' | 'success';
 }) {
   return (
-    <Link href={href}>
-      <Card className="p-5 transition-colors hover:border-border sm:p-5">
-        <p className="text-sm font-medium text-muted-foreground">{label}</p>
-        <p
-          className={`mt-2 text-3xl font-semibold tracking-[-0.03em] ${
-            tone === 'danger' && value > 0 ? 'text-red-400' : 'text-foreground'
-          }`}
-        >
-          {value}
-        </p>
-      </Card>
+    <Link
+      className="block transition-transform hover:-translate-y-0.5"
+      href={href}
+    >
+      <StatTile icon={icon} label={label} tone={tone} value={value} />
     </Link>
   );
 }
@@ -80,23 +83,28 @@ export default async function DashboardPage() {
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
         <MetricCard
           href="/tasks"
+          icon={ListChecks}
           label="Active assignments"
           value={summary.activeAssignments}
         />
         <MetricCard
           href="/tasks?status=published"
+          icon={AlertTriangle}
           label="Overdue"
           tone="danger"
           value={summary.overdueCount}
         />
         <MetricCard
           href="/tasks?status=published"
+          icon={Hourglass}
           label="Delayed"
           value={summary.delayedCount}
         />
         <MetricCard
           href="/reports"
+          icon={CheckCircle2}
           label="Completed this month"
+          tone="success"
           value={summary.completedThisMonth}
         />
       </div>

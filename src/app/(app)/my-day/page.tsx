@@ -1,7 +1,8 @@
+import { AlertTriangle, CheckCircle2, ListChecks } from 'lucide-react';
 import Link from 'next/link';
 
+import { StatTile } from '@/components/stat-tile';
 import { TaskAssignmentGroup } from '@/components/task-assignment-group';
-import { Card } from '@/components/ui/card';
 import { PageHeader } from '@/components/ui/page-header';
 import {
   listMyAssignmentsWithTasks,
@@ -14,29 +15,6 @@ function isSameDay(a: Date, b: Date): boolean {
     a.getFullYear() === b.getFullYear() &&
     a.getMonth() === b.getMonth() &&
     a.getDate() === b.getDate()
-  );
-}
-
-function StatTile({
-  label,
-  value,
-  tone = 'default',
-}: {
-  label: string;
-  value: number;
-  tone?: 'default' | 'danger';
-}) {
-  return (
-    <Card className="p-5 sm:p-5">
-      <p className="text-sm font-medium text-muted-foreground">{label}</p>
-      <p
-        className={`mt-2 text-3xl font-semibold tracking-[-0.03em] ${
-          tone === 'danger' && value > 0 ? 'text-red-400' : 'text-foreground'
-        }`}
-      >
-        {value}
-      </p>
-    </Card>
   );
 }
 
@@ -96,9 +74,19 @@ export default async function MyDayPage() {
 
       {rows.length > 0 ? (
         <div className="grid grid-cols-3 gap-4">
-          <StatTile label="Active" value={activeCount} />
-          <StatTile label="Overdue" tone="danger" value={overdue.length} />
-          <StatTile label="Completed this week" value={completedThisWeek} />
+          <StatTile icon={ListChecks} label="Active" value={activeCount} />
+          <StatTile
+            icon={AlertTriangle}
+            label="Overdue"
+            tone="danger"
+            value={overdue.length}
+          />
+          <StatTile
+            icon={CheckCircle2}
+            label="Completed this week"
+            tone="success"
+            value={completedThisWeek}
+          />
         </div>
       ) : null}
 

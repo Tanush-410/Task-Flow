@@ -1,3 +1,5 @@
+import { ChartNoAxesCombined, Trophy } from 'lucide-react';
+
 import { ExportReportButton } from '@/components/export-report-button';
 import { ProductivityChart } from '@/components/productivity-chart';
 import { ReportChart } from '@/components/report-chart';
@@ -31,7 +33,13 @@ export default async function ReportsPage() {
       {hasCompletions ? (
         <Card>
           <CardHeader>
-            <CardTitle>Completed tasks by employee</CardTitle>
+            <CardTitle className="flex items-center gap-2">
+              <ChartNoAxesCombined
+                aria-hidden
+                className="size-4 text-primary"
+              />
+              Completed tasks by employee
+            </CardTitle>
           </CardHeader>
           <CardContent>
             <ReportChart stats={stats} />
@@ -42,7 +50,10 @@ export default async function ReportsPage() {
       {hasProductivityData ? (
         <Card>
           <CardHeader>
-            <CardTitle>Most productive</CardTitle>
+            <CardTitle className="flex items-center gap-2">
+              <Trophy aria-hidden className="size-4 text-primary" />
+              Most productive
+            </CardTitle>
           </CardHeader>
           <CardContent>
             <ProductivityChart stats={productivity} />
