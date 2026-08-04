@@ -20,6 +20,11 @@ const CONNECTION_RESPONSE_ERROR = {
   code: 'CONNECTION_RESPONSE_FAILED',
   message: 'This request could not be updated.',
 } as const;
+const LAST_ADMIN_ERROR = {
+  code: 'LAST_ADMIN_CANNOT_SWITCH',
+  message:
+    "You're the only admin of your current organization, so accepting would leave it with no one to manage it. Promote another admin there first, or decline this request.",
+} as const;
 
 export async function requestConnection(
   input: unknown,
@@ -88,14 +93,20 @@ export async function respondToConnectionRequest(
     const responded = data?.[0];
 
     if (error || !responded) {
+      if (error?.message === 'LAST_ADMIN_CANNOT_SWITCH') {
+        return { ok: false, error: { ...LAST_ADMIN_ERROR, traceId } };
+      }
       return { ok: false, error: { ...CONNECTION_RESPONSE_ERROR, traceId } };
     }
 
     return {
       ok: true,
       data:
-        responded.organization_id && responded.role
-          ? { organizationId: responded.organization_id, role: responded.role }
+        responded.out_organization_id && responded.out_role
+          ? {
+              organizationId: responded.out_organization_id,
+              role: responded.out_role,
+            }
           : null,
     };
   } catch {

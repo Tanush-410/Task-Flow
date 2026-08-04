@@ -672,8 +672,8 @@ export type Database = {
       accept_invitation: {
         Args: { invitation_token_hash: string };
         Returns: {
-          organization_id: string;
-          role: Database['public']['Enums']['membership_role'];
+          out_organization_id: string;
+          out_role: Database['public']['Enums']['membership_role'];
         }[];
       };
       bootstrap_organization: {
@@ -746,8 +746,8 @@ export type Database = {
       respond_to_connection_request: {
         Args: { request_id: string; accept: boolean };
         Returns: {
-          organization_id: string | null;
-          role: Database['public']['Enums']['membership_role'] | null;
+          out_organization_id: string | null;
+          out_role: Database['public']['Enums']['membership_role'] | null;
         }[];
       };
       stage_invitation: {

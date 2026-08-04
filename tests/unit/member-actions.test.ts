@@ -222,7 +222,7 @@ describe('acceptInvitation', () => {
   it('hashes the token before invoking the acceptance RPC', async () => {
     const token = 'a'.repeat(43);
     mocks.rpc.mockResolvedValue({
-      data: [{ organization_id: 'org-123', role: 'employee' }],
+      data: [{ out_organization_id: 'org-123', out_role: 'employee' }],
       error: null,
     });
     const result = await acceptInvitation({ token });

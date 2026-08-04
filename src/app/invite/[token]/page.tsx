@@ -22,6 +22,12 @@ export default async function InvitationPage({
   }
 
   const { error } = await searchParams;
+  const errorMessage =
+    error === 'last_admin'
+      ? "You're the only admin of your current organization, so accepting would leave it with no one to manage it. Promote another admin there first, or ignore this invitation."
+      : error
+        ? 'This invitation could not be accepted. It may be invalid, expired, already used, or intended for another email address.'
+        : null;
   let userId: string | undefined;
 
   try {
@@ -37,7 +43,11 @@ export default async function InvitationPage({
 
     const result = await acceptInvitation({ token });
     if (!result.ok) {
-      return redirect(`${invitationPath}?error=invalid`);
+      const code =
+        result.error.code === 'LAST_ADMIN_CANNOT_SWITCH'
+          ? 'last_admin'
+          : 'invalid';
+      return redirect(`${invitationPath}?error=${code}`);
     }
 
     return redirect(roleLandingPath(result.data.role));
@@ -54,13 +64,12 @@ export default async function InvitationPage({
         then accept it to join the organization.
       </p>
 
-      {error ? (
+      {errorMessage ? (
         <p
           className="mt-5 rounded-xl border border-red-500/25 bg-red-500/10 px-4 py-3 text-sm text-red-300"
           role="alert"
         >
-          This invitation could not be accepted. It may be invalid, expired,
-          already used, or intended for another email address.
+          {errorMessage}
         </p>
       ) : null}
 

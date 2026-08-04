@@ -20,6 +20,11 @@ const INVITATION_ACCEPT_ERROR = {
   code: 'INVITATION_ACCEPT_FAILED',
   message: 'This invitation could not be accepted.',
 } as const;
+const LAST_ADMIN_ERROR = {
+  code: 'LAST_ADMIN_CANNOT_SWITCH',
+  message:
+    "You're the only admin of your current organization, so accepting would leave it with no one to manage it. Promote another admin there first, or ignore this invitation.",
+} as const;
 const INVITATION_FINALIZE_ERROR = {
   code: 'INVITATION_FINALIZE_FAILED',
   message: 'The invitation was delivered but could not be activated.',
@@ -162,12 +167,18 @@ export async function acceptInvitation(
     const accepted = data?.[0];
 
     if (error || !accepted) {
+      if (error?.message === 'LAST_ADMIN_CANNOT_SWITCH') {
+        return { ok: false, error: { ...LAST_ADMIN_ERROR, traceId } };
+      }
       return { ok: false, error: { ...INVITATION_ACCEPT_ERROR, traceId } };
     }
 
     return {
       ok: true,
-      data: { organizationId: accepted.organization_id, role: accepted.role },
+      data: {
+        organizationId: accepted.out_organization_id,
+        role: accepted.out_role,
+      },
     };
   } catch {
     return { ok: false, error: { ...INVITATION_ACCEPT_ERROR, traceId } };
