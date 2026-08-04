@@ -201,6 +201,57 @@ export async function getDashboardSummary(): Promise<DashboardSummary> {
   };
 }
 
+export type BoardAssignment = {
+  assignmentId: string;
+  taskId: string;
+  title: string;
+  priority: string;
+  dueAt: string | null;
+  status: 'not_started' | 'in_progress' | 'delayed' | 'completed';
+  assigneeId: string;
+  assigneeName: string;
+};
+
+/** Every assignment in the org, any status, flattened for the admin Kanban board. */
+export async function listOrganizationAssignmentsBoard(): Promise<
+  BoardAssignment[]
+> {
+  const membership = await requireAdmin();
+  const supabase = await createServerSupabase();
+
+  const { data: assignments } = await supabase
+    .from('task_assignments')
+    .select('id,assignee_id,task_id,status')
+    .eq('organization_id', membership.organizationId);
+
+  const rows = assignments ?? [];
+  const taskIds = Array.from(new Set(rows.map((row) => row.task_id)));
+  const [{ data: tasks }, displayNames] = await Promise.all([
+    supabase.from('tasks').select('id,title,priority,due_at').in('id', taskIds),
+    listDisplayNames(rows.map((row) => row.assignee_id)),
+  ]);
+  const taskById = new Map((tasks ?? []).map((task) => [task.id, task]));
+
+  const board: BoardAssignment[] = [];
+  for (const row of rows) {
+    const task = taskById.get(row.task_id);
+    if (!task) continue;
+
+    board.push({
+      assignmentId: row.id,
+      taskId: task.id,
+      title: task.title,
+      priority: task.priority,
+      dueAt: task.due_at,
+      status: row.status,
+      assigneeId: row.assignee_id,
+      assigneeName: displayNames.get(row.assignee_id) ?? 'Unknown',
+    });
+  }
+
+  return board;
+}
+
 export type CalendarTask = {
   task: Database['public']['Tables']['tasks']['Row'];
   assignees: { userId: string; displayName: string }[];

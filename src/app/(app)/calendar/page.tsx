@@ -33,6 +33,11 @@ export default async function CalendarPage() {
             href: membership.role === 'admin' ? '/tasks' : '/my-tasks',
             label: 'List',
           },
+          {
+            href:
+              membership.role === 'admin' ? '/tasks/board' : '/my-tasks/board',
+            label: 'Board',
+          },
           { href: '/calendar', label: 'Calendar' },
         ]}
       />

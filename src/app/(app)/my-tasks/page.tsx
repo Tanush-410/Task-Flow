@@ -51,6 +51,7 @@ export default async function MyTasksPage() {
       <ViewSwitcher
         items={[
           { href: '/my-tasks', label: 'List' },
+          { href: '/my-tasks/board', label: 'Board' },
           { href: '/calendar', label: 'Calendar' },
         ]}
       />
