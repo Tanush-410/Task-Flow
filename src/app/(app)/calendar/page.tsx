@@ -1,5 +1,6 @@
 import { CalendarView } from '@/components/calendar/calendar-view';
 import { PageHeader } from '@/components/ui/page-header';
+import { ViewSwitcher } from '@/components/view-switcher';
 import { getRangeForView } from '@/lib/calendar-dates';
 import { getCalendarEvents } from '@/modules/calendar/actions';
 import {
@@ -24,6 +25,16 @@ export default async function CalendarPage() {
         eyebrow="Schedule"
         headingId="calendar-heading"
         title="Calendar"
+      />
+
+      <ViewSwitcher
+        items={[
+          {
+            href: membership.role === 'admin' ? '/tasks' : '/my-tasks',
+            label: 'List',
+          },
+          { href: '/calendar', label: 'Calendar' },
+        ]}
       />
 
       <CalendarView

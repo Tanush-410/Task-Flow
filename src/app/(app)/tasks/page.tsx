@@ -1,12 +1,16 @@
 import { ChevronLeft, ChevronRight, ListChecks } from 'lucide-react';
 import Link from 'next/link';
 
+import { CreateTaskMenu } from '@/components/create-task-menu';
 import { TaskList } from '@/components/task-list';
 import { TaskSortSelect } from '@/components/task-sort-select';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { EmptyState } from '@/components/ui/empty-state';
 import { PageHeader } from '@/components/ui/page-header';
+import { ViewSwitcher } from '@/components/view-switcher';
 import {
+  getDashboardSummary,
   listOrganizationTasksPage,
   TASKS_PAGE_SIZE,
 } from '@/modules/tasks/queries';
@@ -69,36 +73,42 @@ export default async function TasksPage({
     : 'due-asc';
   const activePage = Math.max(1, Number.parseInt(page ?? '1', 10) || 1);
 
-  const { tasks, totalCount } = await listOrganizationTasksPage({
-    page: activePage,
-    status: activeStatus,
-    priority: activePriority,
-    sort: activeSort,
-  });
+  const [{ tasks, totalCount }, summary] = await Promise.all([
+    listOrganizationTasksPage({
+      page: activePage,
+      status: activeStatus,
+      priority: activePriority,
+      sort: activeSort,
+    }),
+    getDashboardSummary(),
+  ]);
   const totalPages = Math.max(1, Math.ceil(totalCount / TASKS_PAGE_SIZE));
 
   return (
     <section aria-labelledby="tasks-heading" className="space-y-6">
       <PageHeader
-        action={
-          <Link
-            className="flex h-10 items-center justify-center rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
-            href="/tasks/new"
-          >
-            Create Task
-          </Link>
-        }
+        action={<CreateTaskMenu />}
         eyebrow="Organization"
         headingId="tasks-heading"
         title="All Tasks"
       />
 
+      <ViewSwitcher
+        items={[
+          { href: '/tasks', label: 'List' },
+          { href: '/calendar', label: 'Calendar' },
+        ]}
+      />
+
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div
           aria-label="Filter tasks by status"
-          className="flex flex-wrap gap-2"
+          className="flex flex-wrap items-center gap-2"
           role="group"
         >
+          {summary.overdueCount > 0 ? (
+            <Badge variant="destructive">{summary.overdueCount} overdue</Badge>
+          ) : null}
           {STATUS_FILTERS.map((value) => (
             <Link
               className={`rounded-lg px-3 py-1.5 text-sm font-semibold transition-colors ${

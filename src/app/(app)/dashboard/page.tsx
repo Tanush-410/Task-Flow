@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { EmptyState } from '@/components/ui/empty-state';
 import { PageHeader } from '@/components/ui/page-header';
+import { getEmployeeCompletionReport } from '@/modules/reports/queries';
 import {
   getDashboardSummary,
   listRecentOrganizationTasks,
@@ -44,14 +45,33 @@ function MetricCard({
 }
 
 export default async function DashboardPage() {
-  const [summary, recentTasks] = await Promise.all([
+  const [summary, recentTasks, completionStats] = await Promise.all([
     getDashboardSummary(),
     listRecentOrganizationTasks(5),
+    getEmployeeCompletionReport(),
   ]);
+
+  const totalCompleted = completionStats.reduce(
+    (sum, stat) => sum + stat.completedCount,
+    0,
+  );
+  const totalOnTime = completionStats.reduce(
+    (sum, stat) => sum + stat.onTimeCount,
+    0,
+  );
+  const onTimePercentage =
+    totalCompleted === 0
+      ? null
+      : Math.round((totalOnTime / totalCompleted) * 100);
 
   return (
     <section aria-labelledby="dashboard-heading" className="space-y-6">
       <PageHeader
+        action={
+          onTimePercentage === null ? null : (
+            <Badge variant="success">{onTimePercentage}% on time</Badge>
+          )
+        }
         eyebrow="Overview"
         headingId="dashboard-heading"
         title="Dashboard"

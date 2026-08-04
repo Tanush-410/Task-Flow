@@ -1,5 +1,6 @@
 import { TaskAssignmentGroup } from '@/components/task-assignment-group';
 import { PageHeader } from '@/components/ui/page-header';
+import { ViewSwitcher } from '@/components/view-switcher';
 import {
   listMyAssignmentsWithTasks,
   type MyAssignmentWithTask,
@@ -45,6 +46,13 @@ export default async function MyTasksPage() {
         eyebrow="Assigned to you"
         headingId="my-tasks-heading"
         title="My Tasks"
+      />
+
+      <ViewSwitcher
+        items={[
+          { href: '/my-tasks', label: 'List' },
+          { href: '/calendar', label: 'Calendar' },
+        ]}
       />
 
       {rows.length === 0 ? (

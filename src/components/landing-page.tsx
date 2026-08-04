@@ -3,8 +3,10 @@ import {
   CalendarDays,
   CheckCircle2,
   ClipboardCheck,
+  Eye,
   ListChecks,
   PenSquare,
+  Trophy,
   UsersRound,
 } from 'lucide-react';
 import Link from 'next/link';
@@ -12,6 +14,22 @@ import type { ComponentType } from 'react';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+
+const CHART_TOKENS = [
+  '--chart-1',
+  '--chart-2',
+  '--chart-3',
+  '--chart-4',
+  '--chart-5',
+];
+
+function chipStyle(index: number) {
+  const token = CHART_TOKENS[index % CHART_TOKENS.length];
+  return {
+    backgroundColor: `color-mix(in oklch, var(${token}), transparent 82%)`,
+    color: `var(${token})`,
+  };
+}
 
 const features: {
   title: string;
@@ -41,6 +59,18 @@ const features: {
     description:
       'Admins are notified the moment work is completed or delayed; employees are notified the moment something new lands on their plate.',
     icon: BellRing,
+  },
+  {
+    title: 'See who’s thriving',
+    description:
+      'A productivity ranking shows admins who finishes work fastest, based on real turnaround time from assignment to completion.',
+    icon: Trophy,
+  },
+  {
+    title: 'Know what’s in flight',
+    description:
+      'A live current-work view shows admins exactly what every employee has in progress right now, at a glance.',
+    icon: Eye,
   },
 ];
 
@@ -124,12 +154,16 @@ export function LandingPage() {
 
       <section
         aria-label="Features"
-        className="mx-auto grid w-full max-w-5xl grid-cols-1 gap-4 px-5 pb-20 sm:grid-cols-2 sm:px-8"
+        className="mx-auto grid w-full max-w-5xl grid-cols-1 gap-4 px-5 pb-20 sm:grid-cols-2 sm:px-8 lg:grid-cols-3"
       >
-        {features.map((feature) => (
+        {features.map((feature, index) => (
           <Card className="shadow-card" key={feature.title}>
             <CardContent>
-              <span className="grid size-10 place-items-center rounded-xl bg-primary-soft text-primary">
+              <span
+                aria-hidden="true"
+                className="grid size-10 place-items-center rounded-xl"
+                style={chipStyle(index)}
+              >
                 <feature.icon aria-hidden className="size-5" />
               </span>
               <h2 className="mt-4 text-lg font-semibold tracking-[-0.02em] text-foreground">
