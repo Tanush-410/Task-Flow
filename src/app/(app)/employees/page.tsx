@@ -7,13 +7,17 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { EmptyState } from '@/components/ui/empty-state';
 import { PageHeader } from '@/components/ui/page-header';
-import { listOrganizationMembers } from '@/modules/members/queries';
+import {
+  listOrganizationMembers,
+  listPendingInvitations,
+} from '@/modules/members/queries';
 import { getEmployeeWorkload } from '@/modules/reports/queries';
 
 export default async function EmployeesPage() {
-  const [members, workload] = await Promise.all([
+  const [members, workload, pendingInvitations] = await Promise.all([
     listOrganizationMembers(),
     getEmployeeWorkload(),
+    listPendingInvitations(),
   ]);
   const maxActive = Math.max(1, ...workload.map((row) => row.activeCount));
 
@@ -31,7 +35,8 @@ export default async function EmployeesPage() {
         </CardHeader>
         <CardContent>
           <p className="text-sm text-muted-foreground">
-            Send a secure invite link, or they can{' '}
+            Create a secure invite link to share yourself (there&apos;s no
+            automated email delivery), or they can{' '}
             <Link
               className="text-primary underline underline-offset-2"
               href="/signup"
@@ -45,6 +50,53 @@ export default async function EmployeesPage() {
           </div>
         </CardContent>
       </Card>
+
+      {pendingInvitations.length > 0 ? (
+        <Card>
+          <CardHeader>
+            <CardTitle>
+              Pending invitations ({pendingInvitations.length})
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ul className="divide-y divide-border">
+              {pendingInvitations.map((invitation) => {
+                const expired = new Date(invitation.expiresAt) < new Date();
+
+                return (
+                  <li
+                    className="flex flex-wrap items-center justify-between gap-3 py-2.5"
+                    key={invitation.id}
+                  >
+                    <span className="text-sm font-medium text-foreground">
+                      {invitation.email}
+                    </span>
+                    <span className="flex items-center gap-2">
+                      <Badge
+                        variant={
+                          invitation.role === 'admin' ? 'default' : 'secondary'
+                        }
+                      >
+                        {invitation.role}
+                      </Badge>
+                      <span
+                        className={`text-xs ${
+                          expired
+                            ? 'font-semibold text-red-400'
+                            : 'text-muted-foreground'
+                        }`}
+                      >
+                        {expired ? 'Expired' : 'Expires'}{' '}
+                        {new Date(invitation.expiresAt).toLocaleDateString()}
+                      </span>
+                    </span>
+                  </li>
+                );
+              })}
+            </ul>
+          </CardContent>
+        </Card>
+      ) : null}
 
       {workload.length > 0 ? (
         <Card>

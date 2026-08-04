@@ -37,10 +37,7 @@ describe('invitation cleanup telemetry integration', () => {
     mocks.serverEnv.mockReturnValue({ APP_ORIGIN: 'https://tasks.example' });
     mocks.createServerSupabase.mockResolvedValue({ rpc: mocks.rpc });
     mocks.createAdminSupabase.mockReturnValue({ rpc: mocks.rpc });
-    mocks.deliverInvitation.mockResolvedValue({
-      ok: false,
-      reason: 'unavailable',
-    });
+    mocks.deliverInvitation.mockResolvedValue({ ok: true });
     mocks.rpc.mockImplementation(async (name: string) => {
       if (name === 'stage_invitation') {
         return {
@@ -52,6 +49,14 @@ describe('invitation cleanup telemetry integration', () => {
             },
           ],
           error: null,
+        };
+      }
+      if (name === 'finalize_invitation_delivery') {
+        return {
+          data: null,
+          error: new Error(
+            'postgres://person@example.com:db-secret@db.example/tasks',
+          ),
         };
       }
       if (name === 'discard_staged_invitation') {
@@ -80,7 +85,7 @@ describe('invitation cleanup telemetry integration', () => {
     consoleError.mockRestore();
     expect(result).toMatchObject({
       ok: false,
-      error: { code: 'INVITATION_DELIVERY_UNAVAILABLE' },
+      error: { code: 'INVITATION_FINALIZE_FAILED' },
     });
     expect(records).toHaveLength(1);
     expect(JSON.parse(records[0])).toMatchObject({
@@ -105,7 +110,7 @@ describe('invitation cleanup telemetry integration', () => {
       inviteMember({ email: 'person@example.com', role: 'employee' }),
     ).resolves.toMatchObject({
       ok: false,
-      error: { code: 'INVITATION_DELIVERY_UNAVAILABLE' },
+      error: { code: 'INVITATION_FINALIZE_FAILED' },
     });
 
     consoleError.mockRestore();

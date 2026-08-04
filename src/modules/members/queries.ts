@@ -122,6 +122,37 @@ export async function listOrganizationMembers(): Promise<OrganizationMember[]> {
   return fetchOrganizationMembers(membership.organizationId);
 }
 
+export type PendingInvitation = {
+  id: string;
+  email: string;
+  role: 'admin' | 'employee';
+  createdAt: string;
+  expiresAt: string;
+};
+
+/** Admin-only: invitations created but not yet accepted, revoked, or expired. */
+export async function listPendingInvitations(): Promise<PendingInvitation[]> {
+  const membership = await requireAdmin();
+  const supabase = await createServerSupabase();
+
+  const { data } = await supabase
+    .from('invitations')
+    .select('id,email,role,created_at,expires_at')
+    .eq('organization_id', membership.organizationId)
+    .eq('delivery_status', 'active')
+    .is('accepted_at', null)
+    .is('revoked_at', null)
+    .order('created_at', { ascending: false });
+
+  return (data ?? []).map((row) => ({
+    id: row.id,
+    email: row.email,
+    role: row.role,
+    createdAt: row.created_at,
+    expiresAt: row.expires_at,
+  }));
+}
+
 /**
  * Any active member: just enough to populate an "assign to" picker with
  * coworker names, without exposing the admin-only directory/invite page.

@@ -20,10 +20,6 @@ const INVITATION_ACCEPT_ERROR = {
   code: 'INVITATION_ACCEPT_FAILED',
   message: 'This invitation could not be accepted.',
 } as const;
-const INVITATION_DELIVERY_ERROR = {
-  code: 'INVITATION_DELIVERY_UNAVAILABLE',
-  message: 'Invitation delivery is currently unavailable.',
-} as const;
 const INVITATION_FINALIZE_ERROR = {
   code: 'INVITATION_FINALIZE_FAILED',
   message: 'The invitation was delivered but could not be activated.',
@@ -51,10 +47,13 @@ async function discardStagedInvitation(
   }
 }
 
-export async function inviteMember(
-  input: unknown,
-): Promise<
-  ActionResult<{ invitationId: string; email: string; expiresAt: string }>
+export async function inviteMember(input: unknown): Promise<
+  ActionResult<{
+    invitationId: string;
+    email: string;
+    expiresAt: string;
+    invitationUrl: string;
+  }>
 > {
   const traceId = randomUUID();
   const parsed = invitationSchema.safeParse(input);
@@ -96,23 +95,25 @@ export async function inviteMember(
     return { ok: false, error: { ...INVITATION_CREATE_ERROR, traceId } };
   }
 
-  let delivered = false;
+  let invitationUrl: string;
   try {
     const { APP_ORIGIN } = serverEnv();
-    const invitationUrl = new URL(`/invite/${token}`, APP_ORIGIN).toString();
-    delivered = (
-      await deliverInvitation({
-        recipientEmail: invitation.email,
-        invitationUrl,
-      })
-    ).ok;
+    invitationUrl = new URL(`/invite/${token}`, APP_ORIGIN).toString();
   } catch {
-    delivered = false;
+    await discardStagedInvitation(supabase, invitation.id, traceId);
+    return { ok: false, error: { ...INVITATION_CREATE_ERROR, traceId } };
   }
 
-  if (!delivered) {
-    await discardStagedInvitation(supabase, invitation.id, traceId);
-    return { ok: false, error: { ...INVITATION_DELIVERY_ERROR, traceId } };
+  // Email delivery is best-effort — an admin sharing the link directly is
+  // the supported primary path, not a fallback, so a failed/unconfigured
+  // provider here must not block the invitation from being usable.
+  try {
+    await deliverInvitation({
+      recipientEmail: invitation.email,
+      invitationUrl,
+    });
+  } catch {
+    // Ignored: see comment above.
   }
 
   try {
@@ -135,6 +136,7 @@ export async function inviteMember(
       invitationId: invitation.id,
       email: invitation.email,
       expiresAt: invitation.expires_at,
+      invitationUrl,
     },
   };
 }

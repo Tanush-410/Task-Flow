@@ -1,6 +1,7 @@
 'use client';
 
-import { useActionState } from 'react';
+import { Check, Copy } from 'lucide-react';
+import { useActionState, useState } from 'react';
 
 import type { ActionResult } from '@/lib/result';
 import { inviteMember } from '@/modules/members/actions';
@@ -18,6 +19,7 @@ type InviteResult = ActionResult<{
   invitationId: string;
   email: string;
   expiresAt: string;
+  invitationUrl: string;
 }>;
 
 async function submitInvite(
@@ -28,6 +30,27 @@ async function submitInvite(
     email: formData.get('email'),
     role: formData.get('role'),
   });
+}
+
+function CopyInviteLink({ url }: { url: string }) {
+  const [copied, setCopied] = useState(false);
+
+  return (
+    <Button
+      onClick={() => {
+        navigator.clipboard.writeText(url).then(() => {
+          setCopied(true);
+          setTimeout(() => setCopied(false), 2000);
+        });
+      }}
+      size="sm"
+      type="button"
+      variant="outline"
+    >
+      {copied ? <Check aria-hidden /> : <Copy aria-hidden />}
+      {copied ? 'Copied' : 'Copy'}
+    </Button>
+  );
 }
 
 export function InviteMemberForm() {
@@ -59,7 +82,7 @@ export function InviteMemberForm() {
           size="lg"
           type="submit"
         >
-          {pending ? 'Sending…' : 'Send invite'}
+          {pending ? 'Creating…' : 'Create invite link'}
         </Button>
       </div>
       {state && !state.ok ? (
@@ -68,9 +91,20 @@ export function InviteMemberForm() {
         </p>
       ) : null}
       {state && state.ok ? (
-        <p className="text-sm text-emerald-400">
-          Invitation sent to {state.data.email}.
-        </p>
+        <div className="space-y-2 rounded-xl border border-emerald-500/25 bg-emerald-500/10 px-4 py-3">
+          <p className="text-sm text-emerald-300">
+            Invite link created for {state.data.email}. Share it yourself — it
+            won&apos;t be shown again.
+          </p>
+          <div className="flex items-center gap-2">
+            <Input
+              className="h-9 flex-1 font-mono text-xs"
+              readOnly
+              value={state.data.invitationUrl}
+            />
+            <CopyInviteLink url={state.data.invitationUrl} />
+          </div>
+        </div>
       ) : null}
     </form>
   );

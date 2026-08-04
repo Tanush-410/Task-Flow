@@ -56,7 +56,7 @@ describe('inviteMember', () => {
     mocks.deliverInvitation.mockResolvedValue({ ok: true });
   });
 
-  it('stages, delivers, then finalizes and returns only redacted metadata', async () => {
+  it('stages, best-effort delivers, then finalizes and returns the shareable invite URL', async () => {
     const result = await inviteMember({
       email: ' PERSON@example.com ',
       role: 'employee',
@@ -101,103 +101,39 @@ describe('inviteMember', () => {
         invitationId: staged.id,
         email: staged.email,
         expiresAt: staged.expires_at,
+        invitationUrl: mocks.deliverInvitation.mock.calls[0][0].invitationUrl,
       },
     });
-    expect(JSON.stringify(result)).not.toContain(token);
   });
 
   it.each([
     [{ ok: false, reason: 'unavailable' }],
-    [new Error('sensitive delivery failure')],
+    [new Error('delivery provider failure')],
   ])(
-    'discards staging after delivery failure and inspects cleanup errors',
+    'still succeeds and returns the invite URL when best-effort delivery fails',
     async (outcome) => {
       if (outcome instanceof Error)
         mocks.deliverInvitation.mockRejectedValueOnce(outcome);
       else mocks.deliverInvitation.mockResolvedValueOnce(outcome);
-      mocks.rpc.mockImplementation(async (name: string) => {
-        if (name === 'stage_invitation') return { data: [staged], error: null };
-        if (name === 'discard_staged_invitation') {
-          return { data: null, error: new Error('sensitive cleanup failure') };
-        }
-        return { data: true, error: null };
-      });
 
       const result = await inviteMember({
         email: 'person@example.com',
         role: 'employee',
       });
 
-      expect(mocks.rpc).toHaveBeenLastCalledWith('discard_staged_invitation', {
-        invitation_id: staged.id,
-      });
+      expect(mocks.rpc).not.toHaveBeenCalledWith(
+        'discard_staged_invitation',
+        expect.anything(),
+      );
       expect(result).toMatchObject({
-        ok: false,
-        error: {
-          code: 'INVITATION_DELIVERY_UNAVAILABLE',
-          traceId: expect.any(String),
+        ok: true,
+        data: {
+          invitationId: staged.id,
+          invitationUrl: expect.stringContaining('/invite/'),
         },
       });
-      expect(mocks.reportCleanupFailure).toHaveBeenCalledWith({
-        traceId: expect.any(String),
-        invitationId: staged.id,
-      });
-      expect(JSON.stringify(result)).not.toContain('sensitive');
     },
   );
-
-  it('reports thrown discard failures without exposing cleanup details', async () => {
-    mocks.deliverInvitation.mockResolvedValueOnce({
-      ok: false,
-      reason: 'unavailable',
-    });
-    mocks.rpc.mockImplementation(async (name: string) => {
-      if (name === 'stage_invitation') return { data: [staged], error: null };
-      if (name === 'discard_staged_invitation')
-        throw new Error('sensitive cleanup failure');
-      return { data: true, error: null };
-    });
-
-    const result = await inviteMember({
-      email: 'person@example.com',
-      role: 'employee',
-    });
-
-    expect(mocks.reportCleanupFailure).toHaveBeenCalledWith({
-      traceId: expect.any(String),
-      invitationId: staged.id,
-    });
-    expect(JSON.stringify(result)).not.toContain('sensitive');
-  });
-
-  it('reports a discard that completes without reconciling the invitation', async () => {
-    mocks.deliverInvitation.mockResolvedValueOnce({
-      ok: false,
-      reason: 'unavailable',
-    });
-    mocks.rpc.mockImplementation(async (name: string) => {
-      if (name === 'stage_invitation') return { data: [staged], error: null };
-      if (name === 'discard_staged_invitation') {
-        return { data: false, error: null };
-      }
-      return { data: true, error: null };
-    });
-
-    const result = await inviteMember({
-      email: 'person@example.com',
-      role: 'employee',
-    });
-
-    expect(mocks.reportCleanupFailure).toHaveBeenCalledOnce();
-    expect(mocks.reportCleanupFailure).toHaveBeenCalledWith({
-      traceId: expect.any(String),
-      invitationId: staged.id,
-    });
-    expect(result).toMatchObject({
-      ok: false,
-      error: { code: 'INVITATION_DELIVERY_UNAVAILABLE' },
-    });
-  });
 
   it('marks staging failed and returns an operational error when finalize fails', async () => {
     mocks.rpc.mockImplementation(async (name: string) => {
@@ -222,6 +158,57 @@ describe('inviteMember', () => {
         code: 'INVITATION_FINALIZE_FAILED',
         traceId: expect.any(String),
       },
+    });
+  });
+
+  it('reports thrown discard failures without exposing cleanup details when finalize fails', async () => {
+    mocks.rpc.mockImplementation(async (name: string) => {
+      if (name === 'stage_invitation') return { data: [staged], error: null };
+      if (name === 'finalize_invitation_delivery') {
+        return { data: null, error: new Error('sensitive finalize failure') };
+      }
+      if (name === 'discard_staged_invitation')
+        throw new Error('sensitive cleanup failure');
+      return { data: true, error: null };
+    });
+
+    const result = await inviteMember({
+      email: 'person@example.com',
+      role: 'employee',
+    });
+
+    expect(mocks.reportCleanupFailure).toHaveBeenCalledWith({
+      traceId: expect.any(String),
+      invitationId: staged.id,
+    });
+    expect(JSON.stringify(result)).not.toContain('sensitive');
+  });
+
+  it('reports a discard that completes without reconciling the invitation when finalize fails', async () => {
+    mocks.rpc.mockImplementation(async (name: string) => {
+      if (name === 'stage_invitation') return { data: [staged], error: null };
+      if (name === 'finalize_invitation_delivery') {
+        return { data: null, error: new Error('sensitive finalize failure') };
+      }
+      if (name === 'discard_staged_invitation') {
+        return { data: false, error: null };
+      }
+      return { data: true, error: null };
+    });
+
+    const result = await inviteMember({
+      email: 'person@example.com',
+      role: 'employee',
+    });
+
+    expect(mocks.reportCleanupFailure).toHaveBeenCalledOnce();
+    expect(mocks.reportCleanupFailure).toHaveBeenCalledWith({
+      traceId: expect.any(String),
+      invitationId: staged.id,
+    });
+    expect(result).toMatchObject({
+      ok: false,
+      error: { code: 'INVITATION_FINALIZE_FAILED' },
     });
   });
 });
