@@ -10,8 +10,8 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { listTaskActivity } from '@/modules/activity/queries';
 import {
+  listAssignableMembers,
   listDisplayNames,
-  listOrganizationMembers,
   requireMembership,
 } from '@/modules/members/queries';
 import { getTaskById, listTaskAssignments } from '@/modules/tasks/queries';
@@ -65,15 +65,12 @@ export default async function TaskDetailPage({
     (row) => row.assignee_id === membership.userId,
   );
 
-  const availableEmployees =
-    membership.role === 'admin'
-      ? (await listOrganizationMembers()).filter(
-          (member) =>
-            member.role === 'employee' &&
-            member.status === 'active' &&
-            !assignmentRows.some((row) => row.assignee_id === member.userId),
-        )
-      : [];
+  const availableEmployees = (await listAssignableMembers()).filter(
+    (member) =>
+      member.role === 'employee' &&
+      member.status === 'active' &&
+      !assignmentRows.some((row) => row.assignee_id === member.userId),
+  );
 
   const displayNames = await listDisplayNames([
     ...assignmentRows.map((row) => row.assignee_id),
@@ -155,81 +152,79 @@ export default async function TaskDetailPage({
         </Card>
       ) : null}
 
-      {membership.role === 'admin' ? (
-        <Card>
-          <CardHeader>
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <CardTitle>
-                Assignees (
-                {
-                  assignmentRows.filter((row) => row.status === 'completed')
-                    .length
-                }{' '}
-                of {assignmentRows.length} completed)
-              </CardTitle>
-              <AddAssigneeForm
-                availableEmployees={availableEmployees}
-                taskId={task.id}
-              />
-            </div>
-          </CardHeader>
-          <CardContent>
-            {assignmentRows.length === 0 ? (
-              <p className="text-sm text-slate-600">
-                No one is assigned to this task yet.
-              </p>
-            ) : (
-              <ul className="divide-y divide-slate-200">
-                {assignmentRows.map((row) => {
-                  const rowOverdue = isPastDue && row.status !== 'completed';
-                  const name = displayNames.get(row.assignee_id) ?? 'Unknown';
+      <Card>
+        <CardHeader>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <CardTitle>
+              Assignees (
+              {
+                assignmentRows.filter((row) => row.status === 'completed')
+                  .length
+              }{' '}
+              of {assignmentRows.length} completed)
+            </CardTitle>
+            <AddAssigneeForm
+              availableEmployees={availableEmployees}
+              taskId={task.id}
+            />
+          </div>
+        </CardHeader>
+        <CardContent>
+          {assignmentRows.length === 0 ? (
+            <p className="text-sm text-slate-600">
+              No one is assigned to this task yet.
+            </p>
+          ) : (
+            <ul className="divide-y divide-slate-200">
+              {assignmentRows.map((row) => {
+                const rowOverdue = isPastDue && row.status !== 'completed';
+                const name = displayNames.get(row.assignee_id) ?? 'Unknown';
 
-                  return (
-                    <li className="py-3" key={row.id}>
-                      <div className="flex flex-wrap items-center justify-between gap-2">
-                        <div className="flex items-center gap-3">
-                          <PersonAvatar
-                            displayName={name}
-                            userId={row.assignee_id}
-                          />
-                          <div>
-                            <p className="text-sm font-semibold text-slate-950">
-                              {name}
-                            </p>
-                            <p className="mt-0.5 flex items-center gap-1.5 text-xs text-slate-500">
-                              <Badge variant={STATUS_BADGE_VARIANT[row.status]}>
-                                {STATUS_LABELS[row.status]}
-                              </Badge>
-                              {row.progress}%
-                              {rowOverdue ? (
-                                <span className="font-semibold text-red-700">
-                                  Overdue
-                                </span>
-                              ) : null}
-                            </p>
-                            {row.status === 'delayed' && row.delay_reason ? (
-                              <p className="mt-1 text-xs text-red-700">
-                                Delay reason: {row.delay_reason}
-                              </p>
+                return (
+                  <li className="py-3" key={row.id}>
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div className="flex items-center gap-3">
+                        <PersonAvatar
+                          displayName={name}
+                          userId={row.assignee_id}
+                        />
+                        <div>
+                          <p className="text-sm font-semibold text-slate-950">
+                            {name}
+                          </p>
+                          <p className="mt-0.5 flex items-center gap-1.5 text-xs text-slate-500">
+                            <Badge variant={STATUS_BADGE_VARIANT[row.status]}>
+                              {STATUS_LABELS[row.status]}
+                            </Badge>
+                            {row.progress}%
+                            {rowOverdue ? (
+                              <span className="font-semibold text-red-700">
+                                Overdue
+                              </span>
                             ) : null}
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-3">
-                          {row.status === 'completed' ? (
-                            <ReopenAssignmentForm assignmentId={row.id} />
-                          ) : (
-                            <RemoveAssignmentButton assignmentId={row.id} />
-                          )}
+                          </p>
+                          {row.status === 'delayed' && row.delay_reason ? (
+                            <p className="mt-1 text-xs text-red-700">
+                              Delay reason: {row.delay_reason}
+                            </p>
+                          ) : null}
                         </div>
                       </div>
-                    </li>
-                  );
-                })}
-              </ul>
-            )}
-          </CardContent>
-        </Card>
-      ) : null}
+                      <div className="flex items-center gap-3">
+                        {row.status === 'completed' ? (
+                          <ReopenAssignmentForm assignmentId={row.id} />
+                        ) : (
+                          <RemoveAssignmentButton assignmentId={row.id} />
+                        )}
+                      </div>
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>

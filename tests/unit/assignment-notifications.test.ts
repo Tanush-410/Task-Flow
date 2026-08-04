@@ -2,7 +2,6 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
   createServerSupabase: vi.fn(),
-  requireAdmin: vi.fn(),
   requireMembership: vi.fn(),
   listOrganizationAdmins: vi.fn(),
   queueTaskNotifications: vi.fn(),
@@ -13,7 +12,6 @@ vi.mock('@/lib/supabase/server', () => ({
   createServerSupabase: mocks.createServerSupabase,
 }));
 vi.mock('@/modules/members/queries', () => ({
-  requireAdmin: mocks.requireAdmin,
   requireMembership: mocks.requireMembership,
   listOrganizationAdmins: mocks.listOrganizationAdmins,
 }));
@@ -183,7 +181,7 @@ describe('changeAssignmentStatus notifications', () => {
 describe('reopenAssignment notification', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mocks.requireAdmin.mockResolvedValue({
+    mocks.requireMembership.mockResolvedValue({
       organizationId: 'org-1',
       userId: ADMIN_ONE,
       role: 'admin',

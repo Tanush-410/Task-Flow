@@ -5,7 +5,7 @@ import { randomUUID } from 'node:crypto';
 import type { ActionResult } from '@/lib/result';
 import { createServerSupabase } from '@/lib/supabase/server';
 
-import { requireAdmin } from '../members/queries';
+import { requireAdmin, requireMembership } from '../members/queries';
 import { queueTaskNotifications } from '../notifications/actions';
 import {
   type TaskPriority,
@@ -208,7 +208,7 @@ export async function createAndAssignTask(
   }
 
   try {
-    const membership = await requireAdmin();
+    const membership = await requireMembership();
     const supabase = await createServerSupabase();
     const now = new Date().toISOString();
 

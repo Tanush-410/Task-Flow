@@ -82,14 +82,15 @@ export type OrganizationMember = {
   displayName: string;
 };
 
-export async function listOrganizationMembers(): Promise<OrganizationMember[]> {
-  const membership = await requireAdmin();
+async function fetchOrganizationMembers(
+  organizationId: string,
+): Promise<OrganizationMember[]> {
   const supabase = await createServerSupabase();
 
   const { data: memberships, error } = await supabase
     .from('organization_memberships')
     .select('id,role,status,user_id,created_at')
-    .eq('organization_id', membership.organizationId)
+    .eq('organization_id', organizationId)
     .order('created_at', { ascending: true });
 
   if (error || !memberships) {
@@ -113,6 +114,21 @@ export async function listOrganizationMembers(): Promise<OrganizationMember[]> {
     status: row.status,
     displayName: displayNameById.get(row.user_id) ?? 'Unknown',
   }));
+}
+
+/** Admin-only: powers the full member directory + invite management page. */
+export async function listOrganizationMembers(): Promise<OrganizationMember[]> {
+  const membership = await requireAdmin();
+  return fetchOrganizationMembers(membership.organizationId);
+}
+
+/**
+ * Any active member: just enough to populate an "assign to" picker with
+ * coworker names, without exposing the admin-only directory/invite page.
+ */
+export async function listAssignableMembers(): Promise<OrganizationMember[]> {
+  const membership = await requireMembership();
+  return fetchOrganizationMembers(membership.organizationId);
 }
 
 export async function listDisplayNames(

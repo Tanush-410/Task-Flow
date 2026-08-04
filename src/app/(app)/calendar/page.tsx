@@ -3,20 +3,18 @@ import { PageHeader } from '@/components/ui/page-header';
 import { getRangeForView } from '@/lib/calendar-dates';
 import { getCalendarEvents } from '@/modules/calendar/actions';
 import {
-  listOrganizationMembers,
+  listAssignableMembers,
   requireMembership,
 } from '@/modules/members/queries';
 
 export default async function CalendarPage() {
-  const membership = await requireMembership();
+  await requireMembership();
   const now = new Date();
   const range = getRangeForView(now, 'month');
 
   const [events, people] = await Promise.all([
     getCalendarEvents(range.start.toISOString(), range.end.toISOString()),
-    membership.role === 'admin'
-      ? listOrganizationMembers()
-      : Promise.resolve([]),
+    listAssignableMembers(),
   ]);
 
   return (
@@ -32,7 +30,6 @@ export default async function CalendarPage() {
         initialDate={now.toISOString()}
         initialEvents={events}
         people={people.filter((person) => person.status === 'active')}
-        role={membership.role}
       />
     </section>
   );

@@ -5,11 +5,7 @@ import { randomUUID } from 'node:crypto';
 import type { ActionResult } from '@/lib/result';
 import { createServerSupabase } from '@/lib/supabase/server';
 
-import {
-  listOrganizationAdmins,
-  requireAdmin,
-  requireMembership,
-} from '../members/queries';
+import { listOrganizationAdmins, requireMembership } from '../members/queries';
 import { queueTaskNotifications } from '../notifications/actions';
 import {
   type AssignmentStatus,
@@ -48,7 +44,7 @@ export async function createAssignment(
   }
 
   try {
-    const membership = await requireAdmin();
+    const membership = await requireMembership();
     const supabase = await createServerSupabase();
     const { data, error } = await supabase
       .from('task_assignments')
@@ -112,7 +108,7 @@ export async function removeAssignment(
   }
 
   try {
-    const membership = await requireAdmin();
+    const membership = await requireMembership();
     const supabase = await createServerSupabase();
     const { data: assignment } = await supabase
       .from('task_assignments')
@@ -130,7 +126,7 @@ export async function removeAssignment(
       return { ok: false, error: { ...ASSIGNMENT_UPDATE_ERROR, traceId } };
     }
 
-    if (assignment) {
+    if (assignment && assignment.assignee_id !== membership.userId) {
       const { data: task } = await supabase
         .from('tasks')
         .select('title')
@@ -144,7 +140,7 @@ export async function removeAssignment(
           taskId: assignment.task_id,
           notificationType: 'assignment_status_changed',
           title: 'Removed from task',
-          body: `An admin removed you from: ${task?.title ?? 'a task'}`,
+          body: `You were removed from: ${task?.title ?? 'a task'}`,
         },
       ]);
     }
@@ -381,7 +377,7 @@ export async function reopenAssignment(
   }
 
   try {
-    const membership = await requireAdmin();
+    const membership = await requireMembership();
     const supabase = await createServerSupabase();
     const { data, error } = await supabase
       .from('task_assignments')
@@ -400,23 +396,25 @@ export async function reopenAssignment(
       return { ok: false, error: { ...ASSIGNMENT_UPDATE_ERROR, traceId } };
     }
 
-    const { data: task } = await supabase
-      .from('tasks')
-      .select('title')
-      .eq('id', data.task_id)
-      .maybeSingle();
+    if (data.assignee_id !== membership.userId) {
+      const { data: task } = await supabase
+        .from('tasks')
+        .select('title')
+        .eq('id', data.task_id)
+        .maybeSingle();
 
-    await queueTaskNotifications([
-      {
-        organizationId: membership.organizationId,
-        recipientId: data.assignee_id,
-        taskId: data.task_id,
-        assignmentId: data.id,
-        notificationType: 'assignment_status_changed',
-        title: 'Task reopened',
-        body: `An admin reopened your completed task: ${task?.title ?? 'a task'} — ${parsed.data.reason}`,
-      },
-    ]);
+      await queueTaskNotifications([
+        {
+          organizationId: membership.organizationId,
+          recipientId: data.assignee_id,
+          taskId: data.task_id,
+          assignmentId: data.id,
+          notificationType: 'assignment_status_changed',
+          title: 'Task reopened',
+          body: `Your completed task was reopened: ${task?.title ?? 'a task'} — ${parsed.data.reason}`,
+        },
+      ]);
+    }
 
     return { ok: true, data: { assignmentId: data.id } };
   } catch {

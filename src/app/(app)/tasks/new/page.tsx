@@ -1,7 +1,7 @@
 import { TaskForm } from '@/components/task-form';
 import { Card, CardContent } from '@/components/ui/card';
 import { PageHeader } from '@/components/ui/page-header';
-import { listOrganizationMembers } from '@/modules/members/queries';
+import { listAssignableMembers } from '@/modules/members/queries';
 
 export default async function NewTaskPage({
   searchParams,
@@ -9,7 +9,7 @@ export default async function NewTaskPage({
   searchParams: Promise<{ date?: string; assignee?: string }>;
 }) {
   const [members, { date, assignee }] = await Promise.all([
-    listOrganizationMembers(),
+    listAssignableMembers(),
     searchParams,
   ]);
   const employees = members.filter(

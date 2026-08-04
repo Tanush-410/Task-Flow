@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
   createServerSupabase: vi.fn(),
-  requireAdmin: vi.fn(),
+  requireMembership: vi.fn(),
   queueTaskNotifications: vi.fn(),
 }));
 
@@ -11,7 +11,7 @@ vi.mock('@/lib/supabase/server', () => ({
   createServerSupabase: mocks.createServerSupabase,
 }));
 vi.mock('@/modules/members/queries', () => ({
-  requireAdmin: mocks.requireAdmin,
+  requireMembership: mocks.requireMembership,
 }));
 vi.mock('@/modules/notifications/actions', () => ({
   queueTaskNotifications: mocks.queueTaskNotifications,
@@ -63,7 +63,7 @@ function buildSupabase({
 describe('createAndAssignTask', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mocks.requireAdmin.mockResolvedValue({
+    mocks.requireMembership.mockResolvedValue({
       organizationId: 'org-1',
       userId: 'admin-1',
       role: 'admin',
@@ -118,6 +118,32 @@ describe('createAndAssignTask', () => {
         notificationType: 'assignment_created',
       }),
     ]);
+  });
+
+  it('lets an employee (not just an admin) create and assign a task', async () => {
+    mocks.requireMembership.mockResolvedValue({
+      organizationId: 'org-1',
+      userId: 'employee-1',
+      role: 'employee',
+    });
+    mocks.createServerSupabase.mockResolvedValue(
+      buildSupabase({
+        taskResult: {
+          data: { id: 'task-1', title: 'Ship the report' },
+          error: null,
+        },
+        assignmentResult: {
+          data: [{ id: 'assignment-1', assignee_id: ASSIGNEE_ONE }],
+          error: null,
+        },
+      }),
+    );
+
+    const result = await createAndAssignTask(
+      validInput({ assigneeIds: [ASSIGNEE_ONE] }),
+    );
+
+    expect(result).toEqual({ ok: true, data: { taskId: 'task-1' } });
   });
 
   it('does not queue notifications when the task insert fails', async () => {

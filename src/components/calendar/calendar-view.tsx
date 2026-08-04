@@ -25,12 +25,10 @@ export function CalendarView({
   initialDate,
   initialEvents,
   people,
-  role,
 }: {
   initialDate: string;
   initialEvents: CalendarTask[];
   people: OrganizationMember[];
-  role: 'admin' | 'employee';
 }) {
   const [currentDate, setCurrentDate] = useState(() => new Date(initialDate));
   const [viewMode, setViewMode] = useState<ViewMode>('month');
@@ -165,7 +163,7 @@ export function CalendarView({
       </div>
 
       <div className="flex flex-col gap-4 lg:flex-row">
-        {role === 'admin' && people.length > 0 ? (
+        {people.length > 0 ? (
           <aside className="w-full shrink-0 lg:w-48">
             <p className="text-xs font-semibold tracking-wide text-slate-500 uppercase">
               People
@@ -198,7 +196,7 @@ export function CalendarView({
         >
           {viewMode === 'month' ? (
             <MonthGrid
-              canCreate={role === 'admin'}
+              canCreate
               events={visibleEvents}
               month={currentDate}
               onCreateAt={setQuickCreateDate}
@@ -209,7 +207,7 @@ export function CalendarView({
             />
           ) : (
             <WeekGrid
-              canCreate={role === 'admin'}
+              canCreate
               dayCount={viewMode === 'week' ? 7 : 1}
               events={visibleEvents}
               onCreateAt={setQuickCreateDate}
