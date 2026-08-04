@@ -42,12 +42,28 @@ function buildSupabase({
     from: vi.fn((table: string) => {
       if (table === 'task_assignments') {
         return {
+          select: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              maybeSingle: vi.fn().mockResolvedValue({
+                data: { task_id: 'task-1' },
+                error: null,
+              }),
+            }),
+          }),
           update: vi.fn().mockReturnValue({
             eq: vi.fn().mockReturnValue({
               select: vi.fn().mockReturnValue({
                 single: vi.fn().mockResolvedValue(updateResult),
               }),
             }),
+          }),
+        };
+      }
+
+      if (table === 'task_dependencies') {
+        return {
+          select: vi.fn().mockReturnValue({
+            eq: vi.fn().mockResolvedValue({ data: [], error: null }),
           }),
         };
       }
@@ -174,6 +190,56 @@ describe('changeAssignmentStatus notifications', () => {
     });
 
     expect(mocks.listOrganizationAdmins).not.toHaveBeenCalled();
+    expect(mocks.queueTaskNotifications).not.toHaveBeenCalled();
+  });
+
+  it('blocks completion while the task has an unsatisfied dependency', async () => {
+    mocks.createServerSupabase.mockResolvedValue({
+      from: vi.fn((table: string) => {
+        if (table === 'task_assignments') {
+          return {
+            // changeAssignmentStatus's pre-check calls .eq().maybeSingle();
+            // resolveSatisfaction (inside hasUnsatisfiedDependencies) calls
+            // .in() on the same select() result — support both.
+            select: vi.fn().mockReturnValue({
+              eq: vi.fn().mockReturnValue({
+                maybeSingle: vi.fn().mockResolvedValue({
+                  data: { task_id: 'task-1' },
+                  error: null,
+                }),
+              }),
+              in: vi.fn().mockResolvedValue({
+                data: [{ task_id: 'task-0', status: 'in_progress' }],
+                error: null,
+              }),
+            }),
+          };
+        }
+
+        if (table === 'task_dependencies') {
+          return {
+            select: vi.fn().mockReturnValue({
+              eq: vi.fn().mockResolvedValue({
+                data: [{ depends_on_task_id: 'task-0' }],
+                error: null,
+              }),
+            }),
+          };
+        }
+
+        throw new Error(`Unexpected table: ${table}`);
+      }),
+    });
+
+    const result = await changeAssignmentStatus({
+      assignmentId: ASSIGNMENT_ID,
+      status: 'completed',
+    });
+
+    expect(result).toMatchObject({
+      ok: false,
+      error: { code: 'BLOCKED_BY_DEPENDENCY' },
+    });
     expect(mocks.queueTaskNotifications).not.toHaveBeenCalled();
   });
 });

@@ -1,10 +1,12 @@
 import { ExportReportButton } from '@/components/export-report-button';
-import { Card } from '@/components/ui/card';
+import { ReportChart } from '@/components/report-chart';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { PageHeader } from '@/components/ui/page-header';
 import { getEmployeeCompletionReport } from '@/modules/reports/queries';
 
 export default async function ReportsPage() {
   const stats = await getEmployeeCompletionReport();
+  const hasCompletions = stats.some((stat) => stat.completedCount > 0);
 
   return (
     <section aria-labelledby="reports-heading" className="space-y-6">
@@ -15,6 +17,17 @@ export default async function ReportsPage() {
         headingId="reports-heading"
         title="Reports"
       />
+
+      {hasCompletions ? (
+        <Card>
+          <CardHeader>
+            <CardTitle>Completed tasks by employee</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ReportChart stats={stats} />
+          </CardContent>
+        </Card>
+      ) : null}
 
       <Card className="overflow-x-auto p-0 sm:p-0">
         <table className="min-w-full divide-y divide-border text-sm">

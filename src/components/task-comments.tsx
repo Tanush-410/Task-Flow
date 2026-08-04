@@ -1,9 +1,10 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useActionState, useEffect } from 'react';
+import { useActionState, useEffect, useRef } from 'react';
 
 import type { ActionResult } from '@/lib/result';
+import { tokenizeMentions, type Mentionable } from '@/lib/mentions';
 import { createComment, deleteComment } from '@/modules/comments/actions';
 import { PersonAvatar } from '@/components/person-avatar';
 import { Button } from '@/components/ui/button';
@@ -47,18 +48,48 @@ function DeleteCommentButton({ commentId }: { commentId: string }) {
   );
 }
 
+function CommentBody({
+  body,
+  members,
+}: {
+  body: string;
+  members: Mentionable[];
+}) {
+  const tokens = tokenizeMentions(body, members);
+
+  return (
+    <p className="mt-1 text-sm leading-6 whitespace-pre-wrap text-muted-foreground">
+      {tokens.map((token, index) =>
+        token.type === 'mention' ? (
+          <span
+            className="font-semibold text-primary"
+            key={`${token.userId}-${index}`}
+          >
+            {token.value}
+          </span>
+        ) : (
+          <span key={`text-${index}`}>{token.value}</span>
+        ),
+      )}
+    </p>
+  );
+}
+
 export function TaskComments({
   taskId,
   comments,
+  members,
   currentUserId,
   canModerate,
 }: {
   taskId: string;
   comments: TaskCommentRow[];
+  members: Mentionable[];
   currentUserId: string;
   canModerate: boolean;
 }) {
   const [state, formAction, pending] = useActionState(submitComment, null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const router = useRouter();
   const error = state && !state.ok ? state.error : null;
 
@@ -67,6 +98,17 @@ export function TaskComments({
       router.refresh();
     }
   }, [state, router]);
+
+  function insertMention(displayName: string) {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+    const current = textarea.value;
+    textarea.value =
+      current.length === 0 || current.endsWith(' ')
+        ? `${current}@${displayName} `
+        : `${current} @${displayName} `;
+    textarea.focus();
+  }
 
   return (
     <div className="space-y-4">
@@ -93,9 +135,7 @@ export function TaskComments({
                     <DeleteCommentButton commentId={comment.id} />
                   ) : null}
                 </div>
-                <p className="mt-1 text-sm leading-6 whitespace-pre-wrap text-muted-foreground">
-                  {comment.body}
-                </p>
+                <CommentBody body={comment.body} members={members} />
               </div>
             </li>
           ))}
@@ -105,17 +145,32 @@ export function TaskComments({
       <form
         action={formAction}
         className="space-y-2"
-        key={state ? 'sent' : 'idle'}
+        key={state?.ok ? 'sent' : 'idle'}
       >
         <input name="taskId" type="hidden" value={taskId} />
         <Textarea
           disabled={pending}
           maxLength={4000}
           name="body"
-          placeholder="Add a comment…"
+          placeholder="Add a comment… type @ to mention someone"
+          ref={textareaRef}
           required
           rows={2}
         />
+        {members.length > 0 ? (
+          <div className="flex flex-wrap gap-1.5">
+            {members.map((member) => (
+              <button
+                className="rounded-full border border-border px-2 py-0.5 text-xs text-muted-foreground hover:border-primary/40 hover:text-foreground"
+                key={member.userId}
+                onClick={() => insertMention(member.displayName)}
+                type="button"
+              >
+                @{member.displayName}
+              </button>
+            ))}
+          </div>
+        ) : null}
         {error ? (
           <p className="text-xs text-red-400" role="alert">
             {error.message}

@@ -9,6 +9,7 @@ const ROLE_PATHS: Record<MembershipRole, string[]> = {
     '/tasks',
     '/employees',
     '/reports',
+    '/activity',
     '/notifications',
     '/settings',
   ],

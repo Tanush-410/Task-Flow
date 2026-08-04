@@ -1,4 +1,5 @@
 import {
+  Activity,
   Bell,
   CalendarCheck,
   CalendarDays,
@@ -42,6 +43,7 @@ const adminItems: NavigationItem[] = [
   { href: '/calendar', icon: CalendarDays, label: 'Calendar' },
   { href: '/employees', icon: UsersRound, label: 'Employees' },
   { href: '/reports', icon: ChartNoAxesCombined, label: 'Reports' },
+  { href: '/activity', icon: Activity, label: 'Activity' },
   { href: '/notifications', icon: Bell, label: 'Notifications' },
   { href: '/settings', icon: Settings, label: 'Settings' },
 ];

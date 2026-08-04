@@ -4,20 +4,28 @@ import { notFound } from 'next/navigation';
 
 import { AddAssigneeForm } from '@/components/add-assignee-form';
 import { AssignmentControls } from '@/components/assignment-controls';
+import { MuteTaskButton } from '@/components/mute-task-button';
 import { RemoveAssignmentButton } from '@/components/remove-assignment-button';
 import { ReopenAssignmentForm } from '@/components/reopen-assignment-form';
 import { PersonAvatar } from '@/components/person-avatar';
+import { TaskAttachments } from '@/components/task-attachments';
+import { TaskChecklist } from '@/components/task-checklist';
 import { TaskComments, type TaskCommentRow } from '@/components/task-comments';
+import { TaskDependencies } from '@/components/task-dependencies';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { listTaskActivity } from '@/modules/activity/queries';
+import { listTaskAttachments } from '@/modules/attachments/queries';
+import { listChecklistItems } from '@/modules/checklist/queries';
 import { listTaskComments } from '@/modules/comments/queries';
+import { listTaskDependencies } from '@/modules/dependencies/queries';
 import {
   listAssignableMembers,
   listDisplayNames,
   requireMembership,
 } from '@/modules/members/queries';
+import { isTaskMuted } from '@/modules/notifications/queries';
 import { getTaskById, listTaskAssignments } from '@/modules/tasks/queries';
 
 const PRIORITY_LABELS: Record<string, string> = {
@@ -63,11 +71,19 @@ export default async function TaskDetailPage({
     { data: assignments },
     { data: activity },
     { data: comments },
+    { data: checklistRows },
+    dependencies,
+    attachments,
+    muted,
   ] = await Promise.all([
     getTaskById(taskId),
     listTaskAssignments(taskId),
     listTaskActivity(taskId),
     listTaskComments(taskId),
+    listChecklistItems(taskId),
+    listTaskDependencies(taskId),
+    listTaskAttachments(taskId),
+    isTaskMuted(taskId),
   ]);
 
   if (!task) {
@@ -77,14 +93,22 @@ export default async function TaskDetailPage({
   const assignmentRows = assignments ?? [];
   const activityRows = activity ?? [];
   const commentRows = comments ?? [];
+  const checklistItems = (checklistRows ?? []).map((row) => ({
+    id: row.id,
+    title: row.title,
+    isDone: row.is_done,
+  }));
   const myAssignment = assignmentRows.find(
     (row) => row.assignee_id === membership.userId,
   );
 
-  const availableEmployees = (await listAssignableMembers()).filter(
+  const orgMembers = await listAssignableMembers();
+  const activeMembers = orgMembers.filter(
+    (member) => member.status === 'active',
+  );
+  const availableEmployees = activeMembers.filter(
     (member) =>
       member.role === 'employee' &&
-      member.status === 'active' &&
       !assignmentRows.some((row) => row.assignee_id === member.userId),
   );
 
@@ -115,6 +139,7 @@ export default async function TaskDetailPage({
     (membership.role === 'admin'
       ? anyIncomplete
       : Boolean(myAssignment) && myAssignment!.status !== 'completed');
+  const isBlocked = dependencies.some((dependency) => !dependency.isSatisfied);
 
   return (
     <section aria-labelledby="task-heading" className="space-y-6">
@@ -126,14 +151,17 @@ export default async function TaskDetailPage({
           >
             ← Back to {membership.role === 'admin' ? 'All Tasks' : 'My Tasks'}
           </Link>
-          {membership.role === 'admin' ? (
-            <Button asChild size="sm" variant="outline">
-              <Link href={`/tasks/${task.id}/edit`}>
-                <SquarePen aria-hidden />
-                Edit
-              </Link>
-            </Button>
-          ) : null}
+          <div className="flex items-center gap-2">
+            <MuteTaskButton initialMuted={muted} taskId={task.id} />
+            {membership.role === 'admin' ? (
+              <Button asChild size="sm" variant="outline">
+                <Link href={`/tasks/${task.id}/edit`}>
+                  <SquarePen aria-hidden />
+                  Edit
+                </Link>
+              </Button>
+            ) : null}
+          </div>
         </div>
 
         <h1
@@ -150,6 +178,7 @@ export default async function TaskDetailPage({
               {RECURRENCE_LABELS[task.recurrence]}
             </Badge>
           ) : null}
+          {isBlocked ? <Badge variant="destructive">Blocked</Badge> : null}
           {dueDate ? (
             <span className={overdue ? 'font-semibold text-red-400' : ''}>
               {overdue ? 'Overdue · ' : 'Due '}
@@ -179,6 +208,12 @@ export default async function TaskDetailPage({
               </Badge>
               {myAssignment.progress}% complete
             </p>
+            {isBlocked && myAssignment.status !== 'completed' ? (
+              <p className="mt-2 text-xs font-semibold text-amber-400">
+                This task is blocked by an incomplete dependency — it can&apos;t
+                be marked complete yet.
+              </p>
+            ) : null}
             <div className="mt-4">
               <AssignmentControls
                 assignment={{
@@ -269,6 +304,33 @@ export default async function TaskDetailPage({
 
       <Card>
         <CardHeader>
+          <CardTitle>Checklist</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <TaskChecklist items={checklistItems} taskId={task.id} />
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Dependencies</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <TaskDependencies dependencies={dependencies} taskId={task.id} />
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Attachments</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <TaskAttachments attachments={attachments} taskId={task.id} />
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
           <CardTitle>Activity</CardTitle>
         </CardHeader>
         <CardContent>
@@ -305,6 +367,10 @@ export default async function TaskDetailPage({
             canModerate={membership.role === 'admin'}
             comments={commentsWithAuthor}
             currentUserId={membership.userId}
+            members={activeMembers.map((member) => ({
+              userId: member.userId,
+              displayName: member.displayName,
+            }))}
             taskId={task.id}
           />
         </CardContent>

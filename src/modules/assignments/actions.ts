@@ -5,6 +5,7 @@ import { randomUUID } from 'node:crypto';
 import type { ActionResult } from '@/lib/result';
 import { createServerSupabase } from '@/lib/supabase/server';
 
+import { hasUnsatisfiedDependencies } from '../dependencies/queries';
 import { listOrganizationAdmins, requireMembership } from '../members/queries';
 import { queueTaskNotifications } from '../notifications/actions';
 import {
@@ -173,6 +174,27 @@ export async function updateAssignmentProgress(
   try {
     await requireMembership();
     const supabase = await createServerSupabase();
+
+    if (parsed.data.progress === 100) {
+      const { data: current } = await supabase
+        .from('task_assignments')
+        .select('task_id')
+        .eq('id', parsed.data.assignmentId)
+        .maybeSingle();
+
+      if (current && (await hasUnsatisfiedDependencies(current.task_id))) {
+        return {
+          ok: false,
+          error: {
+            code: 'BLOCKED_BY_DEPENDENCY',
+            message:
+              'This task is blocked by another task that has not been completed yet.',
+            traceId,
+          },
+        };
+      }
+    }
+
     const now = new Date().toISOString();
     const patch: Partial<{
       progress: number;
@@ -254,6 +276,27 @@ export async function changeAssignmentStatus(
   try {
     await requireMembership();
     const supabase = await createServerSupabase();
+
+    if (parsed.data.status === 'completed') {
+      const { data: current } = await supabase
+        .from('task_assignments')
+        .select('task_id')
+        .eq('id', parsed.data.assignmentId)
+        .maybeSingle();
+
+      if (current && (await hasUnsatisfiedDependencies(current.task_id))) {
+        return {
+          ok: false,
+          error: {
+            code: 'BLOCKED_BY_DEPENDENCY',
+            message:
+              'This task is blocked by another task that has not been completed yet.',
+            traceId,
+          },
+        };
+      }
+    }
+
     const now = new Date().toISOString();
     const patch: Partial<{
       status: AssignmentStatus;

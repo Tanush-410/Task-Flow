@@ -3,9 +3,10 @@
 import { randomUUID } from 'node:crypto';
 
 import type { ActionResult } from '@/lib/result';
+import { extractMentionedUserIds } from '@/lib/mentions';
 import { createServerSupabase } from '@/lib/supabase/server';
 
-import { requireMembership } from '../members/queries';
+import { listAssignableMembers, requireMembership } from '../members/queries';
 import { queueTaskNotifications } from '../notifications/actions';
 import { commentCreateSchema, commentDeleteSchema } from './schemas';
 
@@ -55,7 +56,7 @@ export async function createComment(
       return { ok: false, error: { ...COMMENT_CREATE_ERROR, traceId } };
     }
 
-    const [{ data: task }, { data: assignments }] = await Promise.all([
+    const [{ data: task }, { data: assignments }, members] = await Promise.all([
       supabase
         .from('tasks')
         .select('title')
@@ -65,22 +66,37 @@ export async function createComment(
         .from('task_assignments')
         .select('assignee_id')
         .eq('task_id', parsed.data.taskId),
+      listAssignableMembers(),
     ]);
 
-    const recipientIds = Array.from(
+    const assigneeIds = Array.from(
       new Set((assignments ?? []).map((row) => row.assignee_id)),
     ).filter((id) => id !== membership.userId);
 
-    await queueTaskNotifications(
-      recipientIds.map((recipientId) => ({
+    const mentionedIds = extractMentionedUserIds(parsed.data.body, members)
+      .filter((id) => id !== membership.userId)
+      .filter((id) => !assigneeIds.includes(id));
+
+    const taskTitle = task?.title ?? 'a task';
+
+    await queueTaskNotifications([
+      ...assigneeIds.map((recipientId) => ({
         organizationId: membership.organizationId,
         recipientId,
         taskId: parsed.data.taskId,
-        notificationType: 'comment_added',
+        notificationType: 'comment_added' as const,
         title: 'New comment',
-        body: `New comment on: ${task?.title ?? 'a task'}`,
+        body: `New comment on: ${taskTitle}`,
       })),
-    );
+      ...mentionedIds.map((recipientId) => ({
+        organizationId: membership.organizationId,
+        recipientId,
+        taskId: parsed.data.taskId,
+        notificationType: 'comment_added' as const,
+        title: 'You were mentioned',
+        body: `You were mentioned in a comment on: ${taskTitle}`,
+      })),
+    ]);
 
     return { ok: true, data: { commentId: comment.id } };
   } catch {

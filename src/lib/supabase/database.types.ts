@@ -336,6 +336,78 @@ export type Database = {
         };
         Relationships: [];
       };
+      task_attachments: {
+        Row: {
+          created_at: string;
+          file_name: string;
+          file_size: number;
+          id: string;
+          mime_type: string;
+          organization_id: string;
+          storage_path: string;
+          task_id: string;
+          uploaded_by: string;
+        };
+        Insert: {
+          created_at?: string;
+          file_name: string;
+          file_size: number;
+          id?: string;
+          mime_type: string;
+          organization_id: string;
+          storage_path: string;
+          task_id: string;
+          uploaded_by: string;
+        };
+        Update: {
+          created_at?: string;
+          file_name?: string;
+          file_size?: number;
+          id?: string;
+          mime_type?: string;
+          organization_id?: string;
+          storage_path?: string;
+          task_id?: string;
+          uploaded_by?: string;
+        };
+        Relationships: [];
+      };
+      task_checklist_items: {
+        Row: {
+          created_at: string;
+          created_by: string;
+          id: string;
+          is_done: boolean;
+          organization_id: string;
+          position: number;
+          task_id: string;
+          title: string;
+          updated_at: string;
+        };
+        Insert: {
+          created_at?: string;
+          created_by: string;
+          id?: string;
+          is_done?: boolean;
+          organization_id: string;
+          position?: number;
+          task_id: string;
+          title: string;
+          updated_at?: string;
+        };
+        Update: {
+          created_at?: string;
+          created_by?: string;
+          id?: string;
+          is_done?: boolean;
+          organization_id?: string;
+          position?: number;
+          task_id?: string;
+          title?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
       task_comments: {
         Row: {
           author_id: string;
@@ -363,6 +435,57 @@ export type Database = {
           organization_id?: string;
           task_id?: string;
           updated_at?: string;
+        };
+        Relationships: [];
+      };
+      task_dependencies: {
+        Row: {
+          created_at: string;
+          created_by: string;
+          depends_on_task_id: string;
+          id: string;
+          organization_id: string;
+          task_id: string;
+        };
+        Insert: {
+          created_at?: string;
+          created_by: string;
+          depends_on_task_id: string;
+          id?: string;
+          organization_id: string;
+          task_id: string;
+        };
+        Update: {
+          created_at?: string;
+          created_by?: string;
+          depends_on_task_id?: string;
+          id?: string;
+          organization_id?: string;
+          task_id?: string;
+        };
+        Relationships: [];
+      };
+      task_mutes: {
+        Row: {
+          created_at: string;
+          id: string;
+          organization_id: string;
+          task_id: string;
+          user_id: string;
+        };
+        Insert: {
+          created_at?: string;
+          id?: string;
+          organization_id: string;
+          task_id: string;
+          user_id: string;
+        };
+        Update: {
+          created_at?: string;
+          id?: string;
+          organization_id?: string;
+          task_id?: string;
+          user_id?: string;
         };
         Relationships: [];
       };
@@ -411,6 +534,45 @@ export type Database = {
           task_id?: string | null;
           title?: string;
           updated_at?: string;
+        };
+        Relationships: [];
+      };
+      task_templates: {
+        Row: {
+          acknowledgement_required: boolean;
+          created_at: string;
+          created_by: string;
+          description: string;
+          id: string;
+          name: string;
+          organization_id: string;
+          priority: Database['public']['Enums']['task_priority'];
+          recurrence: Database['public']['Enums']['task_recurrence'];
+          title: string;
+        };
+        Insert: {
+          acknowledgement_required?: boolean;
+          created_at?: string;
+          created_by: string;
+          description?: string;
+          id?: string;
+          name: string;
+          organization_id: string;
+          priority?: Database['public']['Enums']['task_priority'];
+          recurrence?: Database['public']['Enums']['task_recurrence'];
+          title: string;
+        };
+        Update: {
+          acknowledgement_required?: boolean;
+          created_at?: string;
+          created_by?: string;
+          description?: string;
+          id?: string;
+          name?: string;
+          organization_id?: string;
+          priority?: Database['public']['Enums']['task_priority'];
+          recurrence?: Database['public']['Enums']['task_recurrence'];
+          title?: string;
         };
         Relationships: [];
       };

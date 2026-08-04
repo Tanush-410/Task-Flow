@@ -45,3 +45,16 @@ export async function countUnreadNotifications(): Promise<number> {
 
   return count ?? 0;
 }
+
+export async function isTaskMuted(taskId: string): Promise<boolean> {
+  const membership = await requireMembership();
+  const supabase = await createServerSupabase();
+  const { data } = await supabase
+    .from('task_mutes')
+    .select('id')
+    .eq('task_id', taskId)
+    .eq('user_id', membership.userId)
+    .maybeSingle();
+
+  return Boolean(data);
+}

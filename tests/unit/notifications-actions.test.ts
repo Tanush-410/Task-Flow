@@ -2,12 +2,16 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
   createServerSupabase: vi.fn(),
+  createAdminSupabase: vi.fn(),
   requireMembership: vi.fn(),
 }));
 
 vi.mock('server-only', () => ({}));
 vi.mock('@/lib/supabase/server', () => ({
   createServerSupabase: mocks.createServerSupabase,
+}));
+vi.mock('@/lib/supabase/admin', () => ({
+  createAdminSupabase: mocks.createAdminSupabase,
 }));
 vi.mock('@/modules/members/queries', () => ({
   requireMembership: mocks.requireMembership,
@@ -30,6 +34,13 @@ describe('queueTaskNotifications', () => {
       organizationId: 'org-1',
       userId: 'user-1',
       role: 'admin',
+    });
+    mocks.createAdminSupabase.mockReturnValue({
+      from: vi.fn().mockReturnValue({
+        select: vi.fn().mockReturnValue({
+          in: vi.fn().mockResolvedValue({ data: [] }),
+        }),
+      }),
     });
   });
 
@@ -67,6 +78,45 @@ describe('queueTaskNotifications', () => {
         title: 'New task assigned',
         body: 'You have been assigned a new task: Ship it',
       }),
+    ]);
+  });
+
+  it('drops entries whose recipient has muted that task', async () => {
+    const insert = vi.fn().mockResolvedValue({ error: null });
+    mocks.createServerSupabase.mockResolvedValue({
+      from: vi.fn().mockReturnValue({ insert }),
+    });
+    mocks.createAdminSupabase.mockReturnValue({
+      from: vi.fn().mockReturnValue({
+        select: vi.fn().mockReturnValue({
+          in: vi.fn().mockResolvedValue({
+            data: [{ task_id: 'task-1', user_id: 'user-2' }],
+          }),
+        }),
+      }),
+    });
+
+    await queueTaskNotifications([
+      {
+        organizationId: 'org-1',
+        recipientId: 'user-2',
+        taskId: 'task-1',
+        notificationType: 'comment_added',
+        title: 'New comment',
+        body: 'New comment on: Ship it',
+      },
+      {
+        organizationId: 'org-1',
+        recipientId: 'user-3',
+        taskId: 'task-1',
+        notificationType: 'comment_added',
+        title: 'New comment',
+        body: 'New comment on: Ship it',
+      },
+    ]);
+
+    expect(insert).toHaveBeenCalledWith([
+      expect.objectContaining({ recipient_id: 'user-3' }),
     ]);
   });
 
