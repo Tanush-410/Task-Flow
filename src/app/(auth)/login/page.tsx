@@ -12,9 +12,9 @@ export const metadata: Metadata = {
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string; next?: string }>;
+  searchParams: Promise<{ error?: string; next?: string; reset?: string }>;
 }) {
-  const { error, next } = await searchParams;
+  const { error, next, reset } = await searchParams;
   const nextPath = sanitizeNextPath(next ?? null) ?? undefined;
 
   return (
@@ -38,6 +38,15 @@ export default async function LoginPage({
           role="alert"
         >
           We could not complete that sign-in request. Please try again.
+        </p>
+      ) : null}
+
+      {reset === 'success' ? (
+        <p
+          className="mb-5 rounded-xl border border-emerald-500/25 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-300"
+          role="status"
+        >
+          Your password has been updated. Sign in with your new password.
         </p>
       ) : null}
 

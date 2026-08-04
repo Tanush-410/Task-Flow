@@ -9,6 +9,8 @@ import {
   requireMembership,
 } from '../members/queries';
 
+export const TASKS_PAGE_SIZE = 20;
+
 export async function listOrganizationTasks() {
   const membership = await requireAdmin();
   const supabase = await createServerSupabase();
@@ -18,6 +20,96 @@ export async function listOrganizationTasks() {
     .select('*')
     .eq('organization_id', membership.organizationId)
     .order('created_at', { ascending: false });
+}
+
+export type PaginatedTasks = {
+  tasks: Database['public']['Tables']['tasks']['Row'][];
+  totalCount: number;
+  page: number;
+  pageSize: number;
+};
+
+/**
+ * Paginated variant of listOrganizationTasks for the /tasks list, which
+ * would otherwise pull every task in the organization into memory just to
+ * render one page of rows.
+ */
+type TaskStatusColumn = Database['public']['Tables']['tasks']['Row']['status'];
+type TaskPriorityColumn =
+  Database['public']['Tables']['tasks']['Row']['priority'];
+
+export async function listOrganizationTasksPage(input: {
+  page: number;
+  status?: string;
+  priority?: string;
+  sort?: 'due-asc' | 'due-desc' | 'priority' | 'newest';
+}): Promise<PaginatedTasks> {
+  const membership = await requireAdmin();
+  const supabase = await createServerSupabase();
+
+  const page = Math.max(1, input.page);
+  const from = (page - 1) * TASKS_PAGE_SIZE;
+  const to = from + TASKS_PAGE_SIZE - 1;
+
+  let query = supabase
+    .from('tasks')
+    .select('*', { count: 'exact' })
+    .eq('organization_id', membership.organizationId);
+
+  if (input.status && input.status !== 'all') {
+    query = query.eq('status', input.status as TaskStatusColumn);
+  }
+  if (input.priority && input.priority !== 'all') {
+    query = query.eq('priority', input.priority as TaskPriorityColumn);
+  }
+
+  if (input.sort === 'newest') {
+    query = query.order('created_at', { ascending: false });
+  } else if (input.sort === 'due-desc') {
+    query = query.order('due_at', { ascending: false, nullsFirst: false });
+  } else if (input.sort === 'priority') {
+    // Postgres sorts enums by declaration order; task_priority is declared
+    // low, medium, high, urgent, so descending gives urgent-first.
+    query = query.order('priority', { ascending: false });
+  } else {
+    query = query.order('due_at', { ascending: true, nullsFirst: false });
+  }
+
+  const { data, count, error } = await query.range(from, to);
+
+  if (error || !data) {
+    return { tasks: [], totalCount: 0, page, pageSize: TASKS_PAGE_SIZE };
+  }
+
+  return {
+    tasks: data,
+    totalCount: count ?? 0,
+    page,
+    pageSize: TASKS_PAGE_SIZE,
+  };
+}
+
+export type RecentTask = {
+  id: string;
+  title: string;
+  status: Database['public']['Tables']['tasks']['Row']['status'];
+};
+
+/** Lightweight, capped query for the dashboard's "Recent tasks" widget. */
+export async function listRecentOrganizationTasks(
+  limit = 5,
+): Promise<RecentTask[]> {
+  const membership = await requireAdmin();
+  const supabase = await createServerSupabase();
+
+  const { data, error } = await supabase
+    .from('tasks')
+    .select('id,title,status')
+    .eq('organization_id', membership.organizationId)
+    .order('created_at', { ascending: false })
+    .limit(limit);
+
+  return error || !data ? [] : data;
 }
 
 export async function getTaskById(taskId: string) {
@@ -46,62 +138,66 @@ export type DashboardSummary = {
   completedThisMonth: number;
 };
 
+/**
+ * Aggregate counts via `head: true` count queries instead of pulling every
+ * task and assignment row into memory just to tally them client-side — the
+ * original implementation didn't scale with organization size.
+ */
 export async function getDashboardSummary(): Promise<DashboardSummary> {
   const membership = await requireAdmin();
   const supabase = await createServerSupabase();
-
-  const [{ data: tasks }, { data: assignments }] = await Promise.all([
-    supabase
-      .from('tasks')
-      .select('id,due_at,status')
-      .eq('organization_id', membership.organizationId),
-    supabase
-      .from('task_assignments')
-      .select('status,completed_at,task_id')
-      .eq('organization_id', membership.organizationId),
-  ]);
-
-  const taskRows = tasks ?? [];
-  const assignmentRows = assignments ?? [];
-  const dueAtByTaskId = new Map(taskRows.map((task) => [task.id, task.due_at]));
+  const organizationId = membership.organizationId;
 
   const now = new Date();
-  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+  const nowIso = now.toISOString();
+  const monthStartIso = new Date(
+    now.getFullYear(),
+    now.getMonth(),
+    1,
+  ).toISOString();
 
-  let overdueCount = 0;
-  let completedThisMonth = 0;
-  let delayedCount = 0;
-  let activeAssignments = 0;
-
-  for (const assignment of assignmentRows) {
-    if (assignment.status === 'completed') {
-      if (
-        assignment.completed_at &&
-        new Date(assignment.completed_at) >= monthStart
-      ) {
-        completedThisMonth += 1;
-      }
-      continue;
-    }
-
-    activeAssignments += 1;
-
-    if (assignment.status === 'delayed') {
-      delayedCount += 1;
-    }
-
-    const dueAt = dueAtByTaskId.get(assignment.task_id);
-    if (dueAt && new Date(dueAt) < now) {
-      overdueCount += 1;
-    }
-  }
+  const [
+    totalTasksResult,
+    activeAssignmentsResult,
+    delayedResult,
+    completedThisMonthResult,
+    overdueResult,
+  ] = await Promise.all([
+    supabase
+      .from('tasks')
+      .select('*', { count: 'exact', head: true })
+      .eq('organization_id', organizationId)
+      .neq('status', 'archived'),
+    supabase
+      .from('task_assignments')
+      .select('*', { count: 'exact', head: true })
+      .eq('organization_id', organizationId)
+      .neq('status', 'completed'),
+    supabase
+      .from('task_assignments')
+      .select('*', { count: 'exact', head: true })
+      .eq('organization_id', organizationId)
+      .eq('status', 'delayed'),
+    supabase
+      .from('task_assignments')
+      .select('*', { count: 'exact', head: true })
+      .eq('organization_id', organizationId)
+      .eq('status', 'completed')
+      .gte('completed_at', monthStartIso),
+    supabase
+      .from('task_assignments')
+      .select('*, tasks!inner(due_at)', { count: 'exact', head: true })
+      .eq('organization_id', organizationId)
+      .neq('status', 'completed')
+      .lt('tasks.due_at', nowIso),
+  ]);
 
   return {
-    totalTasks: taskRows.filter((task) => task.status !== 'archived').length,
-    activeAssignments,
-    overdueCount,
-    delayedCount,
-    completedThisMonth,
+    totalTasks: totalTasksResult.count ?? 0,
+    activeAssignments: activeAssignmentsResult.count ?? 0,
+    overdueCount: overdueResult.count ?? 0,
+    delayedCount: delayedResult.count ?? 0,
+    completedThisMonth: completedThisMonthResult.count ?? 0,
   };
 }
 

@@ -9,8 +9,10 @@ import { requireAdmin, requireMembership } from '../members/queries';
 import { queueTaskNotifications } from '../notifications/actions';
 import {
   type TaskPriority,
+  type TaskRecurrence,
   type TaskStatus,
   taskArchiveSchema,
+  taskBulkStatusSchema,
   taskCreateSchema,
   taskCreateWithAssigneesSchema,
   taskPublishSchema,
@@ -104,6 +106,7 @@ export async function updateTask(
     due_at: string | null;
     start_at: string | null;
     acknowledgement_required: boolean;
+    recurrence: TaskRecurrence;
   }> = {};
 
   if (mutable.title !== undefined) patch.title = mutable.title;
@@ -116,6 +119,7 @@ export async function updateTask(
   if (mutable.acknowledgementRequired !== undefined) {
     patch.acknowledgement_required = mutable.acknowledgementRequired;
   }
+  if (mutable.recurrence !== undefined) patch.recurrence = mutable.recurrence;
 
   if (Object.keys(patch).length === 0) {
     return {
@@ -223,6 +227,7 @@ export async function createAndAssignTask(
         due_at: parsed.data.dueAt ?? null,
         start_at: parsed.data.startAt ?? null,
         acknowledgement_required: parsed.data.acknowledgementRequired,
+        recurrence: parsed.data.recurrence,
         status: 'published',
         published_at: now,
       })
@@ -306,6 +311,50 @@ export async function archiveTask(
     }
 
     return { ok: true, data: { taskId: data.id } };
+  } catch {
+    return { ok: false, error: { ...TASK_UPDATE_ERROR, traceId } };
+  }
+}
+
+export async function bulkUpdateTaskStatus(
+  input: unknown,
+): Promise<ActionResult<{ updatedCount: number }>> {
+  const traceId = randomUUID();
+  const parsed = taskBulkStatusSchema.safeParse(input);
+
+  if (!parsed.success) {
+    return {
+      ok: false,
+      error: {
+        code: 'INVALID_TASK',
+        message: 'Select at least one task.',
+        traceId,
+        fields: parsed.error.flatten().fieldErrors,
+      },
+    };
+  }
+
+  try {
+    const membership = await requireAdmin();
+    const supabase = await createServerSupabase();
+    const now = new Date().toISOString();
+    const patch =
+      parsed.data.status === 'archived'
+        ? { status: 'archived' as const, archived_at: now }
+        : { status: 'published' as const, published_at: now };
+
+    const { data, error } = await supabase
+      .from('tasks')
+      .update(patch)
+      .in('id', parsed.data.taskIds)
+      .eq('organization_id', membership.organizationId)
+      .select('id');
+
+    if (error) {
+      return { ok: false, error: { ...TASK_UPDATE_ERROR, traceId } };
+    }
+
+    return { ok: true, data: { updatedCount: data?.length ?? 0 } };
   } catch {
     return { ok: false, error: { ...TASK_UPDATE_ERROR, traceId } };
   }

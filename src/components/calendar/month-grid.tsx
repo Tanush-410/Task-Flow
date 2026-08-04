@@ -1,5 +1,7 @@
 'use client';
 
+import { useState } from 'react';
+
 import { addDays, isSameDay, startOfMonthGrid } from '@/lib/calendar-dates';
 import { cn } from '@/lib/utils';
 import type { CalendarTask } from '@/modules/tasks/queries';
@@ -13,15 +15,20 @@ export function MonthGrid({
   month,
   events,
   canCreate,
+  canEdit = false,
   onSelectDay,
   onCreateAt,
+  onRescheduleTask,
 }: {
   month: Date;
   events: CalendarTask[];
   canCreate: boolean;
+  canEdit?: boolean;
   onSelectDay: (day: Date) => void;
   onCreateAt: (date: Date) => void;
+  onRescheduleTask?: (taskId: string, newDueAt: string) => void;
 }) {
+  const [dragOverKey, setDragOverKey] = useState<string | null>(null);
   const gridStart = startOfMonthGrid(month);
   const today = new Date();
   const days = Array.from({ length: 42 }, (_, index) =>
@@ -58,13 +65,59 @@ export function MonthGrid({
           const visible = dayEvents.slice(0, MAX_VISIBLE_EVENTS);
           const overflow = dayEvents.length - visible.length;
 
+          const dayKey = day.toISOString();
+
           return (
             <div
               className={cn(
                 'group relative min-h-[112px] border-r border-b border-border p-1.5 transition-colors',
                 !isCurrentMonth && 'bg-muted/50',
+                dragOverKey === dayKey && 'bg-primary-soft/60',
               )}
-              key={day.toISOString()}
+              key={dayKey}
+              onDragLeave={canEdit ? () => setDragOverKey(null) : undefined}
+              onDragOver={
+                canEdit
+                  ? (dragEvent) => {
+                      dragEvent.preventDefault();
+                      setDragOverKey(dayKey);
+                    }
+                  : undefined
+              }
+              onDrop={
+                canEdit && onRescheduleTask
+                  ? (dragEvent) => {
+                      dragEvent.preventDefault();
+                      setDragOverKey(null);
+                      const raw =
+                        dragEvent.dataTransfer.getData('application/json');
+                      if (!raw) return;
+
+                      try {
+                        const payload = JSON.parse(raw) as {
+                          taskId: string;
+                          dueAt: string | null;
+                        };
+                        const original = payload.dueAt
+                          ? new Date(payload.dueAt)
+                          : null;
+                        const newDueAt = new Date(
+                          day.getFullYear(),
+                          day.getMonth(),
+                          day.getDate(),
+                          original?.getHours() ?? 9,
+                          original?.getMinutes() ?? 0,
+                        );
+                        onRescheduleTask(
+                          payload.taskId,
+                          newDueAt.toISOString(),
+                        );
+                      } catch {
+                        // Ignore malformed drag payloads.
+                      }
+                    }
+                  : undefined
+              }
             >
               {canCreate ? (
                 <button
@@ -103,7 +156,11 @@ export function MonthGrid({
               </div>
               <div className="relative z-10 mt-1 space-y-1">
                 {visible.map((event) => (
-                  <EventChip event={event} key={event.task.id} />
+                  <EventChip
+                    draggable={canEdit}
+                    event={event}
+                    key={event.task.id}
+                  />
                 ))}
                 {overflow > 0 ? (
                   <button

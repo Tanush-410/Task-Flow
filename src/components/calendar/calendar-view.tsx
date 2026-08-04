@@ -11,6 +11,7 @@ import {
 } from '@/lib/calendar-dates';
 import { getCalendarEvents } from '@/modules/calendar/actions';
 import type { OrganizationMember } from '@/modules/members/queries';
+import { updateTask } from '@/modules/tasks/actions';
 import type { CalendarTask } from '@/modules/tasks/queries';
 import { PersonAvatar } from '@/components/person-avatar';
 import { Button } from '@/components/ui/button';
@@ -25,10 +26,12 @@ export function CalendarView({
   initialDate,
   initialEvents,
   people,
+  role,
 }: {
   initialDate: string;
   initialEvents: CalendarTask[];
   people: OrganizationMember[];
+  role: 'admin' | 'employee';
 }) {
   const [currentDate, setCurrentDate] = useState(() => new Date(initialDate));
   const [viewMode, setViewMode] = useState<ViewMode>('month');
@@ -62,6 +65,25 @@ export function CalendarView({
     // Re-fetch only when the visible range actually changes.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rangeKey]);
+
+  function rescheduleTask(taskId: string, newDueAt: string) {
+    // Optimistic: move the chip immediately, then reconcile with the server.
+    setEvents((previous) =>
+      previous.map((event) =>
+        event.task.id === taskId
+          ? { ...event, task: { ...event.task, due_at: newDueAt } }
+          : event,
+      ),
+    );
+
+    startTransition(() => {
+      updateTask({ taskId, dueAt: newDueAt }).then((result) => {
+        if (!result.ok) {
+          refetchEvents();
+        }
+      });
+    });
+  }
 
   function togglePerson(userId: string) {
     setHiddenPeople((previous) => {
@@ -197,9 +219,11 @@ export function CalendarView({
           {viewMode === 'month' ? (
             <MonthGrid
               canCreate
+              canEdit={role === 'admin'}
               events={visibleEvents}
               month={currentDate}
               onCreateAt={setQuickCreateDate}
+              onRescheduleTask={rescheduleTask}
               onSelectDay={(day) => {
                 setCurrentDate(day);
                 setViewMode('day');

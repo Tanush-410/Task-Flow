@@ -336,6 +336,36 @@ export type Database = {
         };
         Relationships: [];
       };
+      task_comments: {
+        Row: {
+          author_id: string;
+          body: string;
+          created_at: string;
+          id: string;
+          organization_id: string;
+          task_id: string;
+          updated_at: string;
+        };
+        Insert: {
+          author_id: string;
+          body: string;
+          created_at?: string;
+          id?: string;
+          organization_id: string;
+          task_id: string;
+          updated_at?: string;
+        };
+        Update: {
+          author_id?: string;
+          body?: string;
+          created_at?: string;
+          id?: string;
+          organization_id?: string;
+          task_id?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
       task_notifications: {
         Row: {
           assignment_id: string | null;
@@ -396,6 +426,7 @@ export type Database = {
           organization_id: string;
           priority: Database['public']['Enums']['task_priority'];
           published_at: string | null;
+          recurrence: Database['public']['Enums']['task_recurrence'];
           start_at: string | null;
           status: Database['public']['Enums']['task_status'];
           title: string;
@@ -412,6 +443,7 @@ export type Database = {
           organization_id: string;
           priority?: Database['public']['Enums']['task_priority'];
           published_at?: string | null;
+          recurrence?: Database['public']['Enums']['task_recurrence'];
           start_at?: string | null;
           status?: Database['public']['Enums']['task_status'];
           title: string;
@@ -428,6 +460,7 @@ export type Database = {
           organization_id?: string;
           priority?: Database['public']['Enums']['task_priority'];
           published_at?: string | null;
+          recurrence?: Database['public']['Enums']['task_recurrence'];
           start_at?: string | null;
           status?: Database['public']['Enums']['task_status'];
           title?: string;
@@ -533,8 +566,10 @@ export type Database = {
         | 'assignment_status_changed'
         | 'assignment_delayed'
         | 'assignment_completed'
-        | 'acknowledgement_required';
+        | 'acknowledgement_required'
+        | 'comment_added';
       task_priority: 'low' | 'medium' | 'high' | 'urgent';
+      task_recurrence: 'none' | 'daily' | 'weekly' | 'monthly';
       task_status: 'draft' | 'published' | 'archived';
     };
     CompositeTypes: { [_ in never]: never };

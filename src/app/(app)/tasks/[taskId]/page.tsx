@@ -1,3 +1,4 @@
+import { Repeat, SquarePen } from 'lucide-react';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 
@@ -6,9 +7,12 @@ import { AssignmentControls } from '@/components/assignment-controls';
 import { RemoveAssignmentButton } from '@/components/remove-assignment-button';
 import { ReopenAssignmentForm } from '@/components/reopen-assignment-form';
 import { PersonAvatar } from '@/components/person-avatar';
+import { TaskComments, type TaskCommentRow } from '@/components/task-comments';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { listTaskActivity } from '@/modules/activity/queries';
+import { listTaskComments } from '@/modules/comments/queries';
 import {
   listAssignableMembers,
   listDisplayNames,
@@ -40,6 +44,12 @@ const STATUS_BADGE_VARIANT: Record<
   completed: 'success',
 };
 
+const RECURRENCE_LABELS: Record<string, string> = {
+  daily: 'Repeats daily',
+  weekly: 'Repeats weekly',
+  monthly: 'Repeats monthly',
+};
+
 export default async function TaskDetailPage({
   params,
 }: {
@@ -48,12 +58,17 @@ export default async function TaskDetailPage({
   const { taskId } = await params;
   const membership = await requireMembership();
 
-  const [{ data: task }, { data: assignments }, { data: activity }] =
-    await Promise.all([
-      getTaskById(taskId),
-      listTaskAssignments(taskId),
-      listTaskActivity(taskId),
-    ]);
+  const [
+    { data: task },
+    { data: assignments },
+    { data: activity },
+    { data: comments },
+  ] = await Promise.all([
+    getTaskById(taskId),
+    listTaskAssignments(taskId),
+    listTaskActivity(taskId),
+    listTaskComments(taskId),
+  ]);
 
   if (!task) {
     notFound();
@@ -61,6 +76,7 @@ export default async function TaskDetailPage({
 
   const assignmentRows = assignments ?? [];
   const activityRows = activity ?? [];
+  const commentRows = comments ?? [];
   const myAssignment = assignmentRows.find(
     (row) => row.assignee_id === membership.userId,
   );
@@ -77,7 +93,16 @@ export default async function TaskDetailPage({
     ...activityRows
       .map((row) => row.actor_id)
       .filter((id): id is string => Boolean(id)),
+    ...commentRows.map((row) => row.author_id),
   ]);
+
+  const commentsWithAuthor: TaskCommentRow[] = commentRows.map((row) => ({
+    id: row.id,
+    authorId: row.author_id,
+    authorName: displayNames.get(row.author_id) ?? 'Unknown',
+    body: row.body,
+    createdAt: row.created_at,
+  }));
 
   const now = new Date();
   const dueDate = task.due_at ? new Date(task.due_at) : null;
@@ -94,12 +119,22 @@ export default async function TaskDetailPage({
   return (
     <section aria-labelledby="task-heading" className="space-y-6">
       <div>
-        <Link
-          className="text-sm font-semibold text-muted-foreground hover:text-foreground"
-          href={membership.role === 'admin' ? '/tasks' : '/my-tasks'}
-        >
-          ← Back to {membership.role === 'admin' ? 'All Tasks' : 'My Tasks'}
-        </Link>
+        <div className="flex items-center justify-between gap-3">
+          <Link
+            className="text-sm font-semibold text-muted-foreground hover:text-foreground"
+            href={membership.role === 'admin' ? '/tasks' : '/my-tasks'}
+          >
+            ← Back to {membership.role === 'admin' ? 'All Tasks' : 'My Tasks'}
+          </Link>
+          {membership.role === 'admin' ? (
+            <Button asChild size="sm" variant="outline">
+              <Link href={`/tasks/${task.id}/edit`}>
+                <SquarePen aria-hidden />
+                Edit
+              </Link>
+            </Button>
+          ) : null}
+        </div>
 
         <h1
           className="mt-3 text-3xl font-semibold tracking-[-0.035em] text-foreground"
@@ -109,6 +144,12 @@ export default async function TaskDetailPage({
         </h1>
         <p className="mt-2 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
           <Badge>{PRIORITY_LABELS[task.priority]} priority</Badge>
+          {task.recurrence !== 'none' ? (
+            <Badge variant="secondary">
+              <Repeat aria-hidden className="size-3" />
+              {RECURRENCE_LABELS[task.recurrence]}
+            </Badge>
+          ) : null}
           {dueDate ? (
             <span className={overdue ? 'font-semibold text-red-400' : ''}>
               {overdue ? 'Overdue · ' : 'Due '}
@@ -252,6 +293,20 @@ export default async function TaskDetailPage({
               ))}
             </ul>
           )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Comments ({commentsWithAuthor.length})</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <TaskComments
+            canModerate={membership.role === 'admin'}
+            comments={commentsWithAuthor}
+            currentUserId={membership.userId}
+            taskId={task.id}
+          />
         </CardContent>
       </Card>
     </section>

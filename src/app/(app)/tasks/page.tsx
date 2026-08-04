@@ -1,11 +1,15 @@
-import { ListChecks } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ListChecks } from 'lucide-react';
 import Link from 'next/link';
 
+import { TaskList } from '@/components/task-list';
 import { TaskSortSelect } from '@/components/task-sort-select';
-import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { EmptyState } from '@/components/ui/empty-state';
 import { PageHeader } from '@/components/ui/page-header';
-import { listOrganizationTasks } from '@/modules/tasks/queries';
+import {
+  listOrganizationTasksPage,
+  TASKS_PAGE_SIZE,
+} from '@/modules/tasks/queries';
 
 const STATUS_LABELS: Record<string, string> = {
   draft: 'Draft',
@@ -20,32 +24,21 @@ const PRIORITY_LABELS: Record<string, string> = {
   urgent: 'Urgent',
 };
 
-const PRIORITY_ORDER: Record<string, number> = {
-  urgent: 0,
-  high: 1,
-  medium: 2,
-  low: 3,
-};
-
 const STATUS_FILTERS = ['all', 'published', 'draft', 'archived'] as const;
 const PRIORITY_FILTERS = ['all', 'urgent', 'high', 'medium', 'low'] as const;
 const SORT_VALUES = ['due-asc', 'due-desc', 'priority', 'newest'] as const;
-
-function isOverdue(dueAt: string | null, status: string): boolean {
-  return (
-    Boolean(dueAt) && status !== 'archived' && new Date(dueAt!) < new Date()
-  );
-}
 
 function buildFilterHref(params: {
   status: string;
   priority: string;
   sort: string;
+  page?: number;
 }): string {
   const query = new URLSearchParams();
   if (params.status !== 'all') query.set('status', params.status);
   if (params.priority !== 'all') query.set('priority', params.priority);
   if (params.sort !== 'due-asc') query.set('sort', params.sort);
+  if (params.page && params.page > 1) query.set('page', String(params.page));
   const queryString = query.toString();
   return queryString ? `/tasks?${queryString}` : '/tasks';
 }
@@ -53,9 +46,14 @@ function buildFilterHref(params: {
 export default async function TasksPage({
   searchParams,
 }: {
-  searchParams: Promise<{ status?: string; priority?: string; sort?: string }>;
+  searchParams: Promise<{
+    status?: string;
+    priority?: string;
+    sort?: string;
+    page?: string;
+  }>;
 }) {
-  const { status, priority, sort } = await searchParams;
+  const { status, priority, sort, page } = await searchParams;
   const activeStatus = STATUS_FILTERS.includes(
     status as (typeof STATUS_FILTERS)[number],
   )
@@ -69,29 +67,15 @@ export default async function TasksPage({
   const activeSort = SORT_VALUES.includes(sort as (typeof SORT_VALUES)[number])
     ? (sort as (typeof SORT_VALUES)[number])
     : 'due-asc';
+  const activePage = Math.max(1, Number.parseInt(page ?? '1', 10) || 1);
 
-  const { data: tasks } = await listOrganizationTasks();
-  const filtered = (tasks ?? []).filter(
-    (task) =>
-      (activeStatus === 'all' || task.status === activeStatus) &&
-      (activePriority === 'all' || task.priority === activePriority),
-  );
-
-  const sorted = [...filtered].sort((a, b) => {
-    if (activeSort === 'priority') {
-      return PRIORITY_ORDER[a.priority] - PRIORITY_ORDER[b.priority];
-    }
-    if (activeSort === 'newest') {
-      return (
-        new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-      );
-    }
-    if (!a.due_at && !b.due_at) return 0;
-    if (!a.due_at) return 1;
-    if (!b.due_at) return -1;
-    const diff = new Date(a.due_at).getTime() - new Date(b.due_at).getTime();
-    return activeSort === 'due-desc' ? -diff : diff;
+  const { tasks, totalCount } = await listOrganizationTasksPage({
+    page: activePage,
+    status: activeStatus,
+    priority: activePriority,
+    sort: activeSort,
   });
+  const totalPages = Math.max(1, Math.ceil(totalCount / TASKS_PAGE_SIZE));
 
   return (
     <section aria-labelledby="tasks-heading" className="space-y-6">
@@ -160,62 +144,61 @@ export default async function TasksPage({
         ))}
       </div>
 
-      {sorted.length === 0 ? (
+      {tasks.length === 0 ? (
         <EmptyState
           description="Tasks matching this filter will show up here."
           icon={ListChecks}
           title="No tasks yet"
         />
       ) : (
-        <ul className="divide-y divide-border rounded-2xl border border-border bg-card">
-          {sorted.map((task) => {
-            const overdue = isOverdue(task.due_at, task.status);
-
-            return (
-              <li key={task.id}>
-                <Link
-                  className="flex items-center justify-between gap-4 px-5 py-4 hover:bg-muted"
-                  href={`/tasks/${task.id}`}
-                >
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-semibold text-foreground">
-                      {task.title}
-                    </p>
-                    <p className="mt-1.5 flex items-center gap-2">
-                      <Badge variant="secondary">
-                        {PRIORITY_LABELS[task.priority]}
-                      </Badge>
-                      <Badge
-                        variant={
-                          task.status === 'archived' ? 'secondary' : 'default'
-                        }
-                      >
-                        {STATUS_LABELS[task.status]}
-                      </Badge>
-                    </p>
-                  </div>
-                  <div className="shrink-0 text-right text-sm">
-                    {task.due_at ? (
-                      <span
-                        className={
-                          overdue
-                            ? 'font-semibold text-red-400'
-                            : 'text-muted-foreground'
-                        }
-                      >
-                        {overdue ? 'Overdue · ' : 'Due '}
-                        {new Date(task.due_at).toLocaleDateString()}
-                      </span>
-                    ) : (
-                      <span className="text-muted-foreground">No due date</span>
-                    )}
-                  </div>
-                </Link>
-              </li>
-            );
-          })}
-        </ul>
+        <TaskList tasks={tasks} />
       )}
+
+      {totalPages > 1 ? (
+        <div className="flex items-center justify-between gap-3">
+          <p className="text-sm text-muted-foreground">
+            Page {activePage} of {totalPages} &middot; {totalCount} tasks
+          </p>
+          <div className="flex gap-2">
+            <Button
+              asChild
+              disabled={activePage <= 1}
+              size="sm"
+              variant="outline"
+            >
+              <Link
+                href={buildFilterHref({
+                  status: activeStatus,
+                  priority: activePriority,
+                  sort: activeSort,
+                  page: activePage - 1,
+                })}
+              >
+                <ChevronLeft aria-hidden />
+                Previous
+              </Link>
+            </Button>
+            <Button
+              asChild
+              disabled={activePage >= totalPages}
+              size="sm"
+              variant="outline"
+            >
+              <Link
+                href={buildFilterHref({
+                  status: activeStatus,
+                  priority: activePriority,
+                  sort: activeSort,
+                  page: activePage + 1,
+                })}
+              >
+                Next
+                <ChevronRight aria-hidden />
+              </Link>
+            </Button>
+          </div>
+        </div>
+      ) : null}
     </section>
   );
 }

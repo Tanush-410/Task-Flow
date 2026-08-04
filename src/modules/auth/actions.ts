@@ -8,6 +8,7 @@ import {
 } from '@supabase/supabase-js';
 import { redirect } from 'next/navigation';
 
+import { serverEnv } from '@/lib/server-env';
 import { createAdminSupabase } from '@/lib/supabase/admin';
 import { createServerSupabase } from '@/lib/supabase/server';
 import type { ActionResult } from '@/lib/result';
@@ -20,6 +21,8 @@ import {
 } from './navigation';
 import {
   loginSchema,
+  requestPasswordResetSchema,
+  resetPasswordSchema,
   signUpAdminSchema,
   signUpEmployeeSchema,
 } from './schemas';
@@ -296,4 +299,118 @@ export async function signOut(): Promise<void> {
   const supabase = await createServerSupabase();
   await supabase.auth.signOut();
   redirect('/login');
+}
+
+const RESET_UNAVAILABLE_MESSAGE =
+  'We could not send the reset link. Please try again.';
+const RESET_INVALID_LINK_MESSAGE =
+  'This reset link is invalid or has expired. Request a new one.';
+
+export async function requestPasswordReset(
+  _previousState: ActionResult<null> | null,
+  formData: FormData,
+): Promise<ActionResult<null>> {
+  const traceId = randomUUID();
+  const parsed = requestPasswordResetSchema.safeParse(
+    Object.fromEntries(formData),
+  );
+
+  if (!parsed.success) {
+    return {
+      ok: false,
+      error: {
+        code: 'INVALID_EMAIL',
+        message: 'Enter a valid email address.',
+        traceId,
+        fields: parsed.error.flatten().fieldErrors,
+      },
+    };
+  }
+
+  try {
+    const { APP_ORIGIN } = serverEnv();
+    const redirectUrl = new URL('/auth/callback', APP_ORIGIN);
+    redirectUrl.searchParams.set('next', '/reset-password');
+
+    const supabase = await createServerSupabase();
+    const { error } = await supabase.auth.resetPasswordForEmail(
+      parsed.data.email,
+      { redirectTo: redirectUrl.toString() },
+    );
+
+    // Supabase itself never reveals whether the email exists — don't
+    // surface that either, only genuine send failures (rate limit, etc.).
+    if (error && isOperationalAuthError(error)) {
+      return {
+        ok: false,
+        error: {
+          code: 'RESET_UNAVAILABLE',
+          message: RESET_UNAVAILABLE_MESSAGE,
+          traceId,
+        },
+      };
+    }
+  } catch {
+    return {
+      ok: false,
+      error: {
+        code: 'RESET_UNAVAILABLE',
+        message: RESET_UNAVAILABLE_MESSAGE,
+        traceId,
+      },
+    };
+  }
+
+  return { ok: true, data: null };
+}
+
+export async function resetPassword(
+  _previousState: ActionResult<null> | null,
+  formData: FormData,
+): Promise<ActionResult<null>> {
+  const traceId = randomUUID();
+  const parsed = resetPasswordSchema.safeParse(Object.fromEntries(formData));
+
+  if (!parsed.success) {
+    return {
+      ok: false,
+      error: {
+        code: 'INVALID_PASSWORD',
+        message: 'Check your password.',
+        traceId,
+        fields: parsed.error.flatten().fieldErrors,
+      },
+    };
+  }
+
+  try {
+    const supabase = await createServerSupabase();
+    const { error } = await supabase.auth.updateUser({
+      password: parsed.data.password,
+    });
+
+    if (error) {
+      return {
+        ok: false,
+        error: {
+          code: 'RESET_FAILED',
+          message: RESET_INVALID_LINK_MESSAGE,
+          traceId,
+        },
+      };
+    }
+
+    await supabase.auth.signOut();
+  } catch {
+    return {
+      ok: false,
+      error: {
+        code: 'RESET_FAILED',
+        message: RESET_INVALID_LINK_MESSAGE,
+        traceId,
+      },
+    };
+  }
+
+  redirect('/login?reset=success');
 }

@@ -7,7 +7,7 @@ import { EmptyState } from '@/components/ui/empty-state';
 import { PageHeader } from '@/components/ui/page-header';
 import {
   getDashboardSummary,
-  listOrganizationTasks,
+  listRecentOrganizationTasks,
 } from '@/modules/tasks/queries';
 
 const STATUS_LABELS: Record<string, string> = {
@@ -44,12 +44,10 @@ function MetricCard({
 }
 
 export default async function DashboardPage() {
-  const [summary, { data: tasks }] = await Promise.all([
+  const [summary, recentTasks] = await Promise.all([
     getDashboardSummary(),
-    listOrganizationTasks(),
+    listRecentOrganizationTasks(5),
   ]);
-
-  const recentTasks = (tasks ?? []).slice(0, 5);
 
   return (
     <section aria-labelledby="dashboard-heading" className="space-y-6">

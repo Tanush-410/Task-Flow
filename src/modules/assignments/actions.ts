@@ -306,9 +306,130 @@ export async function changeAssignmentStatus(
       });
     }
 
+    if (parsed.data.status === 'completed') {
+      await maybeCreateNextRecurrence(supabase, {
+        taskId: data.task_id,
+        organizationId: data.organization_id,
+        actorUserId: data.assignee_id,
+      });
+    }
+
     return { ok: true, data: { assignmentId: data.id } };
   } catch {
     return { ok: false, error: { ...ASSIGNMENT_UPDATE_ERROR, traceId } };
+  }
+}
+
+function nextOccurrenceDate(from: Date, recurrence: string): Date {
+  const next = new Date(from);
+
+  if (recurrence === 'daily') {
+    next.setDate(next.getDate() + 1);
+  } else if (recurrence === 'weekly') {
+    next.setDate(next.getDate() + 7);
+  } else if (recurrence === 'monthly') {
+    next.setMonth(next.getMonth() + 1);
+  }
+
+  return next;
+}
+
+/**
+ * Best-effort: a failure here must never undo the assignee's completion.
+ * Only fires once all of a task's assignments are completed, so a task
+ * with several assignees doesn't spawn one next-occurrence per person.
+ */
+async function maybeCreateNextRecurrence(
+  supabase: Awaited<ReturnType<typeof createServerSupabase>>,
+  input: { taskId: string; organizationId: string; actorUserId: string },
+) {
+  try {
+    const [{ data: task }, { data: allAssignments }] = await Promise.all([
+      supabase
+        .from('tasks')
+        .select(
+          'title,description,priority,due_at,recurrence,acknowledgement_required',
+        )
+        .eq('id', input.taskId)
+        .maybeSingle(),
+      supabase
+        .from('task_assignments')
+        .select('assignee_id,status')
+        .eq('task_id', input.taskId),
+    ]);
+
+    if (!task || task.recurrence === 'none') {
+      return;
+    }
+
+    const assignments = allAssignments ?? [];
+    const allCompleted =
+      assignments.length > 0 &&
+      assignments.every((row) => row.status === 'completed');
+
+    if (!allCompleted) {
+      return;
+    }
+
+    const baseDate = task.due_at ? new Date(task.due_at) : new Date();
+    const nextDueAt = nextOccurrenceDate(
+      baseDate,
+      task.recurrence,
+    ).toISOString();
+    const now = new Date().toISOString();
+
+    const { data: nextTask, error: taskError } = await supabase
+      .from('tasks')
+      .insert({
+        organization_id: input.organizationId,
+        created_by: input.actorUserId,
+        title: task.title,
+        description: task.description,
+        priority: task.priority,
+        due_at: nextDueAt,
+        acknowledgement_required: task.acknowledgement_required,
+        recurrence: task.recurrence,
+        status: 'published',
+        published_at: now,
+      })
+      .select('id,title')
+      .single();
+
+    if (taskError || !nextTask) {
+      return;
+    }
+
+    const assigneeIds = Array.from(
+      new Set(assignments.map((row) => row.assignee_id)),
+    );
+
+    const { data: nextAssignments } = await supabase
+      .from('task_assignments')
+      .insert(
+        assigneeIds.map((assigneeId) => ({
+          organization_id: input.organizationId,
+          task_id: nextTask.id,
+          assignee_id: assigneeId,
+          assigned_by: input.actorUserId,
+          status: 'not_started' as const,
+          progress: 0,
+        })),
+      )
+      .select('id,assignee_id');
+
+    await queueTaskNotifications(
+      (nextAssignments ?? []).map((assignment) => ({
+        organizationId: input.organizationId,
+        recipientId: assignment.assignee_id,
+        taskId: nextTask.id,
+        assignmentId: assignment.id,
+        notificationType: 'assignment_created',
+        title: 'New task assigned',
+        body: `The next occurrence of a recurring task is ready: ${nextTask.title}`,
+      })),
+    );
+  } catch (caught) {
+    console.error('maybeCreateNextRecurrence failed', input.taskId, caught);
   }
 }
 

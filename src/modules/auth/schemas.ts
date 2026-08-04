@@ -35,3 +35,17 @@ export const signUpEmployeeSchema = z.object({
   password: passwordSchema,
   organizationId: looseUuidSchema,
 });
+
+export const requestPasswordResetSchema = z.object({
+  email: emailSchema,
+});
+
+export const resetPasswordSchema = z
+  .object({
+    password: passwordSchema,
+    confirmPassword: passwordSchema,
+  })
+  .refine((value) => value.password === value.confirmPassword, {
+    message: 'Passwords do not match.',
+    path: ['confirmPassword'],
+  });

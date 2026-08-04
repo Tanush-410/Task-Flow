@@ -56,7 +56,15 @@ export function LoginForm({ nextPath }: { nextPath?: string }) {
       </div>
 
       <div>
-        <Label htmlFor="password">Password</Label>
+        <div className="flex items-center justify-between">
+          <Label htmlFor="password">Password</Label>
+          <a
+            className="text-xs font-semibold text-primary underline-offset-2 hover:underline"
+            href="/forgot-password"
+          >
+            Forgot password?
+          </a>
+        </div>
         <Input
           aria-describedby={passwordError ? 'password-error' : undefined}
           aria-invalid={Boolean(passwordError)}

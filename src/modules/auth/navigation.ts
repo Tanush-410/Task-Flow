@@ -56,6 +56,12 @@ export function isInvitationPath(
   return pathname !== null && /^\/invite\/[A-Za-z0-9_-]{43}$/.test(pathname);
 }
 
+export function isPasswordRecoveryPath(
+  pathname: string | null,
+): pathname is '/reset-password' {
+  return pathname === '/reset-password';
+}
+
 export function roleLandingPath(
   role: MembershipRole,
   requestedPath?: string | null,

@@ -8,7 +8,7 @@ import {
 } from '@/modules/members/queries';
 
 export default async function CalendarPage() {
-  await requireMembership();
+  const membership = await requireMembership();
   const now = new Date();
   const range = getRangeForView(now, 'month');
 
@@ -30,6 +30,7 @@ export default async function CalendarPage() {
         initialDate={now.toISOString()}
         initialEvents={events}
         people={people.filter((person) => person.status === 'active')}
+        role={membership.role}
       />
     </section>
   );

@@ -3,6 +3,7 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { createServerSupabase } from '@/lib/supabase/server';
 import {
   isInvitationPath,
+  isPasswordRecoveryPath,
   roleLandingPath,
   sanitizeNextPath,
 } from '@/modules/auth/navigation';
@@ -28,7 +29,7 @@ export async function GET(request: NextRequest) {
       return redirectTo(request, '/login?error=callback');
     }
 
-    if (isInvitationPath(nextPath)) {
+    if (isInvitationPath(nextPath) || isPasswordRecoveryPath(nextPath)) {
       return redirectTo(request, nextPath);
     }
 
