@@ -2,7 +2,11 @@ import 'server-only';
 
 import { createServerSupabase } from '@/lib/supabase/server';
 
-import { listOrganizationMembers, requireAdmin } from '../members/queries';
+import {
+  listOrganizationMembers,
+  requireAdmin,
+  requireMembership,
+} from '../members/queries';
 
 export type EmployeeCompletionStat = {
   userId: string;
@@ -138,4 +142,118 @@ export async function getEmployeeWorkload(): Promise<EmployeeWorkload[]> {
       };
     })
     .sort((a, b) => b.activeCount - a.activeCount);
+}
+
+export type EmployeeTaskBreakdown = {
+  userId: string;
+  displayName: string;
+  completedOnTimeCount: number;
+  completedLateCount: number;
+  missedCount: number;
+  activeCount: number;
+  totalCount: number;
+  missedTasks: { id: string; title: string; dueAt: string }[];
+  recentlyCompleted: { id: string; title: string; completedAt: string }[];
+};
+
+/**
+ * Completed vs. missed vs. still-active, for one employee. Scoped to the
+ * caller's own organization by construction: assignee_id + organization_id
+ * together only ever match rows for someone actually in that org, so an
+ * admin can't be handed another organization's data by passing an
+ * arbitrary id, and the route (not this query) decides who's allowed to
+ * ask for which target — /employees/[userId] (admin-only) or /my-progress
+ * (always the caller's own id).
+ */
+export async function getEmployeeTaskBreakdown(
+  targetUserId: string,
+): Promise<EmployeeTaskBreakdown | null> {
+  const membership = await requireMembership();
+  const supabase = await createServerSupabase();
+
+  const [{ data: profile }, { data: assignments }] = await Promise.all([
+    supabase
+      .from('profiles')
+      .select('display_name')
+      .eq('id', targetUserId)
+      .maybeSingle(),
+    supabase
+      .from('task_assignments')
+      .select('id,status,completed_at,task_id')
+      .eq('organization_id', membership.organizationId)
+      .eq('assignee_id', targetUserId),
+  ]);
+
+  if (!profile) {
+    return null;
+  }
+
+  const rows = assignments ?? [];
+  const taskIds = Array.from(new Set(rows.map((row) => row.task_id)));
+  const { data: tasks } = await supabase
+    .from('tasks')
+    .select('id,title,due_at')
+    .in('id', taskIds);
+  const taskById = new Map((tasks ?? []).map((task) => [task.id, task]));
+
+  const now = new Date();
+  let completedOnTimeCount = 0;
+  let completedLateCount = 0;
+  let missedCount = 0;
+  let activeCount = 0;
+  const missedTasks: EmployeeTaskBreakdown['missedTasks'] = [];
+  const recentlyCompleted: EmployeeTaskBreakdown['recentlyCompleted'] = [];
+
+  for (const row of rows) {
+    const task = taskById.get(row.task_id);
+    const dueAt = task?.due_at ?? null;
+
+    if (row.status === 'completed') {
+      const onTime =
+        !dueAt ||
+        (row.completed_at && new Date(row.completed_at) <= new Date(dueAt));
+      if (onTime) {
+        completedOnTimeCount += 1;
+      } else {
+        completedLateCount += 1;
+      }
+      if (task && row.completed_at) {
+        recentlyCompleted.push({
+          id: task.id,
+          title: task.title,
+          completedAt: row.completed_at,
+        });
+      }
+      continue;
+    }
+
+    if (dueAt && new Date(dueAt) < now) {
+      missedCount += 1;
+      if (task) {
+        missedTasks.push({ id: task.id, title: task.title, dueAt });
+      }
+    } else {
+      activeCount += 1;
+    }
+  }
+
+  missedTasks.sort(
+    (a, b) => new Date(a.dueAt).getTime() - new Date(b.dueAt).getTime(),
+  );
+  recentlyCompleted.sort(
+    (a, b) =>
+      new Date(b.completedAt).getTime() - new Date(a.completedAt).getTime(),
+  );
+
+  return {
+    userId: targetUserId,
+    displayName: profile.display_name,
+    completedOnTimeCount,
+    completedLateCount,
+    missedCount,
+    activeCount,
+    totalCount: rows.length,
+    missedTasks: missedTasks.slice(0, 10),
+    recentlyCompleted: recentlyCompleted.slice(0, 5),
+  };
 }

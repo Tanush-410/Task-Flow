@@ -55,7 +55,10 @@ export default async function EmployeesPage() {
             <ul className="space-y-4">
               {workload.map((row) => (
                 <li key={row.userId}>
-                  <div className="flex items-center justify-between text-sm">
+                  <Link
+                    className="flex items-center justify-between text-sm hover:text-primary"
+                    href={`/employees/${row.userId}`}
+                  >
                     <span className="font-medium text-foreground">
                       {row.displayName}
                     </span>
@@ -67,7 +70,7 @@ export default async function EmployeesPage() {
                         </span>
                       ) : null}
                     </span>
-                  </div>
+                  </Link>
                   <div className="mt-1.5 h-2.5 w-full overflow-hidden rounded-full bg-muted">
                     <div
                       className="h-full rounded-full bg-primary transition-[width]"
@@ -99,27 +102,45 @@ export default async function EmployeesPage() {
             />
           ) : (
             <ul className="divide-y divide-border">
-              {members.map((member) => (
-                <li
-                  className="flex items-center justify-between gap-4 py-3"
-                  key={member.id}
-                >
-                  <div className="flex items-center gap-3">
-                    <PersonAvatar
-                      displayName={member.displayName}
-                      userId={member.userId}
-                    />
-                    <span className="text-sm font-semibold text-foreground">
-                      {member.displayName}
-                    </span>
-                  </div>
-                  <Badge
-                    variant={member.role === 'admin' ? 'default' : 'secondary'}
-                  >
-                    {member.role}
-                  </Badge>
-                </li>
-              ))}
+              {members.map((member) => {
+                const content = (
+                  <>
+                    <div className="flex items-center gap-3">
+                      <PersonAvatar
+                        displayName={member.displayName}
+                        userId={member.userId}
+                      />
+                      <span className="text-sm font-semibold text-foreground">
+                        {member.displayName}
+                      </span>
+                    </div>
+                    <Badge
+                      variant={
+                        member.role === 'admin' ? 'default' : 'secondary'
+                      }
+                    >
+                      {member.role}
+                    </Badge>
+                  </>
+                );
+
+                return (
+                  <li key={member.id}>
+                    {member.role === 'employee' ? (
+                      <Link
+                        className="flex items-center justify-between gap-4 py-3 hover:opacity-80"
+                        href={`/employees/${member.userId}`}
+                      >
+                        {content}
+                      </Link>
+                    ) : (
+                      <div className="flex items-center justify-between gap-4 py-3">
+                        {content}
+                      </div>
+                    )}
+                  </li>
+                );
+              })}
             </ul>
           )}
         </CardContent>

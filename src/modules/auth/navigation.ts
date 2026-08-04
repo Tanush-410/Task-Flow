@@ -13,7 +13,13 @@ const ROLE_PATHS: Record<MembershipRole, string[]> = {
     '/notifications',
     '/settings',
   ],
-  employee: ['/my-day', '/my-tasks', '/notifications', '/profile'],
+  employee: [
+    '/my-day',
+    '/my-tasks',
+    '/my-progress',
+    '/notifications',
+    '/profile',
+  ],
 };
 
 function isPathOrDescendant(pathname: string, roots: string[]) {

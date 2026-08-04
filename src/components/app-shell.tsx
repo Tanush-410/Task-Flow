@@ -9,6 +9,7 @@ import {
   LayoutDashboard,
   ListChecks,
   Settings,
+  TrendingUp,
   UserRound,
   UsersRound,
 } from 'lucide-react';
@@ -52,6 +53,7 @@ const employeeItems: NavigationItem[] = [
   { href: '/my-day', icon: CalendarCheck, label: 'My Day' },
   { href: '/my-tasks', icon: CheckSquare2, label: 'My Tasks' },
   { href: '/calendar', icon: CalendarDays, label: 'Calendar' },
+  { href: '/my-progress', icon: TrendingUp, label: 'My Progress' },
   { href: '/notifications', icon: Bell, label: 'Notifications' },
   { href: '/profile', icon: UserRound, label: 'Profile' },
 ];

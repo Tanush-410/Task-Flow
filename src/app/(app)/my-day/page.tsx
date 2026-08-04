@@ -1,6 +1,7 @@
 import Link from 'next/link';
 
 import { TaskAssignmentGroup } from '@/components/task-assignment-group';
+import { Card } from '@/components/ui/card';
 import { PageHeader } from '@/components/ui/page-header';
 import {
   listMyAssignmentsWithTasks,
@@ -16,21 +17,54 @@ function isSameDay(a: Date, b: Date): boolean {
   );
 }
 
+function StatTile({
+  label,
+  value,
+  tone = 'default',
+}: {
+  label: string;
+  value: number;
+  tone?: 'default' | 'danger';
+}) {
+  return (
+    <Card className="p-5 sm:p-5">
+      <p className="text-sm font-medium text-muted-foreground">{label}</p>
+      <p
+        className={`mt-2 text-3xl font-semibold tracking-[-0.03em] ${
+          tone === 'danger' && value > 0 ? 'text-red-400' : 'text-foreground'
+        }`}
+      >
+        {value}
+      </p>
+    </Card>
+  );
+}
+
 export default async function MyDayPage() {
   await requireEmployee();
   const rows = await listMyAssignmentsWithTasks();
   const now = new Date();
   const threeDaysAgo = new Date(now.getTime() - 3 * 24 * 60 * 60 * 1000);
+  const weekStart = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
 
   const overdue: MyAssignmentWithTask[] = [];
   const dueTodayOrHighPriority: MyAssignmentWithTask[] = [];
   const recentlyAssigned: MyAssignmentWithTask[] = [];
+  let activeCount = 0;
+  let completedThisWeek = 0;
 
   for (const row of rows) {
     if (row.assignment.status === 'completed') {
+      if (
+        row.assignment.completed_at &&
+        new Date(row.assignment.completed_at) >= weekStart
+      ) {
+        completedThisWeek += 1;
+      }
       continue;
     }
 
+    activeCount += 1;
     const dueAt = row.task.due_at ? new Date(row.task.due_at) : null;
 
     if (dueAt && dueAt < now) {
@@ -59,6 +93,14 @@ export default async function MyDayPage() {
         headingId="my-day-heading"
         title="My Day"
       />
+
+      {rows.length > 0 ? (
+        <div className="grid grid-cols-3 gap-4">
+          <StatTile label="Active" value={activeCount} />
+          <StatTile label="Overdue" tone="danger" value={overdue.length} />
+          <StatTile label="Completed this week" value={completedThisWeek} />
+        </div>
+      ) : null}
 
       {rows.length === 0 ? (
         <p className="text-base text-muted-foreground">
