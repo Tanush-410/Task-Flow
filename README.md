@@ -1,29 +1,38 @@
 # TaskFlow
 
 A focused task-management workspace for small teams: admins assign and track
-work, employees see exactly what's due, and everyone shares a Google
-Calendar-style view of who's working on what. Built with Next.js (App
-Router) and Supabase, styled with a black-and-gold shadcn/ui design system.
+work, employees see exactly what's due, and everyone can switch between a
+List, a drag-and-drop Board, or a Google Calendar-style view of who's working
+on what. Built with Next.js (App Router) and Supabase, styled with a
+black-and-gold shadcn/ui design system.
 
 ## Features
 
 - **Role-based workspace** — self-serve signup as an Admin (creates an
   organization) or an Employee (joins one), plus admin-issued email invites.
+  Admins create and assign tasks; employees track and update the work
+  assigned to them.
 - **Tasks & assignments** — create a task, tag one or more people, and track
   each assignee's status independently (Not started → In progress → Delayed
-  → Completed, with a required reason whenever something slips). Any active
-  org member can create tasks and tag teammates, not just admins.
-- **Calendar** — Month, Week, and Day views with click-to-create, hourly
-  time slots, and events color-tagged per assignee.
+  → Completed, with a required reason whenever something slips). A split
+  Create button offers one-click "due today"/"due tomorrow" shortcuts.
+- **List, Board, and Calendar views** — the same tasks, three ways: a
+  filterable list, a drag-and-drop Kanban board (columns for each status,
+  with the delay-reason prompt and dependency checks enforced on drop), and
+  a Month/Week/Day calendar with click-to-create and events color-tagged per
+  assignee.
 - **Notifications** — real-time in-app notifications (Supabase Realtime) the
   moment work is assigned, completed, or delayed.
 - **Global search** — press <kbd>⌘K</kbd> / <kbd>Ctrl K</kbd> anywhere in
   the app to jump straight to a task by title.
 - **Filtering, sorting, and reporting** — filter/sort the task list by
-  status, priority, and due date; export the team's completion report to
-  CSV from the Reports page.
+  status, priority, and due date; a Reports page ranks employees by
+  completion rate and by average turnaround time ("most productive"), with
+  CSV export.
+- **Current Work** — an admin-only live view of exactly what every employee
+  has in progress right now, grouped by person.
 - **Dashboard** — at-a-glance counts for active, overdue, delayed, and
-  recently completed work.
+  recently completed work, plus the org-wide on-time completion rate.
 
 ## Tech stack
 
@@ -33,6 +42,7 @@ Router) and Supabase, styled with a black-and-gold shadcn/ui design system.
   Realtime)
 - [Tailwind CSS v4](https://tailwindcss.com) + [shadcn/ui](https://ui.shadcn.com)
   (Radix primitives) for the component layer
+- [@dnd-kit](https://dndkit.com) for the drag-and-drop Board view
 - [Zod](https://zod.dev) for input validation on every server action
 - [Vitest](https://vitest.dev) for unit tests, [Playwright](https://playwright.dev)
   for end-to-end tests

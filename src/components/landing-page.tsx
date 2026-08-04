@@ -4,6 +4,7 @@ import {
   CheckCircle2,
   ClipboardCheck,
   Eye,
+  Kanban,
   ListChecks,
   PenSquare,
   Trophy,
@@ -43,9 +44,9 @@ const features: {
     icon: ClipboardCheck,
   },
   {
-    title: 'A calendar for your whole team',
+    title: 'See it your way',
     description:
-      'See every task on a Month, Week, or Day calendar, color-tagged by who it belongs to — just like the calendar you already know.',
+      'Switch between a List, a drag-and-drop Board, or a Month/Week/Day Calendar — the same tasks, three views, color-tagged by who they belong to.',
     icon: CalendarDays,
   },
   {
@@ -130,8 +131,8 @@ export function LandingPage() {
 
         <section className="mx-auto w-full max-w-3xl px-5 pt-14 pb-10 text-center sm:px-8 sm:pt-20">
           <span className="inline-flex items-center gap-1.5 rounded-full bg-primary-soft px-3 py-1 text-xs font-semibold text-primary">
-            <CalendarDays aria-hidden className="size-3.5" />
-            Now with a full team calendar
+            <Kanban aria-hidden className="size-3.5" />
+            Now with a drag-and-drop Board view
           </span>
           <h1 className="mt-5 text-4xl font-semibold tracking-[-0.04em] text-balance text-foreground sm:text-5xl">
             Assign, track, and complete work without the chaos.
