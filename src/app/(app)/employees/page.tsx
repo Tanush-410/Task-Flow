@@ -1,6 +1,7 @@
 import { UsersRound } from 'lucide-react';
 import Link from 'next/link';
 
+import { ConnectEmployeeForm } from '@/components/connect-employee-form';
 import { InviteMemberForm } from '@/components/invite-member-form';
 import { PersonAvatar } from '@/components/person-avatar';
 import { Badge } from '@/components/ui/badge';
@@ -47,6 +48,22 @@ export default async function EmployeesPage() {
           </p>
           <div className="mt-4 max-w-xl">
             <InviteMemberForm />
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Add by connect code</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-sm text-muted-foreground">
+            If they already have a TaskFlow account, ask for their connect code
+            (it&apos;s on their Profile page) — they&apos;ll still need to
+            accept before joining.
+          </p>
+          <div className="mt-4 max-w-xl">
+            <ConnectEmployeeForm />
           </div>
         </CardContent>
       </Card>

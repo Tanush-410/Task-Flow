@@ -3,9 +3,8 @@
 import { useActionState } from 'react';
 
 import type { ActionResult } from '@/lib/result';
-import { inviteMember } from '@/modules/members/actions';
+import { requestConnection } from '@/modules/members/connection-actions';
 import { Button } from '@/components/ui/button';
-import { CopyButton } from '@/components/copy-button';
 import { Input } from '@/components/ui/input';
 import {
   Select,
@@ -15,36 +14,35 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 
-type InviteResult = ActionResult<{
-  invitationId: string;
-  email: string;
-  expiresAt: string;
-  invitationUrl: string;
+type ConnectResult = ActionResult<{
+  requestId: string;
+  targetDisplayName: string;
 }>;
 
-async function submitInvite(
-  _previousState: InviteResult | null,
+async function submitConnect(
+  _previousState: ConnectResult | null,
   formData: FormData,
-): Promise<InviteResult> {
-  return inviteMember({
-    email: formData.get('email'),
+): Promise<ConnectResult> {
+  return requestConnection({
+    code: formData.get('code'),
     role: formData.get('role'),
   });
 }
 
-export function InviteMemberForm() {
-  const [state, formAction, pending] = useActionState(submitInvite, null);
+export function ConnectEmployeeForm() {
+  const [state, formAction, pending] = useActionState(submitConnect, null);
 
   return (
     <form action={formAction} className="space-y-3">
       <div className="flex flex-col gap-3 sm:flex-row">
         <Input
-          className="h-11 flex-1"
+          className="h-11 flex-1 font-mono uppercase"
           disabled={pending}
-          name="email"
-          placeholder="employee@company.com"
+          maxLength={6}
+          name="code"
+          placeholder="Connect code, e.g. 8F3K2Q"
           required
-          type="email"
+          style={{ textTransform: 'uppercase' }}
         />
         <Select defaultValue="employee" disabled={pending} name="role">
           <SelectTrigger className="h-11 sm:w-40">
@@ -61,7 +59,7 @@ export function InviteMemberForm() {
           size="lg"
           type="submit"
         >
-          {pending ? 'Creating…' : 'Create invite link'}
+          {pending ? 'Sending…' : 'Send request'}
         </Button>
       </div>
       {state && !state.ok ? (
@@ -70,20 +68,10 @@ export function InviteMemberForm() {
         </p>
       ) : null}
       {state && state.ok ? (
-        <div className="space-y-2 rounded-xl border border-emerald-500/25 bg-emerald-500/10 px-4 py-3">
-          <p className="text-sm text-emerald-300">
-            Invite link created for {state.data.email}. Share it yourself — it
-            won&apos;t be shown again.
-          </p>
-          <div className="flex items-center gap-2">
-            <Input
-              className="h-9 flex-1 font-mono text-xs"
-              readOnly
-              value={state.data.invitationUrl}
-            />
-            <CopyButton value={state.data.invitationUrl} />
-          </div>
-        </div>
+        <p className="text-sm text-emerald-400">
+          Request sent to {state.data.targetDisplayName}. They need to accept it
+          before they show up in your directory.
+        </p>
       ) : null}
     </form>
   );

@@ -194,22 +194,58 @@ export type Database = {
       };
       profiles: {
         Row: {
+          connect_code: string;
           created_at: string;
           display_name: string;
           id: string;
           updated_at: string;
         };
         Insert: {
+          connect_code?: string;
           created_at?: string;
           display_name: string;
           id: string;
           updated_at?: string;
         };
         Update: {
+          connect_code?: string;
           created_at?: string;
           display_name?: string;
           id?: string;
           updated_at?: string;
+        };
+        Relationships: [];
+      };
+      connection_requests: {
+        Row: {
+          created_at: string;
+          id: string;
+          invited_by: string;
+          organization_id: string;
+          requested_user_id: string;
+          responded_at: string | null;
+          role: Database['public']['Enums']['membership_role'];
+          status: string;
+        };
+        Insert: {
+          created_at?: string;
+          id?: string;
+          invited_by?: string;
+          organization_id: string;
+          requested_user_id: string;
+          responded_at?: string | null;
+          role: Database['public']['Enums']['membership_role'];
+          status?: string;
+        };
+        Update: {
+          created_at?: string;
+          id?: string;
+          invited_by?: string;
+          organization_id?: string;
+          requested_user_id?: string;
+          responded_at?: string | null;
+          role?: Database['public']['Enums']['membership_role'];
+          status?: string;
         };
         Relationships: [];
       };
@@ -647,6 +683,13 @@ export type Database = {
         };
         Returns: string;
       };
+      create_connection_request: {
+        Args: {
+          target_code: string;
+          target_role: Database['public']['Enums']['membership_role'];
+        };
+        Returns: { request_id: string; target_display_name: string }[];
+      };
       discard_staged_invitation: {
         Args: { invitation_id: string };
         Returns: boolean;
@@ -683,12 +726,29 @@ export type Database = {
         Args: { target_organization_id: string };
         Returns: string;
       };
+      list_my_connection_requests: {
+        Args: Record<PropertyKey, never>;
+        Returns: {
+          id: string;
+          organization_name: string;
+          role: Database['public']['Enums']['membership_role'];
+          invited_by_name: string;
+          created_at: string;
+        }[];
+      };
       register_organization_admin: {
         Args: {
           organization_name: string;
           organization_timezone: string;
         };
         Returns: string;
+      };
+      respond_to_connection_request: {
+        Args: { request_id: string; accept: boolean };
+        Returns: {
+          organization_id: string | null;
+          role: Database['public']['Enums']['membership_role'] | null;
+        }[];
       };
       stage_invitation: {
         Args: {

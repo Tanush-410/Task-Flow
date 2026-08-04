@@ -162,6 +162,61 @@ export async function listAssignableMembers(): Promise<OrganizationMember[]> {
   return fetchOrganizationMembers(membership.organizationId);
 }
 
+/** Works for any authenticated user, even one with no org membership yet. */
+export async function getOwnConnectCode(): Promise<{
+  connectCode: string;
+  displayName: string;
+} | null> {
+  const supabase = await createServerSupabase();
+  const claims = await supabase.auth.getClaims();
+  const userId = claims.error ? undefined : claims.data?.claims.sub;
+
+  if (!userId) {
+    return null;
+  }
+
+  const { data } = await supabase
+    .from('profiles')
+    .select('connect_code,display_name')
+    .eq('id', userId)
+    .maybeSingle();
+
+  return data
+    ? { connectCode: data.connect_code, displayName: data.display_name }
+    : null;
+}
+
+export type PendingConnectionRequest = {
+  id: string;
+  organizationName: string;
+  role: 'admin' | 'employee';
+  invitedByName: string;
+  createdAt: string;
+};
+
+/** Pending requests to join an org, targeting the current user. */
+export async function listMyConnectionRequests(): Promise<
+  PendingConnectionRequest[]
+> {
+  const supabase = await createServerSupabase();
+  const claims = await supabase.auth.getClaims();
+  const userId = claims.error ? undefined : claims.data?.claims.sub;
+
+  if (!userId) {
+    return [];
+  }
+
+  const { data } = await supabase.rpc('list_my_connection_requests');
+
+  return (data ?? []).map((row) => ({
+    id: row.id,
+    organizationName: row.organization_name,
+    role: row.role,
+    invitedByName: row.invited_by_name,
+    createdAt: row.created_at,
+  }));
+}
+
 export async function listDisplayNames(
   userIds: string[],
 ): Promise<Map<string, string>> {
