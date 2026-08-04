@@ -58,7 +58,7 @@ export function ReopenAssignmentForm({
         required
         rows={2}
       />
-      {error ? <p className="text-xs text-red-700">{error.message}</p> : null}
+      {error ? <p className="text-xs text-red-400">{error.message}</p> : null}
       <div className="flex gap-2">
         <Button disabled={pending} size="sm" type="submit">
           Confirm reopen

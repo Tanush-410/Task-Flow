@@ -133,16 +133,16 @@ export function QuickCreatePopover({
           </div>
 
           {employees.length === 0 ? (
-            <p className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm text-amber-950">
+            <p className="rounded-xl border border-amber-500/25 bg-amber-500/10 px-3 py-2.5 text-sm text-amber-300">
               Invite an employee from the Employees page before creating a task.
             </p>
           ) : (
             <fieldset>
               <Label className="text-xs">Assign to</Label>
-              <div className="mt-1.5 max-h-32 space-y-1.5 overflow-y-auto rounded-xl border border-slate-300 p-2.5">
+              <div className="mt-1.5 max-h-32 space-y-1.5 overflow-y-auto rounded-xl border border-border p-2.5">
                 {employees.map((employee) => (
                   <label
-                    className="flex items-center gap-2 text-sm text-slate-800"
+                    className="flex items-center gap-2 text-sm text-foreground"
                     key={employee.userId}
                   >
                     <Checkbox name="assigneeIds" value={employee.userId} />
@@ -163,7 +163,7 @@ export function QuickCreatePopover({
           />
 
           {error && !error.fields ? (
-            <p className="text-sm text-red-700" role="alert">
+            <p className="text-sm text-red-400" role="alert">
               {error.message}
             </p>
           ) : null}

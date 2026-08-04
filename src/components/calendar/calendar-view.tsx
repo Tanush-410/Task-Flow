@@ -135,12 +135,12 @@ export function CalendarView({
               <ChevronRight aria-hidden className="size-4" />
             </Button>
           </div>
-          <h2 className="text-lg font-semibold text-slate-950">{heading}</h2>
+          <h2 className="text-lg font-semibold text-foreground">{heading}</h2>
         </div>
 
         <div
           aria-label="Calendar view"
-          className="flex gap-1 rounded-lg bg-slate-100 p-1"
+          className="flex gap-1 rounded-lg bg-muted p-1"
           role="radiogroup"
         >
           {VIEW_MODES.map((mode) => (
@@ -148,8 +148,8 @@ export function CalendarView({
               aria-checked={viewMode === mode}
               className={`rounded-md px-3 py-1.5 text-sm font-semibold capitalize transition-colors ${
                 viewMode === mode
-                  ? 'bg-white text-primary shadow-sm'
-                  : 'text-slate-500 hover:text-slate-800'
+                  ? 'bg-card text-primary shadow-sm'
+                  : 'text-muted-foreground hover:text-foreground'
               }`}
               key={mode}
               onClick={() => setViewMode(mode)}
@@ -165,16 +165,16 @@ export function CalendarView({
       <div className="flex flex-col gap-4 lg:flex-row">
         {people.length > 0 ? (
           <aside className="w-full shrink-0 lg:w-48">
-            <p className="text-xs font-semibold tracking-wide text-slate-500 uppercase">
+            <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
               People
             </p>
             <ul className="mt-2 space-y-1.5">
               {people.map((person) => (
                 <li key={person.userId}>
-                  <label className="flex items-center gap-2 text-sm text-slate-700">
+                  <label className="flex items-center gap-2 text-sm text-muted-foreground">
                     <input
                       checked={!hiddenPeople.has(person.userId)}
-                      className="size-3.5 rounded border-slate-300 text-primary focus:ring-primary"
+                      className="size-3.5 rounded border-border text-primary focus:ring-primary"
                       onChange={() => togglePerson(person.userId)}
                       type="checkbox"
                     />

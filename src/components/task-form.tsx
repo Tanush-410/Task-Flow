@@ -125,24 +125,24 @@ export function TaskForm({
         </div>
       </div>
 
-      <label className="flex items-center gap-2 text-sm text-slate-800">
+      <label className="flex items-center gap-2 text-sm text-foreground">
         <Checkbox disabled={pending} name="acknowledgementRequired" />
         Require assignees to acknowledge this task
       </label>
 
       {employees.length === 0 ? (
-        <p className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950">
+        <p className="rounded-xl border border-amber-500/25 bg-amber-500/10 px-4 py-3 text-sm text-amber-300">
           Invite an employee from the Employees page before creating a task.
         </p>
       ) : (
         <fieldset>
-          <legend className="text-sm font-medium text-slate-800">
+          <legend className="text-sm font-medium text-foreground">
             Assign to
           </legend>
-          <div className="mt-2 max-h-56 space-y-2 overflow-y-auto rounded-xl border border-slate-300 p-3">
+          <div className="mt-2 max-h-56 space-y-2 overflow-y-auto rounded-xl border border-border p-3">
             {employees.map((employee) => (
               <label
-                className="flex items-center gap-2 text-sm text-slate-800"
+                className="flex items-center gap-2 text-sm text-foreground"
                 key={employee.userId}
               >
                 <Checkbox
@@ -161,11 +161,11 @@ export function TaskForm({
 
       {error ? (
         <div
-          className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900"
+          className="rounded-xl border border-red-500/25 bg-red-500/10 px-4 py-3 text-sm text-red-300"
           role="alert"
         >
           <p>{error.message}</p>
-          <p className="mt-1 text-xs text-red-700">
+          <p className="mt-1 text-xs text-red-400">
             Reference: {error.traceId}
           </p>
         </div>

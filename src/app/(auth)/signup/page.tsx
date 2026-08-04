@@ -17,12 +17,12 @@ export default async function SignupPage() {
       <div className="mb-8">
         <AuthLogo />
         <h1
-          className="text-3xl font-semibold tracking-[-0.035em] text-slate-950"
+          className="text-3xl font-semibold tracking-[-0.035em] text-foreground"
           id="signup-heading"
         >
           Create your account
         </h1>
-        <p className="mt-2 text-[15px] leading-6 text-slate-600">
+        <p className="mt-2 text-[15px] leading-6 text-muted-foreground">
           Sign up as an Admin to start a new workspace, or as an Employee to
           join one that already exists.
         </p>
@@ -30,7 +30,7 @@ export default async function SignupPage() {
 
       <SignupForm organizations={organizations} />
 
-      <p className="mt-7 text-center text-sm text-slate-600">
+      <p className="mt-7 text-center text-sm text-muted-foreground">
         Already have an account?{' '}
         <Link
           className="font-semibold text-primary underline underline-offset-2"

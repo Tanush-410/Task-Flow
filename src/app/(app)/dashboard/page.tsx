@@ -29,11 +29,11 @@ function MetricCard({
 }) {
   return (
     <Link href={href}>
-      <Card className="p-5 transition-colors hover:border-slate-300 sm:p-5">
-        <p className="text-sm font-medium text-slate-500">{label}</p>
+      <Card className="p-5 transition-colors hover:border-border sm:p-5">
+        <p className="text-sm font-medium text-muted-foreground">{label}</p>
         <p
           className={`mt-2 text-3xl font-semibold tracking-[-0.03em] ${
-            tone === 'danger' && value > 0 ? 'text-red-700' : 'text-slate-950'
+            tone === 'danger' && value > 0 ? 'text-red-400' : 'text-foreground'
           }`}
         >
           {value}
@@ -112,14 +112,14 @@ export default async function DashboardPage() {
               title="No tasks yet"
             />
           ) : (
-            <ul className="divide-y divide-slate-200">
+            <ul className="divide-y divide-border">
               {recentTasks.map((task) => (
                 <li key={task.id}>
                   <Link
-                    className="flex items-center justify-between gap-4 py-3 hover:bg-slate-50"
+                    className="flex items-center justify-between gap-4 py-3 hover:bg-muted"
                     href={`/tasks/${task.id}`}
                   >
-                    <span className="text-sm font-semibold text-slate-950">
+                    <span className="text-sm font-semibold text-foreground">
                       {task.title}
                     </span>
                     <Badge>{STATUS_LABELS[task.status]}</Badge>

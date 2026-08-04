@@ -49,7 +49,7 @@ export function SignupForm({
       </Tabs>
 
       {role === 'employee' && organizations.length === 0 ? (
-        <p className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950">
+        <p className="rounded-xl border border-amber-500/25 bg-amber-500/10 px-4 py-3 text-sm text-amber-300">
           No organizations exist yet. Sign up as Admin first to create one, then
           employees can join it here.
         </p>
@@ -144,11 +144,11 @@ export function SignupForm({
 
       {error ? (
         <div
-          className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900"
+          className="rounded-xl border border-red-500/25 bg-red-500/10 px-4 py-3 text-sm text-red-300"
           role="alert"
         >
           <p>{error.message}</p>
-          <p className="mt-1 text-xs text-red-700">
+          <p className="mt-1 text-xs text-red-400">
             Reference: {error.traceId}
           </p>
         </div>

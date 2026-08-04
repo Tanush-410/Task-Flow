@@ -95,32 +95,32 @@ export default async function TaskDetailPage({
     <section aria-labelledby="task-heading" className="space-y-6">
       <div>
         <Link
-          className="text-sm font-semibold text-slate-500 hover:text-slate-800"
+          className="text-sm font-semibold text-muted-foreground hover:text-foreground"
           href={membership.role === 'admin' ? '/tasks' : '/my-tasks'}
         >
           ← Back to {membership.role === 'admin' ? 'All Tasks' : 'My Tasks'}
         </Link>
 
         <h1
-          className="mt-3 text-3xl font-semibold tracking-[-0.035em] text-slate-950"
+          className="mt-3 text-3xl font-semibold tracking-[-0.035em] text-foreground"
           id="task-heading"
         >
           {task.title}
         </h1>
-        <p className="mt-2 flex flex-wrap items-center gap-2 text-sm text-slate-600">
+        <p className="mt-2 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
           <Badge>{PRIORITY_LABELS[task.priority]} priority</Badge>
           {dueDate ? (
-            <span className={overdue ? 'font-semibold text-red-700' : ''}>
+            <span className={overdue ? 'font-semibold text-red-400' : ''}>
               {overdue ? 'Overdue · ' : 'Due '}
               {dueDate.toLocaleString()}
             </span>
           ) : (
-            <span className="text-slate-400">No due date</span>
+            <span className="text-muted-foreground">No due date</span>
           )}
         </p>
 
         {task.description ? (
-          <p className="mt-4 max-w-3xl leading-7 whitespace-pre-wrap text-slate-700">
+          <p className="mt-4 max-w-3xl leading-7 whitespace-pre-wrap text-muted-foreground">
             {task.description}
           </p>
         ) : null}
@@ -132,7 +132,7 @@ export default async function TaskDetailPage({
             <CardTitle>Your assignment</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="flex items-center gap-2 text-sm text-slate-600">
+            <p className="flex items-center gap-2 text-sm text-muted-foreground">
               <Badge variant={STATUS_BADGE_VARIANT[myAssignment.status]}>
                 {STATUS_LABELS[myAssignment.status]}
               </Badge>
@@ -171,11 +171,11 @@ export default async function TaskDetailPage({
         </CardHeader>
         <CardContent>
           {assignmentRows.length === 0 ? (
-            <p className="text-sm text-slate-600">
+            <p className="text-sm text-muted-foreground">
               No one is assigned to this task yet.
             </p>
           ) : (
-            <ul className="divide-y divide-slate-200">
+            <ul className="divide-y divide-border">
               {assignmentRows.map((row) => {
                 const rowOverdue = isPastDue && row.status !== 'completed';
                 const name = displayNames.get(row.assignee_id) ?? 'Unknown';
@@ -189,22 +189,22 @@ export default async function TaskDetailPage({
                           userId={row.assignee_id}
                         />
                         <div>
-                          <p className="text-sm font-semibold text-slate-950">
+                          <p className="text-sm font-semibold text-foreground">
                             {name}
                           </p>
-                          <p className="mt-0.5 flex items-center gap-1.5 text-xs text-slate-500">
+                          <p className="mt-0.5 flex items-center gap-1.5 text-xs text-muted-foreground">
                             <Badge variant={STATUS_BADGE_VARIANT[row.status]}>
                               {STATUS_LABELS[row.status]}
                             </Badge>
                             {row.progress}%
                             {rowOverdue ? (
-                              <span className="font-semibold text-red-700">
+                              <span className="font-semibold text-red-400">
                                 Overdue
                               </span>
                             ) : null}
                           </p>
                           {row.status === 'delayed' && row.delay_reason ? (
-                            <p className="mt-1 text-xs text-red-700">
+                            <p className="mt-1 text-xs text-red-400">
                               Delay reason: {row.delay_reason}
                             </p>
                           ) : null}
@@ -232,18 +232,20 @@ export default async function TaskDetailPage({
         </CardHeader>
         <CardContent>
           {activityRows.length === 0 ? (
-            <p className="text-sm text-slate-600">No activity recorded yet.</p>
+            <p className="text-sm text-muted-foreground">
+              No activity recorded yet.
+            </p>
           ) : (
             <ul className="space-y-3">
               {activityRows.map((event) => (
-                <li className="text-sm text-slate-600" key={event.id}>
-                  <span className="font-semibold text-slate-950">
+                <li className="text-sm text-muted-foreground" key={event.id}>
+                  <span className="font-semibold text-foreground">
                     {event.actor_id
                       ? (displayNames.get(event.actor_id) ?? 'Someone')
                       : 'System'}
                   </span>{' '}
                   — {event.summary} ·{' '}
-                  <span className="text-slate-400">
+                  <span className="text-muted-foreground">
                     {new Date(event.created_at).toLocaleString()}
                   </span>
                 </li>

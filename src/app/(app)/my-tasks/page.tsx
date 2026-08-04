@@ -48,7 +48,7 @@ export default async function MyTasksPage() {
       />
 
       {rows.length === 0 ? (
-        <p className="text-base text-slate-600">
+        <p className="text-base text-muted-foreground">
           No tasks are assigned to you yet.
         </p>
       ) : (

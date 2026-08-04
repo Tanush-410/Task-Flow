@@ -17,16 +17,16 @@ export function PageHeader({
     <div className="flex flex-wrap items-start justify-between gap-4">
       <div>
         {eyebrow ? (
-          <p className="text-sm font-medium text-slate-500">{eyebrow}</p>
+          <p className="text-sm font-medium text-muted-foreground">{eyebrow}</p>
         ) : null}
         <h1
-          className="mt-1 text-3xl font-semibold tracking-[-0.035em] text-slate-950"
+          className="mt-1 text-3xl font-semibold tracking-[-0.035em] text-foreground"
           id={headingId}
         >
           {title}
         </h1>
         {description ? (
-          <p className="mt-2 max-w-2xl text-base leading-7 text-slate-600">
+          <p className="mt-2 max-w-2xl text-base leading-7 text-muted-foreground">
             {description}
           </p>
         ) : null}

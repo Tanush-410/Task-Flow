@@ -32,9 +32,11 @@ export default async function NotificationsPage() {
       />
 
       {!notifications || notifications.length === 0 ? (
-        <p className="text-base text-slate-600">You&apos;re all caught up.</p>
+        <p className="text-base text-muted-foreground">
+          You&apos;re all caught up.
+        </p>
       ) : (
-        <ul className="divide-y divide-slate-200 rounded-2xl border border-slate-200 bg-white">
+        <ul className="divide-y divide-border rounded-2xl border border-border bg-card">
           {notifications.map((notification) => {
             const isUnread = !notification.read_at;
 
@@ -57,12 +59,12 @@ export default async function NotificationsPage() {
                       />
                     ) : null}
                     <p
-                      className={`text-sm font-semibold ${isUnread ? 'text-slate-950' : 'text-slate-500'}`}
+                      className={`text-sm font-semibold ${isUnread ? 'text-foreground' : 'text-muted-foreground'}`}
                     >
                       {notification.title}
                     </p>
                   </div>
-                  <p className="mt-1 text-sm text-slate-600">
+                  <p className="mt-1 text-sm text-muted-foreground">
                     {notification.body}
                   </p>
                   {notification.task_id ? (

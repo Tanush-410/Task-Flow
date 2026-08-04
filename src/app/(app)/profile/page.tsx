@@ -31,10 +31,10 @@ export default async function ProfilePage() {
               userId={membership.userId}
             />
             <div>
-              <p className="text-base font-semibold text-slate-950">
+              <p className="text-base font-semibold text-foreground">
                 {profile.displayName || '—'}
               </p>
-              <p className="text-sm text-slate-500 capitalize">
+              <p className="text-sm text-muted-foreground capitalize">
                 {profile.role}
               </p>
             </div>

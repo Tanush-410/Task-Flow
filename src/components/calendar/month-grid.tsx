@@ -39,11 +39,11 @@ export function MonthGrid({
   }
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
-      <div className="grid grid-cols-7 border-b border-slate-200 bg-slate-50/80">
+    <div className="overflow-hidden rounded-2xl border border-border bg-card">
+      <div className="grid grid-cols-7 border-b border-border bg-muted/80">
         {WEEKDAY_LABELS.map((label) => (
           <div
-            className="px-2 py-2 text-center text-xs font-semibold text-slate-500 uppercase"
+            className="px-2 py-2 text-center text-xs font-semibold text-muted-foreground uppercase"
             key={label}
           >
             {label}
@@ -61,8 +61,8 @@ export function MonthGrid({
           return (
             <div
               className={cn(
-                'group relative min-h-[112px] border-r border-b border-slate-100 p-1.5 transition-colors',
-                !isCurrentMonth && 'bg-slate-50/50',
+                'group relative min-h-[112px] border-r border-b border-border p-1.5 transition-colors',
+                !isCurrentMonth && 'bg-muted/50',
               )}
               key={day.toISOString()}
             >
@@ -90,10 +90,10 @@ export function MonthGrid({
                   className={cn(
                     'flex size-6 items-center justify-center rounded-full text-xs font-semibold transition-colors',
                     isToday
-                      ? 'bg-primary text-white'
+                      ? 'bg-primary text-primary-foreground'
                       : isCurrentMonth
-                        ? 'text-slate-700 hover:bg-slate-200/70'
-                        : 'text-slate-400 hover:bg-slate-200/70',
+                        ? 'text-muted-foreground hover:bg-accent/70'
+                        : 'text-muted-foreground hover:bg-accent/70',
                   )}
                   onClick={() => onSelectDay(day)}
                   type="button"
@@ -107,7 +107,7 @@ export function MonthGrid({
                 ))}
                 {overflow > 0 ? (
                   <button
-                    className="block text-left text-[11px] font-medium text-slate-500 hover:text-slate-700"
+                    className="block text-left text-[11px] font-medium text-muted-foreground hover:text-muted-foreground"
                     onClick={() => onSelectDay(day)}
                     type="button"
                   >

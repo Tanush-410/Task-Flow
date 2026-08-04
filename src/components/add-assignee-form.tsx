@@ -89,7 +89,7 @@ export function AddAssigneeForm({
         Cancel
       </Button>
       {error && !error.fields ? (
-        <p className="w-full text-xs text-red-700">{error.message}</p>
+        <p className="w-full text-xs text-red-400">{error.message}</p>
       ) : null}
     </form>
   );

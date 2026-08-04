@@ -24,6 +24,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 
 import { AppNavLink } from './app-nav-link';
+import { GlobalSearch } from './global-search';
 import { NotificationBell } from './notification-bell';
 import { PersonAvatar } from './person-avatar';
 import { SignOutMenuItem } from './sign-out-menu-item';
@@ -70,8 +71,8 @@ export function AppShell({
   const home = role === 'admin' ? '/dashboard' : '/my-day';
 
   return (
-    <div className="min-h-screen bg-background text-slate-950 md:grid md:grid-cols-[260px_minmax(0,1fr)]">
-      <aside className="border-b border-slate-200 bg-white md:sticky md:top-0 md:flex md:h-screen md:flex-col md:border-r md:border-b-0">
+    <div className="min-h-screen bg-background text-foreground md:grid md:grid-cols-[260px_minmax(0,1fr)]">
+      <aside className="border-b border-border bg-card md:sticky md:top-0 md:flex md:h-screen md:flex-col md:border-r md:border-b-0">
         <div className="flex min-h-16 items-center justify-between px-5 md:min-h-20 md:px-6">
           <Link
             className="inline-flex items-center gap-2.5 rounded-md font-semibold tracking-[-0.02em] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-primary"
@@ -79,18 +80,19 @@ export function AppShell({
           >
             <span
               aria-hidden="true"
-              className="grid size-8 place-items-center rounded-lg bg-primary text-sm text-white"
+              className="grid size-8 place-items-center rounded-lg bg-primary text-sm text-primary-foreground"
             >
               T
             </span>
             <span>TaskFlow</span>
           </Link>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1">
+            <GlobalSearch />
             <NotificationBell
               initialUnreadCount={unreadNotificationCount}
               userId={userId}
             />
-            <span className="rounded-md bg-slate-100 px-2 py-1 text-[11px] font-semibold tracking-wider text-slate-600 uppercase md:hidden">
+            <span className="ml-1 rounded-md bg-muted px-2 py-1 text-[11px] font-semibold tracking-wider text-muted-foreground uppercase md:hidden">
               {role}
             </span>
           </div>
@@ -104,32 +106,32 @@ export function AppShell({
             <AppNavLink href={href} key={href}>
               <Icon
                 aria-hidden={true}
-                className="size-[18px] text-slate-400 transition-colors group-hover:text-slate-700 group-aria-[current=page]:text-primary"
+                className="size-[18px] text-muted-foreground transition-colors group-hover:text-muted-foreground group-aria-[current=page]:text-primary"
               />
               {label}
             </AppNavLink>
           ))}
         </nav>
 
-        <div className="hidden border-t border-slate-200 px-3 py-3 md:block">
+        <div className="hidden border-t border-border px-3 py-3 md:block">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <button
-                className="flex w-full items-center gap-3 rounded-xl px-2 py-2 text-left transition-colors hover:bg-slate-100 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-primary"
+                className="flex w-full items-center gap-3 rounded-xl px-2 py-2 text-left transition-colors hover:bg-muted focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-primary"
                 type="button"
               >
                 <PersonAvatar displayName={displayName} userId={userId} />
                 <span className="min-w-0 flex-1">
-                  <span className="block truncate text-sm font-semibold text-slate-900">
+                  <span className="block truncate text-sm font-semibold text-foreground">
                     {displayName}
                   </span>
-                  <span className="block text-xs font-medium text-slate-500 capitalize">
+                  <span className="block text-xs font-medium text-muted-foreground capitalize">
                     {role}
                   </span>
                 </span>
                 <ChevronsUpDown
                   aria-hidden
-                  className="size-4 shrink-0 text-slate-400"
+                  className="size-4 shrink-0 text-muted-foreground"
                 />
               </button>
             </DropdownMenuTrigger>

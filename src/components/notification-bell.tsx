@@ -6,6 +6,11 @@ import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
 import { createBrowserSupabase } from '@/lib/supabase/browser';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 
 export function NotificationBell({
   userId,
@@ -44,21 +49,26 @@ export function NotificationBell({
   }, [userId]);
 
   return (
-    <Link
-      aria-label={
-        unreadCount > 0
-          ? `Notifications, ${unreadCount} unread`
-          : 'Notifications'
-      }
-      className="relative inline-flex size-9 items-center justify-center rounded-lg text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
-      href="/notifications"
-    >
-      <Bell aria-hidden="true" className="size-[18px]" />
-      {unreadCount > 0 ? (
-        <span className="absolute -right-0.5 -top-0.5 grid min-w-[18px] place-items-center rounded-full bg-red-600 px-1 text-[10px] font-semibold text-white">
-          {unreadCount > 99 ? '99+' : unreadCount}
-        </span>
-      ) : null}
-    </Link>
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Link
+          aria-label={
+            unreadCount > 0
+              ? `Notifications, ${unreadCount} unread`
+              : 'Notifications'
+          }
+          className="relative inline-flex size-9 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+          href="/notifications"
+        >
+          <Bell aria-hidden="true" className="size-[18px]" />
+          {unreadCount > 0 ? (
+            <span className="absolute -right-0.5 -top-0.5 grid min-w-[18px] place-items-center rounded-full bg-red-600 px-1 text-[10px] font-semibold text-white">
+              {unreadCount > 99 ? '99+' : unreadCount}
+            </span>
+          ) : null}
+        </Link>
+      </TooltipTrigger>
+      <TooltipContent>Notifications</TooltipContent>
+    </Tooltip>
   );
 }

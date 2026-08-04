@@ -77,7 +77,7 @@ export function AssignmentControls({
 
   if (assignment.status === 'completed') {
     return (
-      <p className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-900">
+      <p className="rounded-xl border border-emerald-500/25 bg-emerald-500/10 px-4 py-3 text-sm font-semibold text-emerald-300">
         You marked this task complete.
       </p>
     );
@@ -120,7 +120,7 @@ export function AssignmentControls({
                   aria-pressed={assignment.progress === value}
                   className={
                     assignment.progress === value
-                      ? 'border-primary bg-primary text-white'
+                      ? 'border-primary bg-primary text-primary-foreground'
                       : ''
                   }
                   disabled={pending}
@@ -162,7 +162,7 @@ export function AssignmentControls({
       </div>
 
       {assignment.status === 'delayed' && assignment.delayReason ? (
-        <p className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900">
+        <p className="rounded-xl border border-red-500/25 bg-red-500/10 px-4 py-3 text-sm text-red-300">
           Delay reason: {assignment.delayReason}
         </p>
       ) : null}
@@ -186,7 +186,7 @@ export function AssignmentControls({
       ) : null}
 
       {error ? (
-        <p className="text-sm text-red-700" role="alert">
+        <p className="text-sm text-red-400" role="alert">
           {error.message}
         </p>
       ) : null}

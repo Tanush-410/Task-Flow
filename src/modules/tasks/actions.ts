@@ -310,3 +310,46 @@ export async function archiveTask(
     return { ok: false, error: { ...TASK_UPDATE_ERROR, traceId } };
   }
 }
+
+export type TaskSearchResult = {
+  id: string;
+  title: string;
+  status: TaskStatus;
+  priority: TaskPriority;
+  dueAt: string | null;
+};
+
+/**
+ * Scoped entirely by RLS, not by branching on role here: admins match
+ * tasks_select_admins_by_org (every org task), everyone else matches
+ * tasks_view_participants / tasks_select_creator (their own tasks).
+ */
+export async function searchTasks(query: string): Promise<TaskSearchResult[]> {
+  const trimmed = query.trim();
+
+  if (trimmed.length < 2) {
+    return [];
+  }
+
+  await requireMembership();
+  const supabase = await createServerSupabase();
+  const { data, error } = await supabase
+    .from('tasks')
+    .select('id,title,status,priority,due_at')
+    .ilike('title', `%${trimmed}%`)
+    .neq('status', 'archived')
+    .order('due_at', { ascending: true, nullsFirst: false })
+    .limit(8);
+
+  if (error || !data) {
+    return [];
+  }
+
+  return data.map((task) => ({
+    id: task.id,
+    title: task.title,
+    status: task.status,
+    priority: task.priority,
+    dueAt: task.due_at,
+  }));
+}

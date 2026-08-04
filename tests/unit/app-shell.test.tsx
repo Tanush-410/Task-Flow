@@ -9,6 +9,10 @@ vi.mock('@/components/sign-out-menu-item', () => ({
   SignOutMenuItem: () => null,
 }));
 
+vi.mock('@/components/global-search', () => ({
+  GlobalSearch: () => null,
+}));
+
 import { AppShell } from '@/components/app-shell';
 
 afterEach(cleanup);

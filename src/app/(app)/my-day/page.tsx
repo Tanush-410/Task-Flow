@@ -61,7 +61,7 @@ export default async function MyDayPage() {
       />
 
       {rows.length === 0 ? (
-        <p className="text-base text-slate-600">
+        <p className="text-base text-muted-foreground">
           You have no assignments yet. New tasks will show up here.
         </p>
       ) : (
@@ -76,7 +76,7 @@ export default async function MyDayPage() {
             title="Recently assigned"
           />
           {nothingUrgent ? (
-            <p className="text-base text-slate-600">
+            <p className="text-base text-muted-foreground">
               Nothing urgent right now — see{' '}
               <Link
                 className="text-primary underline underline-offset-2"

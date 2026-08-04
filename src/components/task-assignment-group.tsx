@@ -35,13 +35,13 @@ export function TaskAssignmentGroup({
 
   return (
     <div>
-      <h2 className="text-sm font-semibold tracking-wide text-slate-500 uppercase">
+      <h2 className="text-sm font-semibold tracking-wide text-muted-foreground uppercase">
         {title} ({rows.length})
       </h2>
       {rows.length === 0 ? (
-        <p className="mt-2 text-sm text-slate-500">{emptyMessage}</p>
+        <p className="mt-2 text-sm text-muted-foreground">{emptyMessage}</p>
       ) : (
-        <ul className="mt-3 divide-y divide-slate-200 rounded-2xl border border-slate-200 bg-white">
+        <ul className="mt-3 divide-y divide-border rounded-2xl border border-border bg-card">
           {rows.map(({ assignment, task }) => {
             const overdue =
               assignment.status !== 'completed' &&
@@ -51,18 +51,18 @@ export function TaskAssignmentGroup({
             return (
               <li key={assignment.id}>
                 <Link
-                  className="flex flex-wrap items-center justify-between gap-3 px-5 py-4 hover:bg-slate-50"
+                  className="flex flex-wrap items-center justify-between gap-3 px-5 py-4 hover:bg-muted"
                   href={`/tasks/${task.id}`}
                 >
                   <div className="min-w-0">
-                    <p className="truncate text-sm font-semibold text-slate-950">
+                    <p className="truncate text-sm font-semibold text-foreground">
                       {task.title}
                     </p>
                     <p className="mt-1.5 flex flex-wrap items-center gap-1.5">
                       <Badge variant={STATUS_BADGE_VARIANT[assignment.status]}>
                         {STATUS_LABELS[assignment.status]}
                       </Badge>
-                      <span className="text-xs font-medium text-slate-500">
+                      <span className="text-xs font-medium text-muted-foreground">
                         {assignment.progress}%
                       </span>
                     </p>
@@ -72,15 +72,15 @@ export function TaskAssignmentGroup({
                       <span
                         className={
                           overdue
-                            ? 'font-semibold text-red-700'
-                            : 'text-slate-600'
+                            ? 'font-semibold text-red-400'
+                            : 'text-muted-foreground'
                         }
                       >
                         {overdue ? 'Overdue · ' : 'Due '}
                         {new Date(task.due_at).toLocaleDateString()}
                       </span>
                     ) : (
-                      <span className="text-slate-400">No due date</span>
+                      <span className="text-muted-foreground">No due date</span>
                     )}
                   </div>
                 </Link>

@@ -22,7 +22,7 @@ export function EventChip({
         'flex min-w-0 items-center gap-1 rounded-md border px-1.5 py-1 text-left text-[11px] font-medium transition-opacity hover:opacity-80',
         tag
           ? [tag.softBg, tag.softText, tag.softBorder]
-          : 'border-slate-200 bg-slate-50 text-slate-700',
+          : 'border-border bg-muted text-muted-foreground',
         className,
       )}
       href={`/tasks/${event.task.id}`}
@@ -38,7 +38,7 @@ export function EventChip({
             return (
               <span
                 className={cn(
-                  'grid size-3.5 shrink-0 place-items-center rounded-full text-[7px] font-bold ring-1 ring-white',
+                  'grid size-3.5 shrink-0 place-items-center rounded-full text-[7px] font-bold ring-1 ring-card',
                   assigneeTag.solidBg,
                   assigneeTag.solidText,
                 )}

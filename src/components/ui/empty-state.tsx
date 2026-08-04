@@ -18,16 +18,16 @@ export function EmptyState({
   return (
     <div
       className={cn(
-        'rounded-2xl border border-dashed border-slate-300 bg-slate-50/60 px-6 py-12 text-center',
+        'rounded-2xl border border-dashed border-border bg-muted/60 px-6 py-12 text-center',
         className,
       )}
     >
       {Icon ? (
-        <Icon aria-hidden className="mx-auto size-10 text-slate-300" />
+        <Icon aria-hidden className="mx-auto size-10 text-muted-foreground" />
       ) : null}
-      <p className="mt-3 text-base font-semibold text-slate-900">{title}</p>
+      <p className="mt-3 text-base font-semibold text-foreground">{title}</p>
       {description ? (
-        <p className="mx-auto mt-1 max-w-sm text-sm text-slate-500">
+        <p className="mx-auto mt-1 max-w-sm text-sm text-muted-foreground">
           {description}
         </p>
       ) : null}

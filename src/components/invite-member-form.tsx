@@ -63,12 +63,12 @@ export function InviteMemberForm() {
         </Button>
       </div>
       {state && !state.ok ? (
-        <p className="text-sm text-red-700" role="alert">
+        <p className="text-sm text-red-400" role="alert">
           {state.error.message}
         </p>
       ) : null}
       {state && state.ok ? (
-        <p className="text-sm text-emerald-700">
+        <p className="text-sm text-emerald-400">
           Invitation sent to {state.data.email}.
         </p>
       ) : null}

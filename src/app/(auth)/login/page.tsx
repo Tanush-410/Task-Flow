@@ -22,19 +22,19 @@ export default async function LoginPage({
       <div className="mb-8">
         <AuthLogo />
         <h1
-          className="text-3xl font-semibold tracking-[-0.035em] text-slate-950"
+          className="text-3xl font-semibold tracking-[-0.035em] text-foreground"
           id="login-heading"
         >
           Welcome back
         </h1>
-        <p className="mt-2 text-[15px] leading-6 text-slate-600">
+        <p className="mt-2 text-[15px] leading-6 text-muted-foreground">
           Sign in to continue to your workspace.
         </p>
       </div>
 
       {error ? (
         <p
-          className="mb-5 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950"
+          className="mb-5 rounded-xl border border-amber-500/25 bg-amber-500/10 px-4 py-3 text-sm text-amber-300"
           role="alert"
         >
           We could not complete that sign-in request. Please try again.
@@ -43,7 +43,7 @@ export default async function LoginPage({
 
       <LoginForm nextPath={nextPath} />
 
-      <p className="mt-7 text-center text-sm text-slate-600">
+      <p className="mt-7 text-center text-sm text-muted-foreground">
         New to TaskFlow?{' '}
         <Link
           className="font-semibold text-primary underline underline-offset-2"

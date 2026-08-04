@@ -24,14 +24,14 @@ export default async function SettingsPage() {
         <CardContent>
           <dl className="space-y-3 text-sm">
             <div className="flex justify-between gap-4">
-              <dt className="text-slate-500">Name</dt>
-              <dd className="font-semibold text-slate-950">
+              <dt className="text-muted-foreground">Name</dt>
+              <dd className="font-semibold text-foreground">
                 {organization?.name ?? '—'}
               </dd>
             </div>
             <div className="flex justify-between gap-4">
-              <dt className="text-slate-500">Timezone</dt>
-              <dd className="font-semibold text-slate-950">
+              <dt className="text-muted-foreground">Timezone</dt>
+              <dd className="font-semibold text-foreground">
                 {organization?.timezone ?? '—'}
               </dd>
             </div>

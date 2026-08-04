@@ -25,7 +25,7 @@ export default async function EmployeesPage() {
           <CardTitle>Invite someone</CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="text-sm text-slate-600">
+          <p className="text-sm text-muted-foreground">
             Send a secure invite link, or they can{' '}
             <Link
               className="text-primary underline underline-offset-2"
@@ -53,7 +53,7 @@ export default async function EmployeesPage() {
               title="No members yet"
             />
           ) : (
-            <ul className="divide-y divide-slate-200">
+            <ul className="divide-y divide-border">
               {members.map((member) => (
                 <li
                   className="flex items-center justify-between gap-4 py-3"
@@ -64,7 +64,7 @@ export default async function EmployeesPage() {
                       displayName={member.displayName}
                       userId={member.userId}
                     />
-                    <span className="text-sm font-semibold text-slate-950">
+                    <span className="text-sm font-semibold text-foreground">
                       {member.displayName}
                     </span>
                   </div>

@@ -34,7 +34,7 @@ export function RemoveAssignmentButton({
   if (!confirming) {
     return (
       <button
-        className="text-xs font-semibold text-slate-500 hover:text-red-700"
+        className="text-xs font-semibold text-muted-foreground hover:text-red-400"
         onClick={() => setConfirming(true)}
         type="button"
       >
@@ -46,18 +46,18 @@ export function RemoveAssignmentButton({
   return (
     <form action={formAction} className="flex items-center gap-2">
       <input name="assignmentId" type="hidden" value={assignmentId} />
-      <span className="text-xs text-slate-600">Remove from task?</span>
+      <span className="text-xs text-muted-foreground">Remove from task?</span>
       <Button disabled={pending} size="sm" type="submit" variant="destructive">
         {pending ? 'Removing…' : 'Confirm'}
       </Button>
       <button
-        className="text-xs font-semibold text-slate-500 hover:text-slate-800"
+        className="text-xs font-semibold text-muted-foreground hover:text-foreground"
         onClick={() => setConfirming(false)}
         type="button"
       >
         Cancel
       </button>
-      {error ? <p className="text-xs text-red-700">{error.message}</p> : null}
+      {error ? <p className="text-xs text-red-400">{error.message}</p> : null}
     </form>
   );
 }
