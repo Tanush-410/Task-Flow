@@ -35,6 +35,21 @@ export function isSameDay(a: Date, b: Date): boolean {
   );
 }
 
+/**
+ * "On time" compares calendar days, not exact timestamps — most due dates
+ * carry a specific time (quick-create defaults to 9:00 AM) that users don't
+ * actually mean as a deadline-to-the-minute, so finishing later the same
+ * day still counts as on time.
+ */
+export function isOnTimeByDate(
+  completedAt: string | Date,
+  dueAt: string | Date,
+): boolean {
+  const completedDay = startOfDay(new Date(completedAt));
+  const dueDay = startOfDay(new Date(dueAt));
+  return completedDay.getTime() <= dueDay.getTime();
+}
+
 export function getRangeForView(
   date: Date,
   viewMode: ViewMode,

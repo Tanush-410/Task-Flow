@@ -1,5 +1,6 @@
 import 'server-only';
 
+import { isOnTimeByDate } from '@/lib/calendar-dates';
 import { createServerSupabase } from '@/lib/supabase/server';
 
 import {
@@ -53,7 +54,7 @@ export async function getEmployeeCompletionReport(): Promise<
     const dueAt = dueAtByTaskId.get(row.task_id);
     if (
       !dueAt ||
-      (row.completed_at && new Date(row.completed_at) <= new Date(dueAt))
+      (row.completed_at && isOnTimeByDate(row.completed_at, dueAt))
     ) {
       stat.onTime += 1;
     }
@@ -210,8 +211,7 @@ export async function getEmployeeTaskBreakdown(
 
     if (row.status === 'completed') {
       const onTime =
-        !dueAt ||
-        (row.completed_at && new Date(row.completed_at) <= new Date(dueAt));
+        !dueAt || (row.completed_at && isOnTimeByDate(row.completed_at, dueAt));
       if (onTime) {
         completedOnTimeCount += 1;
       } else {
@@ -256,4 +256,156 @@ export async function getEmployeeTaskBreakdown(
     missedTasks: missedTasks.slice(0, 10),
     recentlyCompleted: recentlyCompleted.slice(0, 5),
   };
+}
+
+export type EmployeeProductivity = {
+  userId: string;
+  displayName: string;
+  completedCount: number;
+  /** Average time from assignment to completion, in hours. */
+  averageHoursToComplete: number | null;
+};
+
+/**
+ * "Most productive" = fastest average turnaround from being assigned a
+ * task to completing it, not raw completed count — someone who finishes
+ * fewer tasks but much faster still ranks ahead of someone slower with
+ * more. Employees with zero completions sort last (nothing to measure).
+ */
+export async function getEmployeeProductivity(): Promise<
+  EmployeeProductivity[]
+> {
+  const membership = await requireAdmin();
+  const supabase = await createServerSupabase();
+
+  const [{ data: assignments }, members] = await Promise.all([
+    supabase
+      .from('task_assignments')
+      .select('assignee_id,created_at,completed_at')
+      .eq('organization_id', membership.organizationId)
+      .eq('status', 'completed'),
+    listOrganizationMembers(),
+  ]);
+
+  const statsByUser = new Map<
+    string,
+    { completed: number; totalHours: number; measured: number }
+  >();
+
+  for (const row of assignments ?? []) {
+    const stat = statsByUser.get(row.assignee_id) ?? {
+      completed: 0,
+      totalHours: 0,
+      measured: 0,
+    };
+    stat.completed += 1;
+
+    if (row.completed_at) {
+      const hours =
+        (new Date(row.completed_at).getTime() -
+          new Date(row.created_at).getTime()) /
+        (1000 * 60 * 60);
+      if (hours >= 0) {
+        stat.totalHours += hours;
+        stat.measured += 1;
+      }
+    }
+
+    statsByUser.set(row.assignee_id, stat);
+  }
+
+  return members
+    .filter((member) => member.role === 'employee')
+    .map((member) => {
+      const stat = statsByUser.get(member.userId) ?? {
+        completed: 0,
+        totalHours: 0,
+        measured: 0,
+      };
+
+      return {
+        userId: member.userId,
+        displayName: member.displayName,
+        completedCount: stat.completed,
+        averageHoursToComplete:
+          stat.measured === 0 ? null : stat.totalHours / stat.measured,
+      };
+    })
+    .sort((a, b) => {
+      if (a.averageHoursToComplete === null) return 1;
+      if (b.averageHoursToComplete === null) return -1;
+      return a.averageHoursToComplete - b.averageHoursToComplete;
+    });
+}
+
+export type CurrentWorkTask = {
+  assignmentId: string;
+  taskId: string;
+  title: string;
+  priority: string;
+  dueAt: string | null;
+  progress: number;
+  startedAt: string | null;
+};
+
+export type EmployeeCurrentWork = {
+  userId: string;
+  displayName: string;
+  tasks: CurrentWorkTask[];
+};
+
+/** What every employee is actively working on right now (status = in_progress). */
+export async function listCurrentWorkByEmployee(): Promise<
+  EmployeeCurrentWork[]
+> {
+  const membership = await requireAdmin();
+  const supabase = await createServerSupabase();
+
+  const [{ data: assignments }, members] = await Promise.all([
+    supabase
+      .from('task_assignments')
+      .select('id,assignee_id,task_id,progress,started_at')
+      .eq('organization_id', membership.organizationId)
+      .eq('status', 'in_progress'),
+    listOrganizationMembers(),
+  ]);
+
+  const rows = assignments ?? [];
+  const taskIds = Array.from(new Set(rows.map((row) => row.task_id)));
+  const { data: tasks } = await supabase
+    .from('tasks')
+    .select('id,title,priority,due_at')
+    .in('id', taskIds);
+  const taskById = new Map((tasks ?? []).map((task) => [task.id, task]));
+
+  const tasksByUser = new Map<string, CurrentWorkTask[]>();
+  for (const row of rows) {
+    const task = taskById.get(row.task_id);
+    if (!task) continue;
+
+    const list = tasksByUser.get(row.assignee_id) ?? [];
+    list.push({
+      assignmentId: row.id,
+      taskId: task.id,
+      title: task.title,
+      priority: task.priority,
+      dueAt: task.due_at,
+      progress: row.progress,
+      startedAt: row.started_at,
+    });
+    tasksByUser.set(row.assignee_id, list);
+  }
+
+  return members
+    .filter((member) => member.role === 'employee')
+    .map((member) => ({
+      userId: member.userId,
+      displayName: member.displayName,
+      tasks: (tasksByUser.get(member.userId) ?? []).sort((a, b) => {
+        if (!a.dueAt) return 1;
+        if (!b.dueAt) return -1;
+        return new Date(a.dueAt).getTime() - new Date(b.dueAt).getTime();
+      }),
+    }))
+    .sort((a, b) => b.tasks.length - a.tasks.length);
 }

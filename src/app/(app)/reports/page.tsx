@@ -1,12 +1,22 @@
 import { ExportReportButton } from '@/components/export-report-button';
+import { ProductivityChart } from '@/components/productivity-chart';
 import { ReportChart } from '@/components/report-chart';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { PageHeader } from '@/components/ui/page-header';
-import { getEmployeeCompletionReport } from '@/modules/reports/queries';
+import {
+  getEmployeeCompletionReport,
+  getEmployeeProductivity,
+} from '@/modules/reports/queries';
 
 export default async function ReportsPage() {
-  const stats = await getEmployeeCompletionReport();
+  const [stats, productivity] = await Promise.all([
+    getEmployeeCompletionReport(),
+    getEmployeeProductivity(),
+  ]);
   const hasCompletions = stats.some((stat) => stat.completedCount > 0);
+  const hasProductivityData = productivity.some(
+    (stat) => stat.averageHoursToComplete !== null,
+  );
 
   return (
     <section aria-labelledby="reports-heading" className="space-y-6">
@@ -25,6 +35,17 @@ export default async function ReportsPage() {
           </CardHeader>
           <CardContent>
             <ReportChart stats={stats} />
+          </CardContent>
+        </Card>
+      ) : null}
+
+      {hasProductivityData ? (
+        <Card>
+          <CardHeader>
+            <CardTitle>Most productive</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ProductivityChart stats={productivity} />
           </CardContent>
         </Card>
       ) : null}
