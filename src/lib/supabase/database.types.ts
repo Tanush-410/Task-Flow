@@ -249,6 +249,75 @@ export type Database = {
         };
         Relationships: [];
       };
+      notes: {
+        Row: {
+          archived: boolean;
+          body: string;
+          color: string;
+          created_at: string;
+          id: string;
+          note_type: string;
+          pinned: boolean;
+          title: string;
+          updated_at: string;
+          user_id: string;
+        };
+        Insert: {
+          archived?: boolean;
+          body?: string;
+          color?: string;
+          created_at?: string;
+          id?: string;
+          note_type?: string;
+          pinned?: boolean;
+          title?: string;
+          updated_at?: string;
+          user_id: string;
+        };
+        Update: {
+          archived?: boolean;
+          body?: string;
+          color?: string;
+          created_at?: string;
+          id?: string;
+          note_type?: string;
+          pinned?: boolean;
+          title?: string;
+          updated_at?: string;
+          user_id?: string;
+        };
+        Relationships: [];
+      };
+      note_checklist_items: {
+        Row: {
+          checked: boolean;
+          created_at: string;
+          id: string;
+          note_id: string;
+          position: number;
+          text: string;
+          user_id: string;
+        };
+        Insert: {
+          checked?: boolean;
+          created_at?: string;
+          id?: string;
+          note_id: string;
+          position?: number;
+          text?: string;
+          user_id: string;
+        };
+        Update: {
+          checked?: boolean;
+          created_at?: string;
+          id?: string;
+          note_id?: string;
+          position?: number;
+          text?: string;
+          user_id?: string;
+        };
+        Relationships: [];
+      };
       task_acknowledgements: {
         Row: {
           acknowledged_at: string;

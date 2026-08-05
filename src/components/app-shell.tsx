@@ -10,6 +10,7 @@ import {
   ListChecks,
   ListTodo,
   Settings,
+  StickyNote,
   TrendingUp,
   UserRound,
   UsersRound,
@@ -47,6 +48,7 @@ const adminItems: NavigationItem[] = [
   { href: '/current-work', icon: ListTodo, label: 'Current Work' },
   { href: '/reports', icon: ChartNoAxesCombined, label: 'Reports' },
   { href: '/activity', icon: Activity, label: 'Activity' },
+  { href: '/notes', icon: StickyNote, label: 'Notes' },
   { href: '/notifications', icon: Bell, label: 'Notifications' },
   { href: '/settings', icon: Settings, label: 'Settings' },
 ];
@@ -56,6 +58,7 @@ const employeeItems: NavigationItem[] = [
   { href: '/my-tasks', icon: CheckSquare2, label: 'My Tasks' },
   { href: '/calendar', icon: CalendarDays, label: 'Calendar' },
   { href: '/my-progress', icon: TrendingUp, label: 'My Progress' },
+  { href: '/notes', icon: StickyNote, label: 'Notes' },
   { href: '/notifications', icon: Bell, label: 'Notifications' },
   { href: '/profile', icon: UserRound, label: 'Profile' },
 ];
