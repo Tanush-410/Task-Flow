@@ -1,0 +1,14 @@
+-- Two prior attempts (re-registering the publication, clearing
+-- realtime.subscription) left the exact same behavior completely
+-- unchanged: every subscribe to task_notifications gets a deterministic
+-- subscription id back immediately ("ok"), then is torn down moments
+-- later with "invalid column for filter recipient_id" — for every user,
+-- every session, every fresh row. That determinism (same id every time,
+-- unaffected by clearing bookkeeping) points away from stale/orphaned
+-- state and toward a structural cause: recipient_id is not part of this
+-- table's primary key, and Realtime's postgres_changes filter validation
+-- needs a table's replica identity to cover any column used in a filter.
+-- With the default replica identity (primary key only), Realtime can
+-- accept the filter at handshake time but fails a later consistency
+-- check against it — exactly the "succeeds, then dies" pattern observed.
+alter table public.task_notifications replica identity full;

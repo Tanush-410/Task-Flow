@@ -2,7 +2,7 @@
 
 import { Bell } from 'lucide-react';
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 
 import { createBrowserSupabase } from '@/lib/supabase/browser';
@@ -12,6 +12,8 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 
+const POLL_INTERVAL_MS = 15_000;
+
 export function NotificationBell({
   userId,
   initialUnreadCount,
@@ -20,31 +22,45 @@ export function NotificationBell({
   initialUnreadCount: number;
 }) {
   const [unreadCount, setUnreadCount] = useState(initialUnreadCount);
+  // Anything created after this point is "new" and worth a toast; anything
+  // before it was already reflected in initialUnreadCount from the SSR load.
+  const sinceRef = useRef(new Date().toISOString());
 
   useEffect(() => {
     const supabase = createBrowserSupabase();
-    const channel = supabase
-      .channel(`task-notifications-${userId}`)
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'task_notifications',
-          filter: `recipient_id=eq.${userId}`,
-        },
-        (payload) => {
-          const record = payload.new as { title?: string; body?: string };
-          toast(record.title ?? 'New notification', {
-            description: record.body,
-          });
-          setUnreadCount((count) => count + 1);
-        },
-      )
-      .subscribe();
+    let cancelled = false;
 
+    // Supabase Realtime's postgres_changes subscription for this project is
+    // in a broken state server-side (every subscribe succeeds momentarily
+    // then gets torn down with a spurious "invalid column for filter"
+    // error, reproduced consistently across publication resets, a replica
+    // identity change, and a full project restart) so pop-ups are delivered
+    // by polling instead — plenty responsive for a task app, and it doesn't
+    // depend on Realtime at all.
+    async function poll() {
+      const since = sinceRef.current;
+      const { data } = await supabase
+        .from('task_notifications')
+        .select('id,title,body,created_at')
+        .eq('recipient_id', userId)
+        .gt('created_at', since)
+        .order('created_at', { ascending: true });
+
+      if (cancelled || !data || data.length === 0) return;
+
+      sinceRef.current = data[data.length - 1]!.created_at;
+      for (const record of data) {
+        toast(record.title ?? 'New notification', {
+          description: record.body,
+        });
+      }
+      setUnreadCount((count) => count + data.length);
+    }
+
+    const interval = setInterval(() => void poll(), POLL_INTERVAL_MS);
     return () => {
-      void supabase.removeChannel(channel);
+      cancelled = true;
+      clearInterval(interval);
     };
   }, [userId]);
 
