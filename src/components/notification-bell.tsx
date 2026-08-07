@@ -27,6 +27,15 @@ export function NotificationBell({
   const sinceRef = useRef(new Date().toISOString());
 
   useEffect(() => {
+    if (
+      typeof Notification !== 'undefined' &&
+      Notification.permission === 'default'
+    ) {
+      void Notification.requestPermission();
+    }
+  }, []);
+
+  useEffect(() => {
     const supabase = createBrowserSupabase();
     let cancelled = false;
 
@@ -49,10 +58,24 @@ export function NotificationBell({
       if (cancelled || !data || data.length === 0) return;
 
       sinceRef.current = data[data.length - 1]!.created_at;
+      // Only fire an OS-level banner when the tab isn't the one the user is
+      // actually looking at — the in-app toast already covers that case,
+      // and doubling up would be noisy.
+      const showNative =
+        typeof Notification !== 'undefined' &&
+        Notification.permission === 'granted' &&
+        document.visibilityState !== 'visible';
+
       for (const record of data) {
-        toast(record.title ?? 'New notification', {
-          description: record.body,
-        });
+        const title = record.title ?? 'New notification';
+        toast(title, { description: record.body });
+        if (showNative) {
+          const native = new Notification(title, { body: record.body });
+          native.onclick = () => {
+            window.focus();
+            native.close();
+          };
+        }
       }
       setUnreadCount((count) => count + data.length);
     }
