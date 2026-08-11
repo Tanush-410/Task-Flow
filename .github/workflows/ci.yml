@@ -61,7 +61,7 @@ jobs:
         run: npx supabase db reset --local
 
       - name: Run database authorization tests
-        run: npx supabase test db
+        run: npm run db:test
 
       - name: Check generated database type drift
         run: |

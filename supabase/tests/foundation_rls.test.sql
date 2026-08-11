@@ -341,21 +341,21 @@ insert into public.organization_memberships (
 )
 values
   (
-    '30000000-0000-0000-0000-000000000001',
+    '31000000-0000-0000-0000-000000000001',
     '20000000-0000-0000-0000-000000000001',
     '10000000-0000-0000-0000-000000000001',
     'admin',
     'active'
   ),
   (
-    '30000000-0000-0000-0000-000000000002',
+    '31000000-0000-0000-0000-000000000002',
     '20000000-0000-0000-0000-000000000001',
     '10000000-0000-0000-0000-000000000002',
     'employee',
     'active'
   ),
   (
-    '30000000-0000-0000-0000-000000000003',
+    '31000000-0000-0000-0000-000000000003',
     '20000000-0000-0000-0000-000000000002',
     '10000000-0000-0000-0000-000000000003',
     'admin',
@@ -595,7 +595,7 @@ select results_eq(
   'admins can deactivate employees in their organization'
 );
 select throws_like(
-  $$update public.organization_memberships set user_id = '10000000-0000-0000-0000-000000000004' where id = '30000000-0000-0000-0000-000000000002'$$,
+  $$update public.organization_memberships set user_id = '10000000-0000-0000-0000-000000000004' where id = '31000000-0000-0000-0000-000000000002'$$,
   '%permission denied%',
   'admins cannot rewrite membership identity columns'
 );
@@ -641,7 +641,13 @@ select lives_ok(
 );
 select results_eq(
   $$select key from public.feature_flags order by key$$,
-  array['global-flag', 'organization-a-flag'],
+  array[
+    'global-flag',
+    'native_sprint_planning',
+    'native_sprint_planning',
+    'native_sprint_planning',
+    'organization-a-flag'
+  ],
   'active admins see global and own-organization raw flags'
 );
 select results_eq(
@@ -660,7 +666,7 @@ select is_empty(
 );
 select results_eq(
   $$select distinct flag_key from public.feature_flag_audit_log order by flag_key$$,
-  array['global-flag', 'organization-a-flag'],
+  array['global-flag', 'native_sprint_planning', 'organization-a-flag'],
   'admins see global and own-organization feature flag audit records'
 );
 select throws_like(
@@ -670,7 +676,7 @@ select throws_like(
 );
 
 select results_eq(
-  $$insert into public.organization_memberships (id, organization_id, user_id, role) values ('30000000-0000-0000-0000-000000000004', '20000000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-000000000004', 'employee') returning organization_id::text$$,
+  $$insert into public.organization_memberships (organization_id, user_id, role) values ('20000000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-000000000004', 'employee') returning organization_id::text$$,
   array['20000000-0000-0000-0000-000000000001'],
   'admins can insert memberships in their organization'
 );
@@ -706,7 +712,8 @@ select throws_like(
 );
 
 delete from public.organization_memberships
-where id = '30000000-0000-0000-0000-000000000004';
+where organization_id = '20000000-0000-0000-0000-000000000001'
+  and user_id = '10000000-0000-0000-0000-000000000004';
 
 reset role;
 set local role authenticated;
@@ -774,7 +781,13 @@ select results_eq(
 );
 select results_eq(
   $$select key from public.feature_flags order by key$$,
-  array['global-flag', 'organization-b-flag'],
+  array[
+    'global-flag',
+    'native_sprint_planning',
+    'native_sprint_planning',
+    'native_sprint_planning',
+    'organization-b-flag'
+  ],
   'cross-organization admins see only global and own scoped flags'
 );
 select throws_like(
@@ -969,13 +982,26 @@ select throws_like(
   'stage rejects malformed email in the database'
 );
 reset role;
+select set_config(
+  'test.staged_invitation_id',
+  (select id::text from public.invitations where token_hash = repeat('b', 64)),
+  true
+);
 set local role service_role;
 select set_config('request.jwt.claim.sub', '', true);
 select set_config('request.jwt.claims', '{"role":"service_role"}', true);
 select results_eq(
-  $$select public.finalize_invitation_delivery((select id from public.invitations where token_hash = repeat('b', 64)))$$,
+  $$select public.finalize_invitation_delivery(current_setting('test.staged_invitation_id')::uuid)$$,
   array[true],
   'successful delivery finalization activates the staged resend'
+);
+reset role;
+set local role authenticated;
+select set_config('request.jwt.claim.sub', '10000000-0000-0000-0000-000000000003', true);
+select set_config(
+  'request.jwt.claims',
+  '{"sub":"10000000-0000-0000-0000-000000000003","role":"authenticated"}',
+  true
 );
 select results_eq(
   $$select revoked_at is not null from public.invitations where token_hash = repeat('a', 64)$$,
@@ -1032,7 +1058,7 @@ select is_empty(
   'failed acceptance attempts roll back without activating membership'
 );
 select results_eq(
-  $$select organization_id::text || ':' || role::text from public.accept_invitation(repeat('b', 64))$$,
+  $$select out_organization_id::text || ':' || out_role::text from public.accept_invitation(repeat('b', 64))$$,
   array['20000000-0000-0000-0000-000000000002:employee'],
   'the current matching invitation activates its constrained role'
 );

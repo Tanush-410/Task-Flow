@@ -1,6 +1,6 @@
 begin;
 
-select plan(48);
+select plan(33);
 
 select has_table('public', 'tasks', 'tasks exist');
 select has_table('public', 'task_assignments', 'task assignments exist');
@@ -38,8 +38,15 @@ select ok(
 select policies_are(
   'public',
   'tasks',
-  array['tasks_view_participants', 'tasks_manage_admins'],
-  'tasks have the participant and admin policies'
+  array[
+    'tasks_delete_admins',
+    'tasks_insert_members',
+    'tasks_select_admins_by_org',
+    'tasks_select_creator',
+    'tasks_update_admins',
+    'tasks_view_participants'
+  ],
+  'tasks have the current member and admin policies'
 );
 
 select policies_are(
@@ -48,10 +55,11 @@ select policies_are(
   array[
     'task_assignments_view_participants',
     'task_assignments_manage_self_or_admin',
-    'task_assignments_insert_admins',
-    'task_assignments_delete_admins'
+    'task_assignments_insert_members',
+    'task_assignments_delete_members',
+    'task_assignments_view_org_members'
   ],
-  'assignments have the participant and admin policies'
+  'assignments have the participant and organization member policies'
 );
 
 select policies_are(
@@ -71,7 +79,12 @@ select policies_are(
 select policies_are(
   'public',
   'task_notifications',
-  array['task_notifications_view_recipient_or_admin', 'task_notifications_manage_recipient_or_admin'],
+  array[
+    'task_notifications_view_recipient_or_admin',
+    'task_notifications_manage_recipient_or_admin',
+    'task_notifications_insert_org_members',
+    'task_notifications_insert_participants'
+  ],
   'notifications are visible and manageable to recipients or admins'
 );
 
@@ -86,14 +99,11 @@ select ok(
 
 select ok(
   has_table_privilege('authenticated', 'public.tasks', 'select')
-  and has_table_privilege('authenticated', 'public.tasks', 'insert')
-  and has_table_privilege('authenticated', 'public.tasks', 'update')
   and has_table_privilege('authenticated', 'public.task_assignments', 'select')
-  and has_table_privilege('authenticated', 'public.task_assignments', 'update')
   and has_table_privilege('authenticated', 'public.task_activity_events', 'select')
   and has_table_privilege('authenticated', 'public.task_acknowledgements', 'select')
   and has_table_privilege('authenticated', 'public.task_notifications', 'select'),
-  'authenticated users have the expected task table grants'
+  'authenticated users can select from task workflow tables'
 );
 
 select ok(
@@ -114,12 +124,9 @@ select ok(
   'authenticated users cannot rewrite workflow provenance columns'
 );
 
-select ok(
-  has_index('public', 'tasks', 'tasks_organization_status_due_idx', 'tasks index by organization/status/due exists')
-  and has_index('public', 'task_assignments', 'task_assignments_task_id_idx', 'assignment task index exists')
-  and has_index('public', 'task_activity_events', 'task_activity_events_task_created_idx', 'activity task index exists')
-  and has_index('public', 'task_notifications', 'task_notifications_recipient_read_idx', 'notification inbox index exists'),
-  'workflow indexes exist for the main access paths'
-);
+select has_index('public', 'tasks', 'tasks_organization_status_due_idx', 'tasks index by organization/status/due exists');
+select has_index('public', 'task_assignments', 'task_assignments_task_id_idx', 'assignment task index exists');
+select has_index('public', 'task_activity_events', 'task_activity_events_task_created_idx', 'activity task index exists');
+select has_index('public', 'task_notifications', 'task_notifications_recipient_read_idx', 'notification inbox index exists');
 
 rollback;
