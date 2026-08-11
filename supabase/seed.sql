@@ -125,22 +125,32 @@ set
   last_sign_in_at = excluded.last_sign_in_at,
   updated_at = excluded.updated_at;
 
-insert into public.profiles (id, display_name, created_at, updated_at)
+insert into public.profiles (
+  id,
+  display_name,
+  connect_code,
+  created_at,
+  updated_at
+)
 values
   (
     '00000000-0000-0000-0000-000000000001',
     'Asha Admin',
+    'ASHA22',
     '2026-08-01 00:00:00+00',
     '2026-08-01 00:00:00+00'
   ),
   (
     '00000000-0000-0000-0000-000000000002',
     'Eshan Employee',
+    'ESHAN2',
     '2026-08-01 00:00:00+00',
     '2026-08-01 00:00:00+00'
   )
 on conflict (id) do update
-set display_name = excluded.display_name;
+set
+  display_name = excluded.display_name,
+  connect_code = excluded.connect_code;
 
 insert into public.organizations (
   id,
