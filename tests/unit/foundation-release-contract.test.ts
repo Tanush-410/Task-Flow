@@ -176,7 +176,7 @@ describe('Phase 0 release artifacts', () => {
     );
 
     expect(databaseTypes).toMatch(
-      /invitation_delivery_status:\s*\[\s*'pending_delivery',\s*'active',\s*'failed',?\s*\]/,
+      /invitation_delivery_status:\s*'pending_delivery'\s*\|\s*'active'\s*\|\s*'failed'/,
     );
   });
 });
