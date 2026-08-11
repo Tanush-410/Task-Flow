@@ -1,6 +1,6 @@
 begin;
 
-select plan(26);
+select plan(27);
 
 select has_type('public', 'planning_role', 'planning role enum exists');
 select has_table('public', 'planning_teams', 'planning teams exist');
@@ -64,10 +64,18 @@ select ok(
   'membership provenance cannot be rewritten'
 );
 
-select ok(
-  has_index('public', 'planning_teams', 'planning_teams_org_name_unique_idx')
-  and has_index('public', 'planning_team_members', 'planning_team_members_team_user_unique_idx'),
-  'team lookup and uniqueness indexes exist'
+select has_index(
+  'public',
+  'planning_teams',
+  'planning_teams_org_name_unique_idx',
+  'team name uniqueness index exists'
+);
+
+select has_index(
+  'public',
+  'planning_team_members',
+  'planning_team_members_team_user_unique_idx',
+  'team membership uniqueness index exists'
 );
 
 select lives_ok(
