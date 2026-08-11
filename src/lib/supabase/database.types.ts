@@ -7,8 +7,88 @@ export type Json =
   | Json[];
 
 export type Database = {
+  graphql_public: {
+    Tables: {
+      [_ in never]: never;
+    };
+    Views: {
+      [_ in never]: never;
+    };
+    Functions: {
+      graphql: {
+        Args: {
+          extensions?: Json;
+          operationName?: string;
+          query?: string;
+          variables?: Json;
+        };
+        Returns: Json;
+      };
+    };
+    Enums: {
+      [_ in never]: never;
+    };
+    CompositeTypes: {
+      [_ in never]: never;
+    };
+  };
   public: {
     Tables: {
+      connection_requests: {
+        Row: {
+          created_at: string;
+          id: string;
+          invited_by: string;
+          organization_id: string;
+          requested_user_id: string;
+          responded_at: string | null;
+          role: Database['public']['Enums']['membership_role'];
+          status: string;
+        };
+        Insert: {
+          created_at?: string;
+          id?: string;
+          invited_by?: string;
+          organization_id: string;
+          requested_user_id: string;
+          responded_at?: string | null;
+          role: Database['public']['Enums']['membership_role'];
+          status?: string;
+        };
+        Update: {
+          created_at?: string;
+          id?: string;
+          invited_by?: string;
+          organization_id?: string;
+          requested_user_id?: string;
+          responded_at?: string | null;
+          role?: Database['public']['Enums']['membership_role'];
+          status?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'connection_requests_invited_by_fkey';
+            columns: ['invited_by'];
+            isOneToOne: false;
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'connection_requests_organization_id_fkey';
+            columns: ['organization_id'];
+            isOneToOne: false;
+            referencedRelation: 'organizations';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'connection_requests_requested_user_id_fkey';
+            columns: ['requested_user_id'];
+            isOneToOne: false;
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
       feature_flag_audit_log: {
         Row: {
           action: string;
@@ -58,8 +138,8 @@ export type Database = {
           purpose: string;
           review_on: string;
           role_scope: Database['public']['Enums']['membership_role'] | null;
-          rollout_plan: string;
           rollout_percentage: number;
+          rollout_plan: string;
           updated_at: string;
         };
         Insert: {
@@ -74,8 +154,8 @@ export type Database = {
           purpose: string;
           review_on: string;
           role_scope?: Database['public']['Enums']['membership_role'] | null;
-          rollout_plan: string;
           rollout_percentage?: number;
+          rollout_plan: string;
           updated_at?: string;
         };
         Update: {
@@ -90,11 +170,19 @@ export type Database = {
           purpose?: string;
           review_on?: string;
           role_scope?: Database['public']['Enums']['membership_role'] | null;
-          rollout_plan?: string;
           rollout_percentage?: number;
+          rollout_plan?: string;
           updated_at?: string;
         };
-        Relationships: [];
+        Relationships: [
+          {
+            foreignKeyName: 'feature_flags_organization_id_fkey';
+            columns: ['organization_id'];
+            isOneToOne: false;
+            referencedRelation: 'organizations';
+            referencedColumns: ['id'];
+          },
+        ];
       };
       invitations: {
         Row: {
@@ -106,8 +194,8 @@ export type Database = {
           id: string;
           invited_by: string;
           organization_id: string;
-          role: Database['public']['Enums']['membership_role'];
           revoked_at: string | null;
+          role: Database['public']['Enums']['membership_role'];
           token_hash: string;
         };
         Insert: {
@@ -119,8 +207,8 @@ export type Database = {
           id?: string;
           invited_by?: string;
           organization_id: string;
-          role: Database['public']['Enums']['membership_role'];
           revoked_at?: string | null;
+          role: Database['public']['Enums']['membership_role'];
           token_hash: string;
         };
         Update: {
@@ -132,122 +220,71 @@ export type Database = {
           id?: string;
           invited_by?: string;
           organization_id?: string;
-          role?: Database['public']['Enums']['membership_role'];
           revoked_at?: string | null;
+          role?: Database['public']['Enums']['membership_role'];
           token_hash?: string;
         };
-        Relationships: [];
+        Relationships: [
+          {
+            foreignKeyName: 'invitations_invited_by_fkey';
+            columns: ['invited_by'];
+            isOneToOne: false;
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'invitations_organization_id_fkey';
+            columns: ['organization_id'];
+            isOneToOne: false;
+            referencedRelation: 'organizations';
+            referencedColumns: ['id'];
+          },
+        ];
       };
-      organization_memberships: {
+      note_checklist_items: {
         Row: {
+          checked: boolean;
           created_at: string;
           id: string;
-          organization_id: string;
-          role: Database['public']['Enums']['membership_role'];
-          status: Database['public']['Enums']['membership_status'];
+          note_id: string;
+          position: number;
+          text: string;
           user_id: string;
         };
         Insert: {
+          checked?: boolean;
           created_at?: string;
           id?: string;
-          organization_id: string;
-          role: Database['public']['Enums']['membership_role'];
-          status?: Database['public']['Enums']['membership_status'];
+          note_id: string;
+          position?: number;
+          text?: string;
           user_id: string;
         };
         Update: {
+          checked?: boolean;
           created_at?: string;
           id?: string;
-          organization_id?: string;
-          role?: Database['public']['Enums']['membership_role'];
-          status?: Database['public']['Enums']['membership_status'];
+          note_id?: string;
+          position?: number;
+          text?: string;
           user_id?: string;
         };
-        Relationships: [];
-      };
-      organizations: {
-        Row: {
-          created_at: string;
-          created_by: string;
-          id: string;
-          name: string;
-          timezone: string;
-          updated_at: string;
-        };
-        Insert: {
-          created_at?: string;
-          created_by: string;
-          id?: string;
-          name: string;
-          timezone?: string;
-          updated_at?: string;
-        };
-        Update: {
-          created_at?: string;
-          created_by?: string;
-          id?: string;
-          name?: string;
-          timezone?: string;
-          updated_at?: string;
-        };
-        Relationships: [];
-      };
-      profiles: {
-        Row: {
-          connect_code: string;
-          created_at: string;
-          display_name: string;
-          id: string;
-          updated_at: string;
-        };
-        Insert: {
-          connect_code?: string;
-          created_at?: string;
-          display_name: string;
-          id: string;
-          updated_at?: string;
-        };
-        Update: {
-          connect_code?: string;
-          created_at?: string;
-          display_name?: string;
-          id?: string;
-          updated_at?: string;
-        };
-        Relationships: [];
-      };
-      connection_requests: {
-        Row: {
-          created_at: string;
-          id: string;
-          invited_by: string;
-          organization_id: string;
-          requested_user_id: string;
-          responded_at: string | null;
-          role: Database['public']['Enums']['membership_role'];
-          status: string;
-        };
-        Insert: {
-          created_at?: string;
-          id?: string;
-          invited_by?: string;
-          organization_id: string;
-          requested_user_id: string;
-          responded_at?: string | null;
-          role: Database['public']['Enums']['membership_role'];
-          status?: string;
-        };
-        Update: {
-          created_at?: string;
-          id?: string;
-          invited_by?: string;
-          organization_id?: string;
-          requested_user_id?: string;
-          responded_at?: string | null;
-          role?: Database['public']['Enums']['membership_role'];
-          status?: string;
-        };
-        Relationships: [];
+        Relationships: [
+          {
+            foreignKeyName: 'note_checklist_items_note_id_fkey';
+            columns: ['note_id'];
+            isOneToOne: false;
+            referencedRelation: 'notes';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'note_checklist_items_user_id_fkey';
+            columns: ['user_id'];
+            isOneToOne: false;
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          },
+        ];
       };
       notes: {
         Row: {
@@ -286,35 +323,220 @@ export type Database = {
           updated_at?: string;
           user_id?: string;
         };
-        Relationships: [];
+        Relationships: [
+          {
+            foreignKeyName: 'notes_user_id_fkey';
+            columns: ['user_id'];
+            isOneToOne: false;
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          },
+        ];
       };
-      note_checklist_items: {
+      organization_memberships: {
         Row: {
-          checked: boolean;
           created_at: string;
           id: string;
-          note_id: string;
-          position: number;
-          text: string;
+          organization_id: string;
+          role: Database['public']['Enums']['membership_role'];
+          status: Database['public']['Enums']['membership_status'];
           user_id: string;
         };
         Insert: {
-          checked?: boolean;
           created_at?: string;
           id?: string;
-          note_id: string;
-          position?: number;
-          text?: string;
+          organization_id: string;
+          role: Database['public']['Enums']['membership_role'];
+          status?: Database['public']['Enums']['membership_status'];
           user_id: string;
         };
         Update: {
-          checked?: boolean;
           created_at?: string;
           id?: string;
-          note_id?: string;
-          position?: number;
-          text?: string;
+          organization_id?: string;
+          role?: Database['public']['Enums']['membership_role'];
+          status?: Database['public']['Enums']['membership_status'];
           user_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'organization_memberships_organization_id_fkey';
+            columns: ['organization_id'];
+            isOneToOne: false;
+            referencedRelation: 'organizations';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'organization_memberships_user_id_fkey';
+            columns: ['user_id'];
+            isOneToOne: false;
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      organizations: {
+        Row: {
+          created_at: string;
+          created_by: string;
+          id: string;
+          name: string;
+          timezone: string;
+          updated_at: string;
+        };
+        Insert: {
+          created_at?: string;
+          created_by: string;
+          id?: string;
+          name: string;
+          timezone?: string;
+          updated_at?: string;
+        };
+        Update: {
+          created_at?: string;
+          created_by?: string;
+          id?: string;
+          name?: string;
+          timezone?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'organizations_created_by_fkey';
+            columns: ['created_by'];
+            isOneToOne: false;
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      planning_team_members: {
+        Row: {
+          created_at: string;
+          default_capacity_hours_per_day: number;
+          id: string;
+          organization_id: string;
+          planning_role: Database['public']['Enums']['planning_role'];
+          planning_team_id: string;
+          updated_at: string;
+          user_id: string;
+        };
+        Insert: {
+          created_at?: string;
+          default_capacity_hours_per_day?: number;
+          id?: string;
+          organization_id: string;
+          planning_role?: Database['public']['Enums']['planning_role'];
+          planning_team_id: string;
+          updated_at?: string;
+          user_id: string;
+        };
+        Update: {
+          created_at?: string;
+          default_capacity_hours_per_day?: number;
+          id?: string;
+          organization_id?: string;
+          planning_role?: Database['public']['Enums']['planning_role'];
+          planning_team_id?: string;
+          updated_at?: string;
+          user_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'planning_team_members_organization_id_fkey';
+            columns: ['organization_id'];
+            isOneToOne: false;
+            referencedRelation: 'organizations';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'planning_team_members_planning_team_id_fkey';
+            columns: ['planning_team_id'];
+            isOneToOne: false;
+            referencedRelation: 'planning_teams';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'planning_team_members_user_id_fkey';
+            columns: ['user_id'];
+            isOneToOne: false;
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      planning_teams: {
+        Row: {
+          created_at: string;
+          created_by: string;
+          default_sprint_length_days: number;
+          description: string;
+          id: string;
+          is_archived: boolean;
+          name: string;
+          organization_id: string;
+          updated_at: string;
+        };
+        Insert: {
+          created_at?: string;
+          created_by?: string;
+          default_sprint_length_days?: number;
+          description?: string;
+          id?: string;
+          is_archived?: boolean;
+          name: string;
+          organization_id: string;
+          updated_at?: string;
+        };
+        Update: {
+          created_at?: string;
+          created_by?: string;
+          default_sprint_length_days?: number;
+          description?: string;
+          id?: string;
+          is_archived?: boolean;
+          name?: string;
+          organization_id?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'planning_teams_created_by_fkey';
+            columns: ['created_by'];
+            isOneToOne: false;
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'planning_teams_organization_id_fkey';
+            columns: ['organization_id'];
+            isOneToOne: false;
+            referencedRelation: 'organizations';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      profiles: {
+        Row: {
+          connect_code: string;
+          created_at: string;
+          display_name: string;
+          id: string;
+          updated_at: string;
+        };
+        Insert: {
+          connect_code: string;
+          created_at?: string;
+          display_name: string;
+          id: string;
+          updated_at?: string;
+        };
+        Update: {
+          connect_code?: string;
+          created_at?: string;
+          display_name?: string;
+          id?: string;
+          updated_at?: string;
         };
         Relationships: [];
       };
@@ -323,7 +545,7 @@ export type Database = {
           acknowledged_at: string;
           acknowledged_by: string;
           activity_event_id: string;
-          assignee_id: string;
+          assignment_id: string;
           created_at: string;
           id: string;
           note: string | null;
@@ -334,7 +556,7 @@ export type Database = {
           acknowledged_at?: string;
           acknowledged_by: string;
           activity_event_id: string;
-          assignee_id: string;
+          assignment_id: string;
           created_at?: string;
           id?: string;
           note?: string | null;
@@ -345,20 +567,56 @@ export type Database = {
           acknowledged_at?: string;
           acknowledged_by?: string;
           activity_event_id?: string;
-          assignee_id?: string;
+          assignment_id?: string;
           created_at?: string;
           id?: string;
           note?: string | null;
           organization_id?: string;
           task_id?: string;
         };
-        Relationships: [];
+        Relationships: [
+          {
+            foreignKeyName: 'task_acknowledgements_acknowledged_by_fkey';
+            columns: ['acknowledged_by'];
+            isOneToOne: false;
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'task_acknowledgements_activity_event_id_fkey';
+            columns: ['activity_event_id'];
+            isOneToOne: false;
+            referencedRelation: 'task_activity_events';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'task_acknowledgements_assignment_id_fkey';
+            columns: ['assignment_id'];
+            isOneToOne: false;
+            referencedRelation: 'task_assignments';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'task_acknowledgements_organization_id_fkey';
+            columns: ['organization_id'];
+            isOneToOne: false;
+            referencedRelation: 'organizations';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'task_acknowledgements_task_id_fkey';
+            columns: ['task_id'];
+            isOneToOne: false;
+            referencedRelation: 'tasks';
+            referencedColumns: ['id'];
+          },
+        ];
       };
       task_activity_events: {
         Row: {
           actor_id: string | null;
-          assignment_id: string | null;
           after_record: Json | null;
+          assignment_id: string | null;
           before_record: Json | null;
           created_at: string;
           event_type: Database['public']['Enums']['task_activity_type'];
@@ -369,8 +627,8 @@ export type Database = {
         };
         Insert: {
           actor_id?: string | null;
-          assignment_id?: string | null;
           after_record?: Json | null;
+          assignment_id?: string | null;
           before_record?: Json | null;
           created_at?: string;
           event_type: Database['public']['Enums']['task_activity_type'];
@@ -381,8 +639,8 @@ export type Database = {
         };
         Update: {
           actor_id?: string | null;
-          assignment_id?: string | null;
           after_record?: Json | null;
+          assignment_id?: string | null;
           before_record?: Json | null;
           created_at?: string;
           event_type?: Database['public']['Enums']['task_activity_type'];
@@ -391,15 +649,44 @@ export type Database = {
           summary?: string;
           task_id?: string;
         };
-        Relationships: [];
+        Relationships: [
+          {
+            foreignKeyName: 'task_activity_events_actor_id_fkey';
+            columns: ['actor_id'];
+            isOneToOne: false;
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'task_activity_events_assignment_id_fkey';
+            columns: ['assignment_id'];
+            isOneToOne: false;
+            referencedRelation: 'task_assignments';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'task_activity_events_organization_id_fkey';
+            columns: ['organization_id'];
+            isOneToOne: false;
+            referencedRelation: 'organizations';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'task_activity_events_task_id_fkey';
+            columns: ['task_id'];
+            isOneToOne: false;
+            referencedRelation: 'tasks';
+            referencedColumns: ['id'];
+          },
+        ];
       };
       task_assignments: {
         Row: {
           assigned_by: string;
           assignee_id: string;
+          completed_at: string | null;
           created_at: string;
           delay_reason: string | null;
-          completed_at: string | null;
           id: string;
           organization_id: string;
           override_reason: string | null;
@@ -412,9 +699,9 @@ export type Database = {
         Insert: {
           assigned_by: string;
           assignee_id: string;
+          completed_at?: string | null;
           created_at?: string;
           delay_reason?: string | null;
-          completed_at?: string | null;
           id?: string;
           organization_id: string;
           override_reason?: string | null;
@@ -427,9 +714,9 @@ export type Database = {
         Update: {
           assigned_by?: string;
           assignee_id?: string;
+          completed_at?: string | null;
           created_at?: string;
           delay_reason?: string | null;
-          completed_at?: string | null;
           id?: string;
           organization_id?: string;
           override_reason?: string | null;
@@ -439,7 +726,36 @@ export type Database = {
           task_id?: string;
           updated_at?: string;
         };
-        Relationships: [];
+        Relationships: [
+          {
+            foreignKeyName: 'task_assignments_assigned_by_fkey';
+            columns: ['assigned_by'];
+            isOneToOne: false;
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'task_assignments_assignee_id_fkey';
+            columns: ['assignee_id'];
+            isOneToOne: false;
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'task_assignments_organization_id_fkey';
+            columns: ['organization_id'];
+            isOneToOne: false;
+            referencedRelation: 'organizations';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'task_assignments_task_id_fkey';
+            columns: ['task_id'];
+            isOneToOne: false;
+            referencedRelation: 'tasks';
+            referencedColumns: ['id'];
+          },
+        ];
       };
       task_attachments: {
         Row: {
@@ -475,7 +791,29 @@ export type Database = {
           task_id?: string;
           uploaded_by?: string;
         };
-        Relationships: [];
+        Relationships: [
+          {
+            foreignKeyName: 'task_attachments_organization_id_fkey';
+            columns: ['organization_id'];
+            isOneToOne: false;
+            referencedRelation: 'organizations';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'task_attachments_task_id_fkey';
+            columns: ['task_id'];
+            isOneToOne: false;
+            referencedRelation: 'tasks';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'task_attachments_uploaded_by_fkey';
+            columns: ['uploaded_by'];
+            isOneToOne: false;
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          },
+        ];
       };
       task_checklist_items: {
         Row: {
@@ -511,7 +849,29 @@ export type Database = {
           title?: string;
           updated_at?: string;
         };
-        Relationships: [];
+        Relationships: [
+          {
+            foreignKeyName: 'task_checklist_items_created_by_fkey';
+            columns: ['created_by'];
+            isOneToOne: false;
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'task_checklist_items_organization_id_fkey';
+            columns: ['organization_id'];
+            isOneToOne: false;
+            referencedRelation: 'organizations';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'task_checklist_items_task_id_fkey';
+            columns: ['task_id'];
+            isOneToOne: false;
+            referencedRelation: 'tasks';
+            referencedColumns: ['id'];
+          },
+        ];
       };
       task_comments: {
         Row: {
@@ -541,7 +901,29 @@ export type Database = {
           task_id?: string;
           updated_at?: string;
         };
-        Relationships: [];
+        Relationships: [
+          {
+            foreignKeyName: 'task_comments_author_id_fkey';
+            columns: ['author_id'];
+            isOneToOne: false;
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'task_comments_organization_id_fkey';
+            columns: ['organization_id'];
+            isOneToOne: false;
+            referencedRelation: 'organizations';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'task_comments_task_id_fkey';
+            columns: ['task_id'];
+            isOneToOne: false;
+            referencedRelation: 'tasks';
+            referencedColumns: ['id'];
+          },
+        ];
       };
       task_dependencies: {
         Row: {
@@ -568,7 +950,36 @@ export type Database = {
           organization_id?: string;
           task_id?: string;
         };
-        Relationships: [];
+        Relationships: [
+          {
+            foreignKeyName: 'task_dependencies_created_by_fkey';
+            columns: ['created_by'];
+            isOneToOne: false;
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'task_dependencies_depends_on_task_id_fkey';
+            columns: ['depends_on_task_id'];
+            isOneToOne: false;
+            referencedRelation: 'tasks';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'task_dependencies_organization_id_fkey';
+            columns: ['organization_id'];
+            isOneToOne: false;
+            referencedRelation: 'organizations';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'task_dependencies_task_id_fkey';
+            columns: ['task_id'];
+            isOneToOne: false;
+            referencedRelation: 'tasks';
+            referencedColumns: ['id'];
+          },
+        ];
       };
       task_mutes: {
         Row: {
@@ -592,7 +1003,29 @@ export type Database = {
           task_id?: string;
           user_id?: string;
         };
-        Relationships: [];
+        Relationships: [
+          {
+            foreignKeyName: 'task_mutes_organization_id_fkey';
+            columns: ['organization_id'];
+            isOneToOne: false;
+            referencedRelation: 'organizations';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'task_mutes_task_id_fkey';
+            columns: ['task_id'];
+            isOneToOne: false;
+            referencedRelation: 'tasks';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'task_mutes_user_id_fkey';
+            columns: ['user_id'];
+            isOneToOne: false;
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          },
+        ];
       };
       task_notifications: {
         Row: {
@@ -640,7 +1073,36 @@ export type Database = {
           title?: string;
           updated_at?: string;
         };
-        Relationships: [];
+        Relationships: [
+          {
+            foreignKeyName: 'task_notifications_assignment_id_fkey';
+            columns: ['assignment_id'];
+            isOneToOne: false;
+            referencedRelation: 'task_assignments';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'task_notifications_organization_id_fkey';
+            columns: ['organization_id'];
+            isOneToOne: false;
+            referencedRelation: 'organizations';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'task_notifications_recipient_id_fkey';
+            columns: ['recipient_id'];
+            isOneToOne: false;
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'task_notifications_task_id_fkey';
+            columns: ['task_id'];
+            isOneToOne: false;
+            referencedRelation: 'tasks';
+            referencedColumns: ['id'];
+          },
+        ];
       };
       task_templates: {
         Row: {
@@ -679,7 +1141,22 @@ export type Database = {
           recurrence?: Database['public']['Enums']['task_recurrence'];
           title?: string;
         };
-        Relationships: [];
+        Relationships: [
+          {
+            foreignKeyName: 'task_templates_created_by_fkey';
+            columns: ['created_by'];
+            isOneToOne: false;
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'task_templates_organization_id_fkey';
+            columns: ['organization_id'];
+            isOneToOne: false;
+            referencedRelation: 'organizations';
+            referencedColumns: ['id'];
+          },
+        ];
       };
       tasks: {
         Row: {
@@ -733,10 +1210,27 @@ export type Database = {
           title?: string;
           updated_at?: string;
         };
-        Relationships: [];
+        Relationships: [
+          {
+            foreignKeyName: 'tasks_created_by_fkey';
+            columns: ['created_by'];
+            isOneToOne: false;
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'tasks_organization_id_fkey';
+            columns: ['organization_id'];
+            isOneToOne: false;
+            referencedRelation: 'organizations';
+            referencedColumns: ['id'];
+          },
+        ];
       };
     };
-    Views: { [_ in never]: never };
+    Views: {
+      [_ in never]: never;
+    };
     Functions: {
       accept_invitation: {
         Args: { invitation_token_hash: string };
@@ -745,11 +1239,12 @@ export type Database = {
           out_role: Database['public']['Enums']['membership_role'];
         }[];
       };
+      archive_planning_team: {
+        Args: { target_team_id: string };
+        Returns: boolean;
+      };
       bootstrap_organization: {
-        Args: {
-          organization_name: string;
-          organization_timezone: string;
-        };
+        Args: { organization_name: string; organization_timezone: string };
         Returns: string;
       };
       create_connection_request: {
@@ -757,7 +1252,10 @@ export type Database = {
           target_code: string;
           target_role: Database['public']['Enums']['membership_role'];
         };
-        Returns: { request_id: string; target_display_name: string }[];
+        Returns: {
+          request_id: string;
+          target_display_name: string;
+        }[];
       };
       discard_staged_invitation: {
         Args: { invitation_id: string };
@@ -767,24 +1265,28 @@ export type Database = {
         Args: { invitation_id: string };
         Returns: boolean;
       };
-      is_active_admin: {
-        Args: Record<PropertyKey, never>;
-        Returns: boolean;
-      };
+      generate_connect_code: { Args: never; Returns: string };
+      is_active_admin: { Args: never; Returns: boolean };
       is_active_member: {
         Args: { target_organization_id: string };
         Returns: boolean;
       };
-      is_admin: {
-        Args: { target_organization_id: string };
+      is_admin: { Args: { target_organization_id: string }; Returns: boolean };
+      is_planning_team_member: {
+        Args: { target_team_id: string };
         Returns: boolean;
       };
-      is_task_admin: {
-        Args: { target_task_id: string };
+      is_planning_team_planner: {
+        Args: { target_team_id: string };
         Returns: boolean;
       };
+      is_task_admin: { Args: { target_task_id: string }; Returns: boolean };
       is_task_assignment_owner: {
         Args: { target_assignment_id: string };
+        Returns: boolean;
+      };
+      is_task_org_member: {
+        Args: { target_task_id: string };
         Returns: boolean;
       };
       is_task_participant: {
@@ -796,27 +1298,24 @@ export type Database = {
         Returns: string;
       };
       list_my_connection_requests: {
-        Args: Record<PropertyKey, never>;
+        Args: never;
         Returns: {
+          created_at: string;
           id: string;
+          invited_by_name: string;
           organization_name: string;
           role: Database['public']['Enums']['membership_role'];
-          invited_by_name: string;
-          created_at: string;
         }[];
       };
       register_organization_admin: {
-        Args: {
-          organization_name: string;
-          organization_timezone: string;
-        };
+        Args: { organization_name: string; organization_timezone: string };
         Returns: string;
       };
       respond_to_connection_request: {
-        Args: { request_id: string; accept: boolean };
+        Args: { accept: boolean; request_id: string };
         Returns: {
-          out_organization_id: string | null;
-          out_role: Database['public']['Enums']['membership_role'] | null;
+          out_organization_id: string;
+          out_role: Database['public']['Enums']['membership_role'];
         }[];
       };
       stage_invitation: {
@@ -826,16 +1325,21 @@ export type Database = {
           invitation_role: Database['public']['Enums']['membership_role'];
           invitation_token_hash: string;
         };
-        Returns: { id: string; email: string; expires_at: string }[];
+        Returns: {
+          email: string;
+          expires_at: string;
+          id: string;
+        }[];
       };
     };
     Enums: {
+      assignment_status:
+        'not_started' | 'in_progress' | 'delayed' | 'completed';
       deployment_environment: 'development' | 'staging' | 'production';
       invitation_delivery_status: 'pending_delivery' | 'active' | 'failed';
       membership_role: 'admin' | 'employee';
       membership_status: 'active' | 'deactivated';
-      assignment_status:
-        'not_started' | 'in_progress' | 'delayed' | 'completed';
+      planning_role: 'planner' | 'member';
       task_activity_type:
         | 'task_created'
         | 'task_updated'
@@ -863,13 +1367,16 @@ export type Database = {
       task_recurrence: 'none' | 'daily' | 'weekly' | 'monthly';
       task_status: 'draft' | 'published' | 'archived';
     };
-    CompositeTypes: { [_ in never]: never };
+    CompositeTypes: {
+      [_ in never]: never;
+    };
   };
 };
 
 type DatabaseWithoutInternals = Omit<Database, '__InternalSupabase'>;
+
 type DefaultSchema = DatabaseWithoutInternals[Extract<
-  keyof DatabaseWithoutInternals,
+  keyof Database,
   'public'
 >];
 
@@ -982,3 +1489,47 @@ export type CompositeTypes<
   : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema['CompositeTypes']
     ? DefaultSchema['CompositeTypes'][PublicCompositeTypeNameOrOptions]
     : never;
+
+export const Constants = {
+  graphql_public: {
+    Enums: {},
+  },
+  public: {
+    Enums: {
+      assignment_status: ['not_started', 'in_progress', 'delayed', 'completed'],
+      deployment_environment: ['development', 'staging', 'production'],
+      invitation_delivery_status: ['pending_delivery', 'active', 'failed'],
+      membership_role: ['admin', 'employee'],
+      membership_status: ['active', 'deactivated'],
+      planning_role: ['planner', 'member'],
+      task_activity_type: [
+        'task_created',
+        'task_updated',
+        'task_published',
+        'task_archived',
+        'assignment_created',
+        'assignment_updated',
+        'assignment_progress_changed',
+        'assignment_status_changed',
+        'assignment_delayed',
+        'assignment_completed',
+        'assignment_reopened',
+        'task_acknowledgement_recorded',
+      ],
+      task_notification_type: [
+        'task_published',
+        'task_updated',
+        'assignment_created',
+        'assignment_progress_changed',
+        'assignment_status_changed',
+        'assignment_delayed',
+        'assignment_completed',
+        'acknowledgement_required',
+        'comment_added',
+      ],
+      task_priority: ['low', 'medium', 'high', 'urgent'],
+      task_recurrence: ['none', 'daily', 'weekly', 'monthly'],
+      task_status: ['draft', 'published', 'archived'],
+    },
+  },
+} as const;
