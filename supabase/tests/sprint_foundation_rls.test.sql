@@ -1,6 +1,6 @@
 begin;
 
-select plan(43);
+select plan(44);
 
 select has_type('public', 'planning_role', 'planning role enum exists');
 select has_table('public', 'planning_teams', 'planning teams exist');
@@ -255,7 +255,13 @@ select is(
   'an active employee planner is recognized'
 );
 select results_eq(
-  $$select name from public.planning_teams order by name$$,
+  $$select name from public.planning_teams
+    where id in (
+      '40000000-0000-0000-0000-000000000001',
+      '40000000-0000-0000-0000-000000000002',
+      '40000000-0000-0000-0000-000000000003'
+    )
+    order by name$$,
   array['Authorization contract team'],
   'employee planners cannot see unrelated or cross-organization teams'
 );
@@ -265,6 +271,14 @@ select lives_ok(
     '[{"user_id":"00000000-0000-0000-0000-000000000001","planning_role":"member","default_capacity_hours_per_day":8},{"user_id":"00000000-0000-0000-0000-000000000002","planning_role":"planner","default_capacity_hours_per_day":7.5}]'::jsonb
   )$$,
   'employee planners can manage other active organization members'
+);
+select throws_like(
+  $$update public.planning_team_members
+    set planning_role = 'member'
+    where planning_team_id = '40000000-0000-0000-0000-000000000001'
+      and user_id = auth.uid()$$,
+  '%planning team members cannot change their own role%',
+  'employee planners cannot bypass the RPC to demote themselves'
 );
 select throws_ok(
   $$select public.replace_planning_team_members(
@@ -304,6 +318,8 @@ select is_empty(
 );
 
 reset role;
+select set_config('request.jwt.claim.sub', '', true);
+select set_config('request.jwt.claims', '{}', true);
 update public.planning_team_members
 set planning_role = 'member'
 where planning_team_id = '40000000-0000-0000-0000-000000000001'
@@ -332,7 +348,7 @@ select throws_like(
     where planning_team_id = '40000000-0000-0000-0000-000000000001'
       and user_id = auth.uid()
     returning id$$,
-  '%row-level security%',
+  '%planning team members cannot change their own role%',
   'members cannot promote themselves'
 );
 select throws_ok(

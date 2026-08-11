@@ -137,6 +137,29 @@ before insert or update of organization_id, planning_team_id, user_id
 on public.planning_team_members
 for each row execute function public.validate_planning_team_member();
 
+create or replace function public.prevent_planning_member_self_role_change()
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  if old.user_id = auth.uid()
+    and new.planning_role is distinct from old.planning_role
+    and not public.is_admin(old.organization_id) then
+    raise exception using
+      errcode = '42501',
+      message = 'planning team members cannot change their own role';
+  end if;
+
+  return new;
+end;
+$$;
+
+create trigger planning_team_members_protect_self_role
+before update of planning_role on public.planning_team_members
+for each row execute function public.prevent_planning_member_self_role_change();
+
 create or replace function public.archive_planning_team(target_team_id uuid)
 returns boolean
 language plpgsql
@@ -287,6 +310,7 @@ revoke all on table public.planning_team_members from anon, authenticated;
 revoke all on function public.is_planning_team_member(uuid) from public, anon, authenticated;
 revoke all on function public.is_planning_team_planner(uuid) from public, anon, authenticated;
 revoke all on function public.validate_planning_team_member() from public, anon, authenticated;
+revoke all on function public.prevent_planning_member_self_role_change() from public, anon, authenticated;
 revoke all on function public.archive_planning_team(uuid) from public, anon, authenticated;
 revoke all on function public.replace_planning_team_members(uuid, jsonb) from public, anon, authenticated;
 
