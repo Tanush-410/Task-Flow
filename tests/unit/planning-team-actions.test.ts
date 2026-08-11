@@ -149,30 +149,20 @@ describe('planning team actions', () => {
     );
   });
 
-  it('replaces members only after validating active organization membership', async () => {
+  it('replaces the complete roster through one transactional RPC', async () => {
     const firstUserId = employee.userId;
     const secondUserId = '00000000-0000-0000-0000-000000000003';
     const lookup = query({
       data: { organization_id: admin.organizationId },
       error: null,
     });
-    const activeMembers = query({
-      data: [{ user_id: firstUserId }, { user_id: secondUserId }],
-      error: null,
-    });
-    const existingMembers = query({ data: [], error: null });
-    const remove = query({ data: null, error: null });
-    const insert = query({ data: null, error: null });
-    const tableQueries = [
-      lookup,
-      activeMembers,
-      existingMembers,
-      remove,
-      insert,
-    ];
+    const rpc = vi
+      .fn()
+      .mockResolvedValueOnce({ data: true, error: null })
+      .mockResolvedValueOnce({ data: true, error: null });
     mocks.createServerSupabase.mockResolvedValue({
-      from: vi.fn(() => tableQueries.shift()),
-      rpc: vi.fn().mockResolvedValue({ data: true, error: null }),
+      from: vi.fn(() => lookup),
+      rpc,
     });
 
     await expect(
@@ -184,22 +174,21 @@ describe('planning team actions', () => {
         ],
       }),
     ).resolves.toEqual({ ok: true, data: { teamId } });
-    expect(activeMembers.in).toHaveBeenCalledWith('user_id', [
-      firstUserId,
-      secondUserId,
-    ]);
-    expect(remove.delete).toHaveBeenCalledOnce();
-    expect(insert.insert).toHaveBeenCalledWith(
-      expect.arrayContaining([
-        expect.objectContaining({
-          organization_id: admin.organizationId,
-          planning_team_id: teamId,
+    expect(rpc).toHaveBeenNthCalledWith(2, 'replace_planning_team_members', {
+      target_team_id: teamId,
+      replacement_members: [
+        {
+          user_id: firstUserId,
+          planning_role: 'member',
+          default_capacity_hours_per_day: 8,
+        },
+        {
           user_id: secondUserId,
           planning_role: 'planner',
-        }),
-      ]),
-    );
-    expect(insert.upsert).not.toHaveBeenCalled();
+          default_capacity_hours_per_day: 6,
+        },
+      ],
+    });
   });
 
   it('allows a member to update only their own capacity', async () => {

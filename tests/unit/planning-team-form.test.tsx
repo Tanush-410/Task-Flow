@@ -93,6 +93,7 @@ describe('TeamMembersForm', () => {
     render(
       <TeamMembersForm
         canManage
+        canManageOwnRole
         candidates={[
           {
             userId: 'user-1',
@@ -114,5 +115,36 @@ describe('TeamMembersForm', () => {
       screen.getByRole('spinbutton', { name: 'Daily capacity for Asha Admin' }),
     ).toBeVisible();
     expect(screen.getByRole('button', { name: 'Save members' })).toBeEnabled();
+  });
+
+  it('keeps an employee planner in their planner role', () => {
+    mocks.useActionState.mockReturnValue([null, vi.fn(), false]);
+
+    render(
+      <TeamMembersForm
+        canManage
+        canManageOwnRole={false}
+        candidates={[
+          {
+            userId: 'user-1',
+            displayName: 'Eshan Employee',
+            planningRole: 'planner',
+            defaultCapacityHoursPerDay: 8,
+          },
+        ]}
+        currentUserId="user-1"
+        teamId="team-1"
+      />,
+    );
+
+    expect(
+      screen.getByRole('checkbox', { name: 'Include Eshan Employee' }),
+    ).toBeDisabled();
+    expect(screen.getByLabelText('Role for Eshan Employee')).toBeDisabled();
+    expect(
+      screen.getByRole('spinbutton', {
+        name: 'Daily capacity for Eshan Employee',
+      }),
+    ).toBeEnabled();
   });
 });

@@ -1,6 +1,6 @@
 begin;
 
-select plan(29);
+select plan(43);
 
 select has_type('public', 'planning_role', 'planning role enum exists');
 select has_table('public', 'planning_teams', 'planning teams exist');
@@ -9,6 +9,12 @@ select has_column('public', 'planning_teams', 'default_sprint_length_days', 'tea
 select has_column('public', 'planning_team_members', 'default_capacity_hours_per_day', 'members store capacity defaults');
 select has_function('public', 'is_planning_team_member', array['uuid'], 'team membership helper exists');
 select has_function('public', 'is_planning_team_planner', array['uuid'], 'team planner helper exists');
+select has_function(
+  'public',
+  'replace_planning_team_members',
+  array['uuid', 'jsonb'],
+  'transactional team roster replacement exists'
+);
 
 select policies_are(
   'public',
@@ -120,7 +126,8 @@ select is(
 
 select ok(
   has_function_privilege('authenticated', 'public.is_planning_team_member(uuid)', 'execute')
-  and has_function_privilege('authenticated', 'public.is_planning_team_planner(uuid)', 'execute'),
+  and has_function_privilege('authenticated', 'public.is_planning_team_planner(uuid)', 'execute')
+  and has_function_privilege('authenticated', 'public.replace_planning_team_members(uuid, jsonb)', 'execute'),
   'authenticated users can execute team authorization helpers'
 );
 
@@ -165,19 +172,184 @@ select set_config(
 );
 
 select lives_ok(
-  $$with inserted as (
-      insert into public.planning_teams (
-        organization_id, name, default_sprint_length_days, created_by
-      ) values (
-        '10000000-0000-0000-0000-000000000001',
-        'Authorization contract team',
-        14,
-        '00000000-0000-0000-0000-000000000001'
-      )
-      returning id
-    )
-    select count(*) from inserted$$,
+  $$insert into public.planning_teams (
+      organization_id, name, default_sprint_length_days, created_by
+    ) values (
+      '10000000-0000-0000-0000-000000000001',
+      'Admin-created team',
+      14,
+      '00000000-0000-0000-0000-000000000001'
+    )$$,
   'organization admins can insert a team and receive its id'
+);
+
+reset role;
+
+insert into public.organizations (id, name, timezone, created_by)
+values (
+  '10000000-0000-0000-0000-000000000002',
+  'Other organization',
+  'UTC',
+  '00000000-0000-0000-0000-000000000001'
+);
+
+insert into public.planning_teams (
+  id, organization_id, name, default_sprint_length_days, created_by
+)
+values
+  (
+    '40000000-0000-0000-0000-000000000001',
+    '10000000-0000-0000-0000-000000000001',
+    'Authorization contract team',
+    14,
+    '00000000-0000-0000-0000-000000000001'
+  ),
+  (
+    '40000000-0000-0000-0000-000000000002',
+    '10000000-0000-0000-0000-000000000001',
+    'Unrelated same organization team',
+    14,
+    '00000000-0000-0000-0000-000000000001'
+  ),
+  (
+    '40000000-0000-0000-0000-000000000003',
+    '10000000-0000-0000-0000-000000000002',
+    'Cross organization team',
+    14,
+    '00000000-0000-0000-0000-000000000001'
+  );
+
+set local role authenticated;
+select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-000000000001', true);
+select set_config(
+  'request.jwt.claims',
+  '{"sub":"00000000-0000-0000-0000-000000000001","role":"authenticated"}',
+  true
+);
+
+select lives_ok(
+  $$select public.replace_planning_team_members(
+    '40000000-0000-0000-0000-000000000001',
+    '[{"user_id":"00000000-0000-0000-0000-000000000002","planning_role":"planner","default_capacity_hours_per_day":8}]'::jsonb
+  )$$,
+  'organization admins can replace a roster atomically'
+);
+select results_eq(
+  $$select user_id::text || ':' || planning_role::text
+    from public.planning_team_members
+    where planning_team_id = '40000000-0000-0000-0000-000000000001'$$,
+  array['00000000-0000-0000-0000-000000000002:planner'],
+  'admin roster replacement persists the requested role'
+);
+
+select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-000000000002', true);
+select set_config(
+  'request.jwt.claims',
+  '{"sub":"00000000-0000-0000-0000-000000000002","role":"authenticated"}',
+  true
+);
+
+select is(
+  public.is_planning_team_planner('40000000-0000-0000-0000-000000000001'),
+  true,
+  'an active employee planner is recognized'
+);
+select results_eq(
+  $$select name from public.planning_teams order by name$$,
+  array['Authorization contract team'],
+  'employee planners cannot see unrelated or cross-organization teams'
+);
+select lives_ok(
+  $$select public.replace_planning_team_members(
+    '40000000-0000-0000-0000-000000000001',
+    '[{"user_id":"00000000-0000-0000-0000-000000000001","planning_role":"member","default_capacity_hours_per_day":8},{"user_id":"00000000-0000-0000-0000-000000000002","planning_role":"planner","default_capacity_hours_per_day":7.5}]'::jsonb
+  )$$,
+  'employee planners can manage other active organization members'
+);
+select throws_ok(
+  $$select public.replace_planning_team_members(
+    '40000000-0000-0000-0000-000000000001',
+    '[{"user_id":"00000000-0000-0000-0000-000000000001","planning_role":"planner","default_capacity_hours_per_day":8},{"user_id":"00000000-0000-0000-0000-000000000002","planning_role":"member","default_capacity_hours_per_day":7.5}]'::jsonb
+  )$$,
+  '42501',
+  'planning team planner access required',
+  'employee planners cannot demote themselves'
+);
+select throws_ok(
+  $$select public.replace_planning_team_members(
+    '40000000-0000-0000-0000-000000000001',
+    '[{"user_id":"00000000-0000-0000-0000-000000000001","planning_role":"planner","default_capacity_hours_per_day":8}]'::jsonb
+  )$$,
+  '42501',
+  'planning team planner access required',
+  'employee planners cannot remove themselves'
+);
+select results_eq(
+  $$select user_id::text || ':' || planning_role::text
+    from public.planning_team_members
+    where planning_team_id = '40000000-0000-0000-0000-000000000001'
+    order by user_id$$,
+  array[
+    '00000000-0000-0000-0000-000000000001:member',
+    '00000000-0000-0000-0000-000000000002:planner'
+  ],
+  'rejected self-role changes leave the complete roster unchanged'
+);
+select is_empty(
+  $$delete from public.planning_team_members
+    where planning_team_id = '40000000-0000-0000-0000-000000000001'
+      and user_id = auth.uid()
+    returning id$$,
+  'employee planners cannot bypass the RPC to remove themselves'
+);
+
+reset role;
+update public.planning_team_members
+set planning_role = 'member'
+where planning_team_id = '40000000-0000-0000-0000-000000000001'
+  and user_id = '00000000-0000-0000-0000-000000000002';
+
+set local role authenticated;
+select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-000000000002', true);
+select set_config(
+  'request.jwt.claims',
+  '{"sub":"00000000-0000-0000-0000-000000000002","role":"authenticated"}',
+  true
+);
+
+select results_eq(
+  $$update public.planning_team_members
+    set default_capacity_hours_per_day = 6.5
+    where planning_team_id = '40000000-0000-0000-0000-000000000001'
+      and user_id = auth.uid()
+    returning default_capacity_hours_per_day::text$$,
+  array['6.50'],
+  'members can update only their own capacity'
+);
+select throws_like(
+  $$update public.planning_team_members
+    set planning_role = 'planner'
+    where planning_team_id = '40000000-0000-0000-0000-000000000001'
+      and user_id = auth.uid()
+    returning id$$,
+  '%row-level security%',
+  'members cannot promote themselves'
+);
+select throws_ok(
+  $$select public.replace_planning_team_members(
+    '40000000-0000-0000-0000-000000000001',
+    '[]'::jsonb
+  )$$,
+  '42501',
+  'planning team planner access required',
+  'members cannot replace the team roster'
+);
+select is_empty(
+  $$update public.planning_teams
+    set name = 'Cross organization rewrite'
+    where id = '40000000-0000-0000-0000-000000000003'
+    returning id$$,
+  'employees cannot write across organization boundaries'
 );
 
 reset role;

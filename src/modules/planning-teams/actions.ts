@@ -53,6 +53,15 @@ function isConflict(error: unknown): boolean {
   );
 }
 
+function hasDatabaseCode(error: unknown, code: string): boolean {
+  return (
+    typeof error === 'object' &&
+    error !== null &&
+    'code' in error &&
+    error.code === code
+  );
+}
+
 function revalidatePlanning(): void {
   revalidatePath('/planning', 'layout');
 }
@@ -226,84 +235,28 @@ export async function setPlanningTeamMembers(
       return { ok: true, data: { teamId: parsed.data.teamId } };
     }
 
-    const userIds = parsed.data.members.map((member) => member.userId);
-    if (userIds.length > 0) {
-      const { data: activeMembers, error: activeMembersError } = await supabase
-        .from('organization_memberships')
-        .select('user_id')
-        .eq('organization_id', membership.organizationId)
-        .eq('status', 'active')
-        .in('user_id', userIds);
+    const { data: replaced, error: replaceError } = await supabase.rpc(
+      'replace_planning_team_members',
+      {
+        target_team_id: parsed.data.teamId,
+        replacement_members: parsed.data.members.map((member) => ({
+          user_id: member.userId,
+          planning_role: member.role,
+          default_capacity_hours_per_day: member.capacityHoursPerDay,
+        })),
+      },
+    );
 
+    if (replaceError || !replaced) {
+      if (hasDatabaseCode(replaceError, '42501')) {
+        return failure('PLANNING_TEAM_FORBIDDEN', traceId);
+      }
       if (
-        activeMembersError ||
-        !activeMembers ||
-        activeMembers.length !== userIds.length
+        hasDatabaseCode(replaceError, '22023') ||
+        hasDatabaseCode(replaceError, '23514')
       ) {
         return failure('INVALID_PLANNING_TEAM', traceId);
       }
-    }
-
-    const { data: existingMembers, error: existingMembersError } =
-      await supabase
-        .from('planning_team_members')
-        .select('user_id')
-        .eq('organization_id', membership.organizationId)
-        .eq('planning_team_id', parsed.data.teamId);
-    if (existingMembersError || !existingMembers) {
-      return failure('PLANNING_TEAM_SAVE_FAILED', traceId);
-    }
-    const existingUserIds = new Set(
-      existingMembers.map((member) => member.user_id),
-    );
-
-    let deleteQuery = supabase
-      .from('planning_team_members')
-      .delete()
-      .eq('organization_id', membership.organizationId)
-      .eq('planning_team_id', parsed.data.teamId);
-    if (userIds.length > 0) {
-      deleteQuery = deleteQuery.not('user_id', 'in', `(${userIds.join(',')})`);
-    }
-    const { error: deleteError } = await deleteQuery;
-    if (deleteError) return failure('PLANNING_TEAM_SAVE_FAILED', traceId);
-
-    const newMembers = parsed.data.members.filter(
-      (member) => !existingUserIds.has(member.userId),
-    );
-    if (newMembers.length > 0) {
-      const { error: insertError } = await supabase
-        .from('planning_team_members')
-        .insert(
-          newMembers.map((member) => ({
-            organization_id: membership.organizationId,
-            planning_team_id: parsed.data.teamId,
-            user_id: member.userId,
-            planning_role: member.role,
-            default_capacity_hours_per_day: member.capacityHoursPerDay,
-          })),
-        );
-
-      if (insertError) return failure('PLANNING_TEAM_SAVE_FAILED', traceId);
-    }
-
-    const retainedMembers = parsed.data.members.filter((member) =>
-      existingUserIds.has(member.userId),
-    );
-    const updateResults = await Promise.all(
-      retainedMembers.map((member) =>
-        supabase
-          .from('planning_team_members')
-          .update({
-            planning_role: member.role,
-            default_capacity_hours_per_day: member.capacityHoursPerDay,
-          })
-          .eq('organization_id', membership.organizationId)
-          .eq('planning_team_id', parsed.data.teamId)
-          .eq('user_id', member.userId),
-      ),
-    );
-    if (updateResults.some((result) => result.error)) {
       return failure('PLANNING_TEAM_SAVE_FAILED', traceId);
     }
 

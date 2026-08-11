@@ -1311,6 +1311,10 @@ export type Database = {
         Args: { organization_name: string; organization_timezone: string };
         Returns: string;
       };
+      replace_planning_team_members: {
+        Args: { replacement_members: Json; target_team_id: string };
+        Returns: boolean;
+      };
       respond_to_connection_request: {
         Args: { accept: boolean; request_id: string };
         Returns: {

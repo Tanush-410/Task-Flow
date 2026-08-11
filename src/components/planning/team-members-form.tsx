@@ -48,11 +48,13 @@ export function TeamMembersForm({
   candidates,
   currentUserId,
   canManage,
+  canManageOwnRole,
 }: {
   teamId: string;
   candidates: PlanningTeamCandidate[];
   currentUserId: string;
   canManage: boolean;
+  canManageOwnRole: boolean;
 }) {
   const [state, formAction, pending] = useActionState(submitMembers, null);
   const [rows, setRows] = useState<EditableCandidate[]>(() =>
@@ -101,6 +103,8 @@ export function TeamMembersForm({
           {rows.map((row) => {
             const isCurrentUser = row.userId === currentUserId;
             const rowEditable = canManage || isCurrentUser;
+            const ownRoleLocked =
+              isCurrentUser && canManage && !canManageOwnRole;
             const roleId = `role-${row.userId}`;
             const capacityId = `capacity-${row.userId}`;
 
@@ -113,7 +117,7 @@ export function TeamMembersForm({
                   <Checkbox
                     aria-label={`Include ${row.displayName}`}
                     checked={row.selected}
-                    disabled={pending || !canManage}
+                    disabled={pending || !canManage || ownRoleLocked}
                     onCheckedChange={(checked) =>
                       updateRow(row.userId, { selected: checked === true })
                     }
@@ -133,7 +137,9 @@ export function TeamMembersForm({
                     Role for {row.displayName}
                   </Label>
                   <Select
-                    disabled={pending || !canManage || !row.selected}
+                    disabled={
+                      pending || !canManage || !row.selected || ownRoleLocked
+                    }
                     onValueChange={(role: 'planner' | 'member') =>
                       updateRow(row.userId, { role })
                     }

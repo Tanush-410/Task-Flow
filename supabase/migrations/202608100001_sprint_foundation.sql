@@ -162,6 +162,123 @@ begin
 end;
 $$;
 
+create or replace function public.replace_planning_team_members(
+  target_team_id uuid,
+  replacement_members jsonb
+)
+returns boolean
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  target_organization_id uuid;
+  actor_is_admin boolean;
+begin
+  if auth.uid() is null
+    or replacement_members is null
+    or jsonb_typeof(replacement_members) <> 'array'
+    or jsonb_array_length(replacement_members) > 500 then
+    raise exception using errcode = '22023', message = 'invalid planning team roster';
+  end if;
+
+  select organization_id into target_organization_id
+  from public.planning_teams
+  where id = target_team_id
+  for update;
+
+  if target_organization_id is null then
+    raise exception using errcode = '42501', message = 'planning team planner access required';
+  end if;
+
+  actor_is_admin := public.is_admin(target_organization_id);
+  if not actor_is_admin and not public.is_planning_team_planner(target_team_id) then
+    raise exception using errcode = '42501', message = 'planning team planner access required';
+  end if;
+
+  perform 1
+  from public.planning_team_members
+  where planning_team_id = target_team_id
+  for update;
+
+  if exists (
+    select 1
+    from jsonb_to_recordset(replacement_members) as member(
+      user_id uuid,
+      planning_role text,
+      default_capacity_hours_per_day numeric
+    )
+    where member.user_id is null
+      or member.planning_role not in ('planner', 'member')
+      or member.default_capacity_hours_per_day is null
+      or member.default_capacity_hours_per_day < 0
+      or member.default_capacity_hours_per_day > 24
+  ) or (
+    select count(*) <> count(distinct member.user_id)
+    from jsonb_to_recordset(replacement_members) as member(user_id uuid)
+  ) then
+    raise exception using errcode = '22023', message = 'invalid planning team roster';
+  end if;
+
+  if exists (
+    select 1
+    from jsonb_to_recordset(replacement_members) as member(user_id uuid)
+    left join public.organization_memberships as organization_member
+      on organization_member.organization_id = target_organization_id
+     and organization_member.user_id = member.user_id
+     and organization_member.status = 'active'
+    where organization_member.id is null
+  ) then
+    raise exception using errcode = '23514', message = 'planning team member must be active in organization';
+  end if;
+
+  if not actor_is_admin and not exists (
+    select 1
+    from jsonb_to_recordset(replacement_members) as member(
+      user_id uuid,
+      planning_role text
+    )
+    where member.user_id = auth.uid()
+      and member.planning_role = 'planner'
+  ) then
+    raise exception using errcode = '42501', message = 'planning team planner access required';
+  end if;
+
+  insert into public.planning_team_members (
+    organization_id,
+    planning_team_id,
+    user_id,
+    planning_role,
+    default_capacity_hours_per_day
+  )
+  select
+    target_organization_id,
+    target_team_id,
+    member.user_id,
+    member.planning_role::public.planning_role,
+    member.default_capacity_hours_per_day
+  from jsonb_to_recordset(replacement_members) as member(
+    user_id uuid,
+    planning_role text,
+    default_capacity_hours_per_day numeric
+  )
+  on conflict (planning_team_id, user_id) do update
+  set
+    planning_role = excluded.planning_role,
+    default_capacity_hours_per_day = excluded.default_capacity_hours_per_day;
+
+  delete from public.planning_team_members as existing
+  where existing.planning_team_id = target_team_id
+    and not exists (
+      select 1
+      from jsonb_to_recordset(replacement_members) as member(user_id uuid)
+      where member.user_id = existing.user_id
+    );
+
+  return true;
+end;
+$$;
+
 alter table public.planning_teams enable row level security;
 alter table public.planning_team_members enable row level security;
 
@@ -171,10 +288,12 @@ revoke all on function public.is_planning_team_member(uuid) from public, anon, a
 revoke all on function public.is_planning_team_planner(uuid) from public, anon, authenticated;
 revoke all on function public.validate_planning_team_member() from public, anon, authenticated;
 revoke all on function public.archive_planning_team(uuid) from public, anon, authenticated;
+revoke all on function public.replace_planning_team_members(uuid, jsonb) from public, anon, authenticated;
 
 grant execute on function public.is_planning_team_member(uuid) to authenticated;
 grant execute on function public.is_planning_team_planner(uuid) to authenticated;
 grant execute on function public.archive_planning_team(uuid) to authenticated;
+grant execute on function public.replace_planning_team_members(uuid, jsonb) to authenticated;
 
 grant select, delete on public.planning_teams to authenticated;
 grant insert (organization_id, name, description, default_sprint_length_days, created_by)
@@ -220,13 +339,23 @@ create policy planning_team_members_update_planner_or_self_capacity
 on public.planning_team_members for update to authenticated
 using (public.is_planning_team_planner(planning_team_id) or user_id = auth.uid())
 with check (
-  public.is_planning_team_planner(planning_team_id)
+  public.is_admin(organization_id)
+  or (
+    public.is_planning_team_planner(planning_team_id)
+    and (user_id <> auth.uid() or planning_role = 'planner')
+  )
   or (user_id = auth.uid() and planning_role = 'member')
 );
 
 create policy planning_team_members_delete_planner
 on public.planning_team_members for delete to authenticated
-using (public.is_planning_team_planner(planning_team_id));
+using (
+  public.is_admin(organization_id)
+  or (
+    public.is_planning_team_planner(planning_team_id)
+    and user_id <> auth.uid()
+  )
+);
 
 grant select on table public.feature_flags to service_role;
 

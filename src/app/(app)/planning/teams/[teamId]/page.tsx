@@ -95,6 +95,7 @@ export default async function PlanningTeamPage({
         <CardContent>
           <TeamMembersForm
             canManage={canManage}
+            canManageOwnRole={membership.role === 'admin'}
             candidates={candidates}
             currentUserId={membership.userId}
             teamId={team.id}
