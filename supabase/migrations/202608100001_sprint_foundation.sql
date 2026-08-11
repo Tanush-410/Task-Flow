@@ -190,7 +190,10 @@ on public.planning_team_members to authenticated;
 
 create policy planning_teams_view_member_or_admin
 on public.planning_teams for select to authenticated
-using (public.is_planning_team_member(id));
+using (
+  public.is_admin(organization_id)
+  or public.is_planning_team_member(id)
+);
 
 create policy planning_teams_insert_admin
 on public.planning_teams for insert to authenticated
@@ -224,6 +227,8 @@ with check (
 create policy planning_team_members_delete_planner
 on public.planning_team_members for delete to authenticated
 using (public.is_planning_team_planner(planning_team_id));
+
+grant select on table public.feature_flags to service_role;
 
 insert into public.feature_flags (
   key,

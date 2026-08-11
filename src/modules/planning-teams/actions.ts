@@ -244,6 +244,19 @@ export async function setPlanningTeamMembers(
       }
     }
 
+    const { data: existingMembers, error: existingMembersError } =
+      await supabase
+        .from('planning_team_members')
+        .select('user_id')
+        .eq('organization_id', membership.organizationId)
+        .eq('planning_team_id', parsed.data.teamId);
+    if (existingMembersError || !existingMembers) {
+      return failure('PLANNING_TEAM_SAVE_FAILED', traceId);
+    }
+    const existingUserIds = new Set(
+      existingMembers.map((member) => member.user_id),
+    );
+
     let deleteQuery = supabase
       .from('planning_team_members')
       .delete()
@@ -255,21 +268,43 @@ export async function setPlanningTeamMembers(
     const { error: deleteError } = await deleteQuery;
     if (deleteError) return failure('PLANNING_TEAM_SAVE_FAILED', traceId);
 
-    if (parsed.data.members.length > 0) {
-      const { error: upsertError } = await supabase
+    const newMembers = parsed.data.members.filter(
+      (member) => !existingUserIds.has(member.userId),
+    );
+    if (newMembers.length > 0) {
+      const { error: insertError } = await supabase
         .from('planning_team_members')
-        .upsert(
-          parsed.data.members.map((member) => ({
+        .insert(
+          newMembers.map((member) => ({
             organization_id: membership.organizationId,
             planning_team_id: parsed.data.teamId,
             user_id: member.userId,
             planning_role: member.role,
             default_capacity_hours_per_day: member.capacityHoursPerDay,
           })),
-          { onConflict: 'planning_team_id,user_id' },
         );
 
-      if (upsertError) return failure('PLANNING_TEAM_SAVE_FAILED', traceId);
+      if (insertError) return failure('PLANNING_TEAM_SAVE_FAILED', traceId);
+    }
+
+    const retainedMembers = parsed.data.members.filter((member) =>
+      existingUserIds.has(member.userId),
+    );
+    const updateResults = await Promise.all(
+      retainedMembers.map((member) =>
+        supabase
+          .from('planning_team_members')
+          .update({
+            planning_role: member.role,
+            default_capacity_hours_per_day: member.capacityHoursPerDay,
+          })
+          .eq('organization_id', membership.organizationId)
+          .eq('planning_team_id', parsed.data.teamId)
+          .eq('user_id', member.userId),
+      ),
+    );
+    if (updateResults.some((result) => result.error)) {
+      return failure('PLANNING_TEAM_SAVE_FAILED', traceId);
     }
 
     revalidatePlanning();

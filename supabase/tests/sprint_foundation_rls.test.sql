@@ -1,6 +1,6 @@
 begin;
 
-select plan(27);
+select plan(29);
 
 select has_type('public', 'planning_role', 'planning role enum exists');
 select has_table('public', 'planning_teams', 'planning teams exist');
@@ -44,6 +44,11 @@ select ok(
   has_table_privilege('authenticated', 'public.planning_teams', 'select')
   and has_table_privilege('authenticated', 'public.planning_team_members', 'select'),
   'authenticated users receive select grants subject to RLS'
+);
+
+select ok(
+  has_table_privilege('service_role', 'public.feature_flags', 'select'),
+  'the server-side feature flag evaluator can read flags'
 );
 
 select ok(
@@ -146,6 +151,36 @@ select throws_ok(
   null,
   'sprint length must be positive'
 );
+
+set local role authenticated;
+select set_config(
+  'request.jwt.claim.sub',
+  '00000000-0000-0000-0000-000000000001',
+  true
+);
+select set_config(
+  'request.jwt.claims',
+  '{"sub":"00000000-0000-0000-0000-000000000001","role":"authenticated"}',
+  true
+);
+
+select lives_ok(
+  $$with inserted as (
+      insert into public.planning_teams (
+        organization_id, name, default_sprint_length_days, created_by
+      ) values (
+        '10000000-0000-0000-0000-000000000001',
+        'Authorization contract team',
+        14,
+        '00000000-0000-0000-0000-000000000001'
+      )
+      returning id
+    )
+    select count(*) from inserted$$,
+  'organization admins can insert a team and receive its id'
+);
+
+reset role;
 
 select * from finish();
 rollback;

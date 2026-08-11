@@ -160,9 +160,16 @@ describe('planning team actions', () => {
       data: [{ user_id: firstUserId }, { user_id: secondUserId }],
       error: null,
     });
+    const existingMembers = query({ data: [], error: null });
     const remove = query({ data: null, error: null });
-    const upsert = query({ data: null, error: null });
-    const tableQueries = [lookup, activeMembers, remove, upsert];
+    const insert = query({ data: null, error: null });
+    const tableQueries = [
+      lookup,
+      activeMembers,
+      existingMembers,
+      remove,
+      insert,
+    ];
     mocks.createServerSupabase.mockResolvedValue({
       from: vi.fn(() => tableQueries.shift()),
       rpc: vi.fn().mockResolvedValue({ data: true, error: null }),
@@ -182,7 +189,7 @@ describe('planning team actions', () => {
       secondUserId,
     ]);
     expect(remove.delete).toHaveBeenCalledOnce();
-    expect(upsert.upsert).toHaveBeenCalledWith(
+    expect(insert.insert).toHaveBeenCalledWith(
       expect.arrayContaining([
         expect.objectContaining({
           organization_id: admin.organizationId,
@@ -191,8 +198,8 @@ describe('planning team actions', () => {
           planning_role: 'planner',
         }),
       ]),
-      { onConflict: 'planning_team_id,user_id' },
     );
+    expect(insert.upsert).not.toHaveBeenCalled();
   });
 
   it('allows a member to update only their own capacity', async () => {
