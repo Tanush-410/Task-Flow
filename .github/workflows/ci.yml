@@ -66,7 +66,7 @@ jobs:
       - name: Check generated database type drift
         run: |
           npx supabase gen types typescript --local > /tmp/database.types.ts
-          npx prettier --write /tmp/database.types.ts
+          npx prettier --config .prettierrc.json --write /tmp/database.types.ts
           diff -u src/lib/supabase/database.types.ts /tmp/database.types.ts
 
       - name: Verify incremental migration path with existing data

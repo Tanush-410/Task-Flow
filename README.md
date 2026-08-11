@@ -33,6 +33,10 @@ black-and-gold shadcn/ui design system.
   has in progress right now, grouped by person.
 - **Dashboard** — at-a-glance counts for active, overdue, delayed, and
   recently completed work, plus the org-wide on-time completion rate.
+- **Sprint planning (feature flagged)** — the first native planning increment
+  lets organizations create delivery teams, assign planners and members, set
+  daily capacity, and choose a default sprint cadence. Backlog hierarchy,
+  sprint lifecycle, boards, and insights follow in subsequent increments.
 
 ## Tech stack
 
@@ -94,6 +98,8 @@ src/app/            Routes (App Router), grouped by (auth) and (app) layouts
 src/components/     Shared UI — shadcn primitives live in components/ui
 src/modules/        Domain logic: queries + server actions per feature area
                      (tasks, assignments, members, notifications, ...)
+src/modules/planning-teams/
+                    Sprint-planning team validation, queries, and actions
 src/lib/            Cross-cutting helpers (Supabase clients, date utils, ...)
 supabase/migrations/ Schema, RLS policies, and triggers, in applied order
 docs/operations/    Verified local-dev and release-process notes

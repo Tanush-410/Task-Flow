@@ -83,7 +83,9 @@ describe('Phase 0 release artifacts', () => {
     expect(workflow).toMatch(/supabase db reset/);
     expect(workflow).toContain('npm run db:test');
     expect(workflow).toMatch(/supabase gen types typescript --local/);
-    expect(workflow).toContain('npx prettier --write /tmp/database.types.ts');
+    expect(workflow).toContain(
+      'npx prettier --config .prettierrc.json --write /tmp/database.types.ts',
+    );
     expect(workflow).toMatch(/diff -u .*database\.types\.ts/);
     expect(workflow).toMatch(/npm run verify/);
     expect(workflow).toMatch(/playwright install --with-deps chromium/);

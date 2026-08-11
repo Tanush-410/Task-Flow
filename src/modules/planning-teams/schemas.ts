@@ -55,12 +55,8 @@ export const planningTeamArchiveSchema = z.object({
   teamId: uuidSchema,
 });
 
-export type PlanningTeamCreateInput = z.infer<
-  typeof planningTeamCreateSchema
->;
-export type PlanningTeamUpdateInput = z.infer<
-  typeof planningTeamUpdateSchema
->;
+export type PlanningTeamCreateInput = z.infer<typeof planningTeamCreateSchema>;
+export type PlanningTeamUpdateInput = z.infer<typeof planningTeamUpdateSchema>;
 export type PlanningTeamMembersInput = z.infer<
   typeof planningTeamMembersSchema
 >;
