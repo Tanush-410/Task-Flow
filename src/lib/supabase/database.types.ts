@@ -34,6 +34,209 @@ export type Database = {
   };
   public: {
     Tables: {
+      azure_devops_connections: {
+        Row: {
+          access_token_ciphertext: string | null;
+          authorized_user_display_name: string;
+          authorized_user_email: string | null;
+          authorized_user_id: string;
+          azure_organization_id: string | null;
+          azure_organization_name: string | null;
+          azure_organization_url: string | null;
+          created_at: string;
+          created_by: string;
+          granted_scopes: string[];
+          id: string;
+          last_verified_at: string | null;
+          organization_id: string;
+          refresh_token_ciphertext: string | null;
+          safe_error_code: string | null;
+          status: Database['public']['Enums']['azure_devops_connection_status'];
+          tenant_id: string;
+          token_expires_at: string | null;
+          updated_at: string;
+        };
+        Insert: {
+          access_token_ciphertext?: string | null;
+          authorized_user_display_name?: string;
+          authorized_user_email?: string | null;
+          authorized_user_id: string;
+          azure_organization_id?: string | null;
+          azure_organization_name?: string | null;
+          azure_organization_url?: string | null;
+          created_at?: string;
+          created_by: string;
+          granted_scopes?: string[];
+          id?: string;
+          last_verified_at?: string | null;
+          organization_id: string;
+          refresh_token_ciphertext?: string | null;
+          safe_error_code?: string | null;
+          status?: Database['public']['Enums']['azure_devops_connection_status'];
+          tenant_id: string;
+          token_expires_at?: string | null;
+          updated_at?: string;
+        };
+        Update: {
+          access_token_ciphertext?: string | null;
+          authorized_user_display_name?: string;
+          authorized_user_email?: string | null;
+          authorized_user_id?: string;
+          azure_organization_id?: string | null;
+          azure_organization_name?: string | null;
+          azure_organization_url?: string | null;
+          created_at?: string;
+          created_by?: string;
+          granted_scopes?: string[];
+          id?: string;
+          last_verified_at?: string | null;
+          organization_id?: string;
+          refresh_token_ciphertext?: string | null;
+          safe_error_code?: string | null;
+          status?: Database['public']['Enums']['azure_devops_connection_status'];
+          tenant_id?: string;
+          token_expires_at?: string | null;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'azure_devops_connections_created_by_fkey';
+            columns: ['created_by'];
+            isOneToOne: false;
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'azure_devops_connections_organization_id_fkey';
+            columns: ['organization_id'];
+            isOneToOne: true;
+            referencedRelation: 'organizations';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      azure_devops_oauth_states: {
+        Row: {
+          consumed_at: string | null;
+          created_at: string;
+          expires_at: string;
+          organization_id: string;
+          pkce_verifier_ciphertext: string;
+          return_path: string;
+          state_hash: string;
+          user_id: string;
+        };
+        Insert: {
+          consumed_at?: string | null;
+          created_at?: string;
+          expires_at: string;
+          organization_id: string;
+          pkce_verifier_ciphertext: string;
+          return_path?: string;
+          state_hash: string;
+          user_id: string;
+        };
+        Update: {
+          consumed_at?: string | null;
+          created_at?: string;
+          expires_at?: string;
+          organization_id?: string;
+          pkce_verifier_ciphertext?: string;
+          return_path?: string;
+          state_hash?: string;
+          user_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'azure_devops_oauth_states_organization_id_fkey';
+            columns: ['organization_id'];
+            isOneToOne: false;
+            referencedRelation: 'organizations';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'azure_devops_oauth_states_user_id_fkey';
+            columns: ['user_id'];
+            isOneToOne: false;
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      azure_devops_team_links: {
+        Row: {
+          azure_project_id: string;
+          azure_project_name: string;
+          azure_team_id: string;
+          azure_team_name: string;
+          connection_id: string;
+          created_at: string;
+          created_by: string;
+          id: string;
+          organization_id: string;
+          planning_team_id: string;
+          status: Database['public']['Enums']['azure_devops_connection_status'];
+          updated_at: string;
+        };
+        Insert: {
+          azure_project_id: string;
+          azure_project_name: string;
+          azure_team_id: string;
+          azure_team_name: string;
+          connection_id: string;
+          created_at?: string;
+          created_by: string;
+          id?: string;
+          organization_id: string;
+          planning_team_id: string;
+          status?: Database['public']['Enums']['azure_devops_connection_status'];
+          updated_at?: string;
+        };
+        Update: {
+          azure_project_id?: string;
+          azure_project_name?: string;
+          azure_team_id?: string;
+          azure_team_name?: string;
+          connection_id?: string;
+          created_at?: string;
+          created_by?: string;
+          id?: string;
+          organization_id?: string;
+          planning_team_id?: string;
+          status?: Database['public']['Enums']['azure_devops_connection_status'];
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'azure_devops_team_links_connection_id_fkey';
+            columns: ['connection_id'];
+            isOneToOne: false;
+            referencedRelation: 'azure_devops_connections';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'azure_devops_team_links_created_by_fkey';
+            columns: ['created_by'];
+            isOneToOne: false;
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'azure_devops_team_links_organization_id_fkey';
+            columns: ['organization_id'];
+            isOneToOne: false;
+            referencedRelation: 'organizations';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'azure_devops_team_links_planning_team_id_fkey';
+            columns: ['planning_team_id'];
+            isOneToOne: true;
+            referencedRelation: 'planning_teams';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
       connection_requests: {
         Row: {
           created_at: string;
@@ -1247,6 +1450,30 @@ export type Database = {
         Args: { organization_name: string; organization_timezone: string };
         Returns: string;
       };
+      configure_azure_devops_team_link: {
+        Args: {
+          target_azure_project_id: string;
+          target_azure_project_name: string;
+          target_azure_team_id: string;
+          target_azure_team_name: string;
+          target_connection_id: string;
+          target_created_by: string;
+          target_organization_id: string;
+          target_planning_team_id: string;
+        };
+        Returns: string;
+      };
+      consume_azure_devops_oauth_state: {
+        Args: {
+          target_organization_id: string;
+          target_state_hash: string;
+          target_user_id: string;
+        };
+        Returns: {
+          pkce_verifier_ciphertext: string;
+          return_path: string;
+        }[];
+      };
       create_connection_request: {
         Args: {
           target_code: string;
@@ -1259,6 +1486,10 @@ export type Database = {
       };
       discard_staged_invitation: {
         Args: { invitation_id: string };
+        Returns: boolean;
+      };
+      disconnect_azure_devops_connection: {
+        Args: { target_connection_id: string; target_organization_id: string };
         Returns: boolean;
       };
       finalize_invitation_delivery: {
@@ -1339,6 +1570,8 @@ export type Database = {
     Enums: {
       assignment_status:
         'not_started' | 'in_progress' | 'delayed' | 'completed';
+      azure_devops_connection_status:
+        'pending' | 'configured' | 'paused' | 'disconnected';
       deployment_environment: 'development' | 'staging' | 'production';
       invitation_delivery_status: 'pending_delivery' | 'active' | 'failed';
       membership_role: 'admin' | 'employee';
@@ -1501,6 +1734,12 @@ export const Constants = {
   public: {
     Enums: {
       assignment_status: ['not_started', 'in_progress', 'delayed', 'completed'],
+      azure_devops_connection_status: [
+        'pending',
+        'configured',
+        'paused',
+        'disconnected',
+      ],
       deployment_environment: ['development', 'staging', 'production'],
       invitation_delivery_status: ['pending_delivery', 'active', 'failed'],
       membership_role: ['admin', 'employee'],
