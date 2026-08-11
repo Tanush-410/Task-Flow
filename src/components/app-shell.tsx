@@ -9,6 +9,7 @@ import {
   LayoutDashboard,
   ListChecks,
   ListTodo,
+  PanelsTopLeft,
   Settings,
   StickyNote,
   TrendingUp,
@@ -63,20 +64,29 @@ const employeeItems: NavigationItem[] = [
   { href: '/profile', icon: UserRound, label: 'Profile' },
 ];
 
+const planningItem: NavigationItem = {
+  href: '/planning',
+  icon: PanelsTopLeft,
+  label: 'Planning',
+};
+
 export function AppShell({
   children,
   role,
   userId,
   displayName,
+  planningEnabled,
   unreadNotificationCount,
 }: {
   children: ReactNode;
   role: Role;
   userId: string;
   displayName: string;
+  planningEnabled: boolean;
   unreadNotificationCount: number;
 }) {
-  const items = role === 'admin' ? adminItems : employeeItems;
+  const roleItems = role === 'admin' ? adminItems : employeeItems;
+  const items = planningEnabled ? [...roleItems, planningItem] : roleItems;
   const home = role === 'admin' ? '/dashboard' : '/my-day';
 
   return (

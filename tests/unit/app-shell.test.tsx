@@ -22,6 +22,7 @@ describe('AppShell', () => {
     render(
       <AppShell
         displayName="Asha Admin"
+        planningEnabled={false}
         role="admin"
         unreadNotificationCount={0}
         userId="user-1"
@@ -44,6 +45,7 @@ describe('AppShell', () => {
     render(
       <AppShell
         displayName="Priya Employee"
+        planningEnabled={false}
         role="employee"
         unreadNotificationCount={0}
         userId="user-1"
