@@ -1,18 +1,23 @@
 import {
   BellRing,
+  Building2,
   CalendarDays,
   CheckCircle2,
   ClipboardCheck,
   Eye,
-  Kanban,
+  GitBranch,
   ListChecks,
+  ListTree,
+  Notebook,
   PenSquare,
+  Search,
   Trophy,
   UsersRound,
 } from 'lucide-react';
 import Link from 'next/link';
 import type { ComponentType } from 'react';
 
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 
@@ -73,6 +78,24 @@ const features: {
       'A live current-work view shows admins exactly what every employee has in progress right now, at a glance.',
     icon: Eye,
   },
+  {
+    title: 'Find anything instantly',
+    description:
+      'Press ⌘K from anywhere in the app to jump straight to a task by title — no digging through lists or boards.',
+    icon: Search,
+  },
+  {
+    title: 'Keep a private trail',
+    description:
+      'Personal notes only you can see, plus an organization-wide activity feed of every task and assignment change, most recent first.',
+    icon: Notebook,
+  },
+  {
+    title: 'Know your people',
+    description:
+      'An employee directory with role management and invites, so admins always know who’s on the team and what they own.',
+    icon: Building2,
+  },
 ];
 
 const steps: {
@@ -131,16 +154,16 @@ export function LandingPage() {
 
         <section className="mx-auto w-full max-w-3xl px-5 pt-14 pb-10 text-center sm:px-8 sm:pt-20">
           <span className="inline-flex items-center gap-1.5 rounded-full bg-primary-soft px-3 py-1 text-xs font-semibold text-primary">
-            <Kanban aria-hidden className="size-3.5" />
-            Now with a drag-and-drop Board view
+            <ListTree aria-hidden className="size-3.5" />
+            New: native sprint planning
           </span>
           <h1 className="mt-5 text-4xl font-semibold tracking-[-0.04em] text-balance text-foreground sm:text-5xl">
-            Assign, track, and complete work without the chaos.
+            Assign, plan, and ship work — without the chaos.
           </h1>
           <p className="mx-auto mt-5 max-w-xl text-lg leading-7 text-muted-foreground">
-            TaskFlow gives founders and managers one place to assign tasks to
-            their team, and gives employees a focused view of exactly what is
-            due, delayed, or done.
+            TaskFlow gives founders and managers one place to assign daily work
+            and rank a full sprint backlog, and gives employees a focused view
+            of exactly what is due, delayed, or done.
           </p>
           <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
             <Button asChild className="h-12 px-6 text-sm">
@@ -176,6 +199,91 @@ export function LandingPage() {
             </CardContent>
           </Card>
         ))}
+      </section>
+
+      <section
+        aria-labelledby="sprint-planning-heading"
+        className="border-t border-border bg-muted/30"
+      >
+        <div className="mx-auto grid w-full max-w-5xl grid-cols-1 items-center gap-12 px-5 py-20 sm:px-8 lg:grid-cols-2">
+          <div>
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-primary-soft px-3 py-1 text-xs font-semibold text-primary">
+              <GitBranch aria-hidden className="size-3.5" />
+              Sprint planning
+            </span>
+            <h2
+              className="mt-4 text-3xl font-semibold tracking-[-0.03em] text-balance text-foreground"
+              id="sprint-planning-heading"
+            >
+              A ranked backlog, built natively — no external account required.
+            </h2>
+            <p className="mt-4 text-[15px] leading-7 text-muted-foreground">
+              Build out a full Epic → Feature → User Story → Task hierarchy —
+              Bugs included, with their own repro steps and severity. Estimate
+              with story points or hours, reorder with a keyboard or
+              drag-and-drop, and move a whole subtree to another team with a
+              live preview of exactly what comes with it.
+            </p>
+            <ul className="mt-6 space-y-3">
+              {[
+                'Cycles are structurally impossible — enforced by the database, not app code',
+                'Fractional ranking reorders one item without renumbering the rest of the backlog',
+                'Cross-team moves show a live descendant count before you commit to them',
+              ].map((point) => (
+                <li className="flex items-start gap-2.5 text-sm" key={point}>
+                  <CheckCircle2
+                    aria-hidden
+                    className="mt-0.5 size-4 shrink-0 text-primary"
+                  />
+                  <span className="text-muted-foreground">{point}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          <Card className="shadow-card-lg">
+            <CardContent className="p-0">
+              <div className="divide-y divide-border">
+                <div className="flex items-center gap-2 px-4 py-3">
+                  <Badge>Epic</Badge>
+                  <span className="text-sm font-medium text-foreground">
+                    Checkout redesign
+                  </span>
+                </div>
+                <div className="flex items-center gap-2 py-3 pr-4 pl-8">
+                  <Badge variant="secondary">Feature</Badge>
+                  <span className="text-sm font-medium text-foreground">
+                    Payment flow
+                  </span>
+                </div>
+                <div className="flex items-center gap-2 py-3 pr-4 pl-14">
+                  <Badge variant="outline">User story</Badge>
+                  <span className="text-sm font-medium text-foreground">
+                    Add saved cards
+                  </span>
+                  <span className="ml-auto text-xs text-muted-foreground">
+                    5 pts
+                  </span>
+                </div>
+                <div className="flex items-center gap-2 py-3 pr-4 pl-14">
+                  <Badge variant="destructive">Bug</Badge>
+                  <span className="text-sm font-medium text-foreground">
+                    Retry fails silently
+                  </span>
+                </div>
+                <div className="flex items-center gap-2 py-3 pr-4 pl-20">
+                  <Badge variant="outline">Task</Badge>
+                  <span className="text-sm font-medium text-foreground">
+                    Add retry telemetry
+                  </span>
+                  <span className="ml-auto text-xs text-muted-foreground">
+                    3h / 5h
+                  </span>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
       </section>
 
       <section
