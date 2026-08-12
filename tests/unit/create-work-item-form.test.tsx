@@ -115,6 +115,57 @@ describe('CreateWorkItemForm', () => {
     );
   });
 
+  it('shows story points plus repro steps, severity, and found-in-build for a bug', async () => {
+    mocks.createWorkItem.mockResolvedValue({
+      ok: true,
+      data: { workItemId: 'new-id' },
+    });
+
+    render(
+      <CreateWorkItemForm
+        parentTaskId={parentId}
+        parentTitle="Onboarding flow"
+        planningTeamId={teamId}
+        trigger={<button type="button">Open</button>}
+        type="bug"
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Open' }));
+    expect(screen.getByRole('heading', { name: 'New bug' })).toBeVisible();
+    expect(screen.getByLabelText('Story points')).toBeVisible();
+    expect(screen.getByLabelText('Repro steps')).toBeVisible();
+    expect(screen.getByLabelText('Found in build')).toBeVisible();
+
+    fireEvent.change(screen.getByLabelText('Title'), {
+      target: { value: 'Save button does nothing' },
+    });
+    fireEvent.change(screen.getByLabelText('Story points'), {
+      target: { value: '2' },
+    });
+    fireEvent.change(screen.getByLabelText('Repro steps'), {
+      target: { value: 'Click Save on an empty form' },
+    });
+    fireEvent.change(screen.getByLabelText('Found in build'), {
+      target: { value: '1.4.0' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Create bug' }));
+
+    await vi.waitFor(() =>
+      expect(mocks.createWorkItem).toHaveBeenCalledWith(
+        expect.objectContaining({
+          parentTaskId: parentId,
+          type: 'bug',
+          title: 'Save button does nothing',
+          storyPoints: 2,
+          reproSteps: 'Click Save on an empty form',
+          severity: 'medium',
+          foundInBuild: '1.4.0',
+        }),
+      ),
+    );
+  });
+
   it('shows a field error and keeps the dialog open on validation failure', async () => {
     mocks.createWorkItem.mockResolvedValue({
       ok: false,

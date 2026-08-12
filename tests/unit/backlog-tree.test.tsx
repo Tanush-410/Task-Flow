@@ -515,5 +515,10 @@ describe('BacklogTree', () => {
     expect(
       screen.getByRole('link', { name: 'Save button does nothing' }),
     ).toBeVisible();
+    expect(
+      screen.getByRole('button', {
+        name: 'Edit bug details for Save button does nothing',
+      }),
+    ).toBeVisible();
   });
 });

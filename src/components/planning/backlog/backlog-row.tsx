@@ -3,6 +3,7 @@
 import { useDraggable, useDroppable } from '@dnd-kit/core';
 import type { VariantProps } from 'class-variance-authority';
 import {
+  Bug,
   Check,
   ChevronDown,
   ChevronRight,
@@ -15,6 +16,7 @@ import {
 import Link from 'next/link';
 import { useState, type FormEvent } from 'react';
 
+import { BugDetailsDialog } from '@/components/planning/backlog/bug-details-dialog';
 import { CreateWorkItemForm } from '@/components/planning/backlog/create-work-item-form';
 import { MoveWorkItemDialog } from '@/components/planning/backlog/move-work-item-dialog';
 import { PersonAvatar } from '@/components/person-avatar';
@@ -393,6 +395,21 @@ export function BacklogRow({
               parentTitle={item.title}
               planningTeamId={teamId}
               type={pendingChildType}
+            />
+          ) : null}
+          {item.type === 'bug' ? (
+            <BugDetailsDialog
+              item={item}
+              trigger={
+                <Button
+                  aria-label={`Edit bug details for ${item.title}`}
+                  size="icon-xs"
+                  type="button"
+                  variant="ghost"
+                >
+                  <Bug aria-hidden />
+                </Button>
+              }
             />
           ) : null}
           <MoveWorkItemDialog

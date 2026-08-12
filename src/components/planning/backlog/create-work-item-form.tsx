@@ -72,6 +72,9 @@ export function CreateWorkItemForm({
   const [storyPoints, setStoryPoints] = useState('');
   const [originalHours, setOriginalHours] = useState('');
   const [remainingHours, setRemainingHours] = useState('');
+  const [reproSteps, setReproSteps] = useState('');
+  const [severity, setSeverity] = useState<string>('medium');
+  const [foundInBuild, setFoundInBuild] = useState('');
 
   function reset() {
     setTitle('');
@@ -80,6 +83,9 @@ export function CreateWorkItemForm({
     setStoryPoints('');
     setOriginalHours('');
     setRemainingHours('');
+    setReproSteps('');
+    setSeverity('medium');
+    setFoundInBuild('');
     setError(null);
   }
 
@@ -105,6 +111,10 @@ export function CreateWorkItemForm({
         type === 'task' && remainingHours !== ''
           ? Number(remainingHours)
           : undefined,
+      reproSteps: type === 'bug' && reproSteps !== '' ? reproSteps : undefined,
+      severity: type === 'bug' ? severity : undefined,
+      foundInBuild:
+        type === 'bug' && foundInBuild !== '' ? foundInBuild : undefined,
     });
 
     setPending(false);
@@ -237,6 +247,66 @@ export function CreateWorkItemForm({
               <FieldError>{error?.fields?.storyPoints?.[0]}</FieldError>
             </div>
           )}
+
+          {type === 'bug' ? (
+            <>
+              <div>
+                <Label htmlFor="work-item-repro-steps">Repro steps</Label>
+                <Textarea
+                  className="mt-2"
+                  disabled={pending}
+                  id="work-item-repro-steps"
+                  maxLength={10_000}
+                  onChange={(event) => setReproSteps(event.target.value)}
+                  placeholder="Steps to reproduce this bug"
+                  rows={3}
+                  value={reproSteps}
+                />
+                <FieldError>{error?.fields?.reproSteps?.[0]}</FieldError>
+              </div>
+
+              <div className="flex gap-3">
+                <div className="flex-1">
+                  <Label htmlFor="work-item-severity">Severity</Label>
+                  <Select
+                    disabled={pending}
+                    onValueChange={setSeverity}
+                    value={severity}
+                  >
+                    <SelectTrigger
+                      className="mt-2 w-full"
+                      id="work-item-severity"
+                    >
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {PRIORITY_OPTIONS.map((option) => (
+                        <SelectItem key={option.value} value={option.value}>
+                          {option.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FieldError>{error?.fields?.severity?.[0]}</FieldError>
+                </div>
+                <div className="flex-1">
+                  <Label htmlFor="work-item-found-in-build">
+                    Found in build
+                  </Label>
+                  <Input
+                    className="mt-2"
+                    disabled={pending}
+                    id="work-item-found-in-build"
+                    maxLength={500}
+                    onChange={(event) => setFoundInBuild(event.target.value)}
+                    placeholder="1.4.0"
+                    value={foundInBuild}
+                  />
+                  <FieldError>{error?.fields?.foundInBuild?.[0]}</FieldError>
+                </div>
+              </div>
+            </>
+          ) : null}
 
           {error && !error.fields ? (
             <p className="text-sm text-destructive">{error.message}</p>
