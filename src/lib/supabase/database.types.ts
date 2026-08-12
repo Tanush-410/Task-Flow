@@ -1162,53 +1162,74 @@ export type Database = {
         Row: {
           acknowledgement_required: boolean;
           archived_at: string | null;
+          backlog_rank: string | null;
           created_at: string;
           created_by: string;
           description: string;
           due_at: string | null;
           id: string;
           organization_id: string;
+          original_hours: number | null;
+          parent_task_id: string | null;
+          planning_team_id: string | null;
           priority: Database['public']['Enums']['task_priority'];
           published_at: string | null;
           recurrence: Database['public']['Enums']['task_recurrence'];
+          remaining_hours: number | null;
           start_at: string | null;
           status: Database['public']['Enums']['task_status'];
+          story_points: number | null;
           title: string;
           updated_at: string;
+          work_item_type: Database['public']['Enums']['work_item_type'];
         };
         Insert: {
           acknowledgement_required?: boolean;
           archived_at?: string | null;
+          backlog_rank?: string | null;
           created_at?: string;
           created_by: string;
           description?: string;
           due_at?: string | null;
           id?: string;
           organization_id: string;
+          original_hours?: number | null;
+          parent_task_id?: string | null;
+          planning_team_id?: string | null;
           priority?: Database['public']['Enums']['task_priority'];
           published_at?: string | null;
           recurrence?: Database['public']['Enums']['task_recurrence'];
+          remaining_hours?: number | null;
           start_at?: string | null;
           status?: Database['public']['Enums']['task_status'];
+          story_points?: number | null;
           title: string;
           updated_at?: string;
+          work_item_type?: Database['public']['Enums']['work_item_type'];
         };
         Update: {
           acknowledgement_required?: boolean;
           archived_at?: string | null;
+          backlog_rank?: string | null;
           created_at?: string;
           created_by?: string;
           description?: string;
           due_at?: string | null;
           id?: string;
           organization_id?: string;
+          original_hours?: number | null;
+          parent_task_id?: string | null;
+          planning_team_id?: string | null;
           priority?: Database['public']['Enums']['task_priority'];
           published_at?: string | null;
           recurrence?: Database['public']['Enums']['task_recurrence'];
+          remaining_hours?: number | null;
           start_at?: string | null;
           status?: Database['public']['Enums']['task_status'];
+          story_points?: number | null;
           title?: string;
           updated_at?: string;
+          work_item_type?: Database['public']['Enums']['work_item_type'];
         };
         Relationships: [
           {
@@ -1223,6 +1244,20 @@ export type Database = {
             columns: ['organization_id'];
             isOneToOne: false;
             referencedRelation: 'organizations';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'tasks_parent_task_id_fkey';
+            columns: ['parent_task_id'];
+            isOneToOne: false;
+            referencedRelation: 'tasks';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'tasks_planning_team_id_fkey';
+            columns: ['planning_team_id'];
+            isOneToOne: false;
+            referencedRelation: 'planning_teams';
             referencedColumns: ['id'];
           },
         ];
@@ -1243,9 +1278,25 @@ export type Database = {
         Args: { target_team_id: string };
         Returns: boolean;
       };
+      assign_backlog_rank: {
+        Args: {
+          after_task_id: string;
+          before_task_id: string;
+          target_task_id: string;
+        };
+        Returns: string;
+      };
+      backlog_rank_midpoint: {
+        Args: { lower_rank: string; upper_rank: string };
+        Returns: string;
+      };
       bootstrap_organization: {
         Args: { organization_name: string; organization_timezone: string };
         Returns: string;
+      };
+      count_work_item_descendants: {
+        Args: { target_task_id: string };
+        Returns: number;
       };
       create_connection_request: {
         Args: {
@@ -1256,6 +1307,20 @@ export type Database = {
           request_id: string;
           target_display_name: string;
         }[];
+      };
+      create_work_item: {
+        Args: {
+          item_description: string;
+          item_original_hours: number;
+          item_priority: Database['public']['Enums']['task_priority'];
+          item_remaining_hours: number;
+          item_story_points: number;
+          item_title: string;
+          item_type: Database['public']['Enums']['work_item_type'];
+          target_parent_task_id: string;
+          target_planning_team_id: string;
+        };
+        Returns: string;
       };
       discard_staged_invitation: {
         Args: { invitation_id: string };
@@ -1293,6 +1358,10 @@ export type Database = {
         Args: { target_task_id: string };
         Returns: boolean;
       };
+      is_task_planning_team_member: {
+        Args: { target_task_id: string };
+        Returns: boolean;
+      };
       join_organization_as_employee: {
         Args: { target_organization_id: string };
         Returns: string;
@@ -1306,6 +1375,31 @@ export type Database = {
           organization_name: string;
           role: Database['public']['Enums']['membership_role'];
         }[];
+      };
+      move_work_item: {
+        Args: {
+          include_descendants: boolean;
+          new_parent_task_id: string;
+          new_planning_team_id: string;
+          target_task_id: string;
+        };
+        Returns: number;
+      };
+      rebalance_backlog_siblings: {
+        Args: {
+          target_parent_task_id: string;
+          target_team_id: string;
+          target_work_item_type: Database['public']['Enums']['work_item_type'];
+        };
+        Returns: number;
+      };
+      reestimate_work_item_hours: {
+        Args: {
+          new_original_hours: number;
+          new_remaining_hours: number;
+          target_task_id: string;
+        };
+        Returns: boolean;
       };
       register_organization_admin: {
         Args: { organization_name: string; organization_timezone: string };
@@ -1370,6 +1464,7 @@ export type Database = {
       task_priority: 'low' | 'medium' | 'high' | 'urgent';
       task_recurrence: 'none' | 'daily' | 'weekly' | 'monthly';
       task_status: 'draft' | 'published' | 'archived';
+      work_item_type: 'epic' | 'feature' | 'user_story' | 'task';
     };
     CompositeTypes: {
       [_ in never]: never;
@@ -1534,6 +1629,7 @@ export const Constants = {
       task_priority: ['low', 'medium', 'high', 'urgent'],
       task_recurrence: ['none', 'daily', 'weekly', 'monthly'],
       task_status: ['draft', 'published', 'archived'],
+      work_item_type: ['epic', 'feature', 'user_story', 'task'],
     },
   },
 } as const;
