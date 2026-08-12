@@ -1,4 +1,4 @@
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, ListTree } from 'lucide-react';
 import Link from 'next/link';
 
 import { TeamForm } from '@/components/planning/team-form';
@@ -53,9 +53,17 @@ export default async function PlanningTeamPage({
         <div className="mt-4">
           <PageHeader
             action={
-              <Badge variant={team.isArchived ? 'outline' : 'secondary'}>
-                {team.isArchived ? 'Archived' : team.currentUserRole}
-              </Badge>
+              <div className="flex items-center gap-2">
+                <Button asChild size="sm" variant="outline">
+                  <Link href={`/planning/teams/${team.id}/backlog`}>
+                    <ListTree aria-hidden />
+                    View backlog
+                  </Link>
+                </Button>
+                <Badge variant={team.isArchived ? 'outline' : 'secondary'}>
+                  {team.isArchived ? 'Archived' : team.currentUserRole}
+                </Badge>
+              </div>
             }
             description={
               team.description ||
