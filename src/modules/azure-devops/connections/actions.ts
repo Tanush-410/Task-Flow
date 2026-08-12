@@ -32,6 +32,7 @@ import {
   createAzureDevOpsClient,
   type AzureDevOpsClient,
 } from '../client/http';
+import { fixtureFetch } from '../testing/fixture-fetch';
 
 import { requireAzureDevOpsAdmin } from './access';
 import {
@@ -230,7 +231,10 @@ async function createAuthorizedClient(
       const refreshToken = decryptSecret(connection!.refreshTokenCiphertext!, [
         key,
       ]);
-      const tokens = await refreshEntraTokens({ refreshToken });
+      const tokens = await refreshEntraTokens(
+        { refreshToken },
+        { fetch: fixtureFetch() },
+      );
       accessToken = tokens.accessToken;
       await persistRefreshedTokens(admin, connection!.id, tokens, key);
       return accessToken;
@@ -249,6 +253,7 @@ async function createAuthorizedClient(
       getAccessToken: async () => accessToken,
       refreshAccessToken: async () => refresh(),
     },
+    fetch: fixtureFetch(),
   });
 
   return { client, connection };

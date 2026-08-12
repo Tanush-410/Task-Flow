@@ -395,10 +395,13 @@ describe('GET /api/integrations/azure-devops/callback', () => {
       organizationId,
       userId,
     });
-    expect(mocks.exchangeEntraCode).toHaveBeenCalledWith({
-      code,
-      codeVerifier: 'v'.repeat(43),
-    });
+    expect(mocks.exchangeEntraCode).toHaveBeenCalledWith(
+      {
+        code,
+        codeVerifier: 'v'.repeat(43),
+      },
+      { fetch: undefined },
+    );
     expect(fake.rpc).toHaveBeenCalledWith(
       'persist_azure_devops_oauth_connection',
       {

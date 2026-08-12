@@ -13,6 +13,7 @@ import { consumeOAuthAttempt } from '@/modules/azure-devops/auth/oauth-state';
 import { getAzureProfile } from '@/modules/azure-devops/client/discovery';
 import { createAzureDevOpsClient } from '@/modules/azure-devops/client/http';
 import { getAzureDevOpsAdminAccess } from '@/modules/azure-devops/connections/access';
+import { fixtureFetch } from '@/modules/azure-devops/testing/fixture-fetch';
 import type { MembershipContext } from '@/modules/members/context';
 
 const SETTINGS_PATH = '/settings/integrations/azure-devops';
@@ -268,10 +269,13 @@ export async function GET(request: Request): Promise<NextResponse> {
   }
 
   try {
-    const tokens = await exchangeEntraCode({
-      code: parsed.code,
-      codeVerifier: consumed.codeVerifier,
-    });
+    const tokens = await exchangeEntraCode(
+      {
+        code: parsed.code,
+        codeVerifier: consumed.codeVerifier,
+      },
+      { fetch: fixtureFetch() },
+    );
     const client = createAzureDevOpsClient({
       tokenProvider: {
         getAccessToken: async () => tokens.accessToken,
@@ -279,6 +283,7 @@ export async function GET(request: Request): Promise<NextResponse> {
           throw new Error('Unexpected token refresh.');
         },
       },
+      fetch: fixtureFetch(),
     });
     const identity = await getAzureProfile(client);
     const key = encryptionKey(environment);
