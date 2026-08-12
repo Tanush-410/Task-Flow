@@ -23,7 +23,6 @@ import {
   getPlanningTeam,
   listPlanningTeamCandidates,
   listPlanningTeams,
-  listPlanningTeamsForMembership,
   requirePlanningTeamAccess,
 } from '@/modules/planning-teams/queries';
 
@@ -107,36 +106,11 @@ describe('planning team queries', () => {
         currentUserRole: 'planner',
       },
     ]);
-    expect(mocks.requireMembership).toHaveBeenCalledOnce();
     expect(teams.eq).toHaveBeenCalledWith(
       'organization_id',
       membership.organizationId,
     );
     expect(teams.eq).toHaveBeenCalledWith('is_archived', false);
-    expect(members.eq).toHaveBeenCalledWith(
-      'organization_id',
-      membership.organizationId,
-    );
-  });
-
-  it('lists teams for an already verified membership without a second guard', async () => {
-    const teams = query({ data: [], error: null });
-    const members = query({ data: [], error: null });
-    mocks.createServerSupabase.mockResolvedValue({
-      from: vi.fn((table: string) =>
-        table === 'planning_teams' ? teams : members,
-      ),
-    });
-
-    await expect(listPlanningTeamsForMembership(membership)).resolves.toEqual(
-      [],
-    );
-
-    expect(mocks.requireMembership).not.toHaveBeenCalled();
-    expect(teams.eq).toHaveBeenCalledWith(
-      'organization_id',
-      membership.organizationId,
-    );
     expect(members.eq).toHaveBeenCalledWith(
       'organization_id',
       membership.organizationId,

@@ -19,7 +19,7 @@
     "test:e2e": "playwright test",
     "db:start": "npx supabase start",
     "db:reset": "npx supabase db reset --local",
-    "db:test": "npx supabase test db supabase/tests/foundation_rls.test.sql supabase/tests/task_workflow_rls.test.sql supabase/tests/sprint_foundation_rls.test.sql supabase/tests/azure_devops_connection_rls.test.sql",
+    "db:test": "npx supabase test db supabase/tests/foundation_rls.test.sql supabase/tests/task_workflow_rls.test.sql supabase/tests/sprint_foundation_rls.test.sql",
     "verify": "npm run format:check && npm run lint && npm run typecheck && npm test && npm run build",
     "prepare": "husky"
   },

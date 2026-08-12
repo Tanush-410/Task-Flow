@@ -642,9 +642,6 @@ select lives_ok(
 select results_eq(
   $$select key from public.feature_flags order by key$$,
   array[
-    'azure_devops_integration',
-    'azure_devops_integration',
-    'azure_devops_integration',
     'global-flag',
     'native_sprint_planning',
     'native_sprint_planning',
@@ -669,12 +666,7 @@ select is_empty(
 );
 select results_eq(
   $$select distinct flag_key from public.feature_flag_audit_log order by flag_key$$,
-  array[
-    'azure_devops_integration',
-    'global-flag',
-    'native_sprint_planning',
-    'organization-a-flag'
-  ],
+  array['global-flag', 'native_sprint_planning', 'organization-a-flag'],
   'admins see global and own-organization feature flag audit records'
 );
 select throws_like(
@@ -790,9 +782,6 @@ select results_eq(
 select results_eq(
   $$select key from public.feature_flags order by key$$,
   array[
-    'azure_devops_integration',
-    'azure_devops_integration',
-    'azure_devops_integration',
     'global-flag',
     'native_sprint_planning',
     'native_sprint_planning',

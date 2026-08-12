@@ -1,9 +1,5 @@
-import Link from 'next/link';
-
 import { signOut } from '@/modules/auth/actions';
 import { getOwnConnectCode, requireAdmin } from '@/modules/members/queries';
-import { currentDeploymentEnvironment } from '@/modules/operations/deployment-environment';
-import { evaluateFeatureFlag } from '@/modules/operations/feature-flags';
 import { getCurrentOrganization } from '@/modules/organizations/queries';
 import { CopyButton } from '@/components/copy-button';
 import { Button } from '@/components/ui/button';
@@ -11,19 +7,11 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { PageHeader } from '@/components/ui/page-header';
 
 export default async function SettingsPage() {
-  const membership = await requireAdmin();
-  const [{ data: organization }, connectCode, azureDevOpsEnabled] =
-    await Promise.all([
-      getCurrentOrganization(),
-      getOwnConnectCode(),
-      evaluateFeatureFlag({
-        key: 'azure_devops_integration',
-        environment: currentDeploymentEnvironment(),
-        userId: membership.userId,
-        organizationId: membership.organizationId,
-        role: membership.role,
-      }).catch(() => false),
-    ]);
+  await requireAdmin();
+  const [{ data: organization }, connectCode] = await Promise.all([
+    getCurrentOrganization(),
+    getOwnConnectCode(),
+  ]);
 
   return (
     <section aria-labelledby="settings-heading" className="space-y-6">
@@ -70,25 +58,6 @@ export default async function SettingsPage() {
               </span>
               <CopyButton label="Copy code" value={connectCode.connectCode} />
             </div>
-          </CardContent>
-        </Card>
-      ) : null}
-
-      {azureDevOpsEnabled ? (
-        <Card className="max-w-xl">
-          <CardHeader>
-            <CardTitle>Azure DevOps</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm text-muted-foreground">
-              Connect Azure DevOps and map a planning team to an Azure project
-              and team.
-            </p>
-            <Button asChild className="mt-3" size="sm" variant="outline">
-              <Link href="/settings/integrations/azure-devops">
-                Manage Azure DevOps
-              </Link>
-            </Button>
           </CardContent>
         </Card>
       ) : null}
