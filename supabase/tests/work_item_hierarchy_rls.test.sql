@@ -439,7 +439,7 @@ select public.create_work_item(
   item_priority := 'high',
   target_parent_task_id := '60000000-0000-0000-0000-000000000002',
   item_repro_steps := 'Open the app and click Save',
-  item_severity := 'critical',
+  item_severity := 'urgent',
   item_found_in_build := '2.0.0-rc1'
 );
 
@@ -450,7 +450,7 @@ select is(
 );
 select is(
   (select severity from public.tasks where title = 'RPC-created bug'),
-  'critical',
+  'urgent',
   'create_work_item sets severity for a bug'
 );
 select is(
