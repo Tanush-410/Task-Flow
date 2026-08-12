@@ -36,11 +36,12 @@ black-and-gold shadcn/ui design system.
 - **Sprint planning (feature flagged)** — organizations create delivery
   teams, assign planners and members, and set daily capacity and a default
   sprint cadence. Each team gets a ranked backlog: build out an
-  Epic → Feature → User Story → Task hierarchy, estimate with story points
-  or hours, reorder with keyboard buttons or drag-and-drop, and reparent or
-  reassign a whole subtree to another team with a live descendant-count
-  preview before committing. Sprint lifecycle, boards, and insights follow
-  in subsequent increments.
+  Epic → Feature → User Story → Task hierarchy (Bugs included, as a sibling
+  of User Story with their own repro steps/severity/found-in-build fields),
+  estimate with story points or hours, reorder with keyboard buttons or
+  drag-and-drop, and reparent or reassign a whole subtree to another team
+  with a live descendant-count preview before committing. Sprint lifecycle,
+  boards, and insights follow in subsequent increments.
 
 ## Tech stack
 
