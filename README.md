@@ -41,7 +41,9 @@ black-and-gold shadcn/ui design system.
   estimate with story points or hours, reorder with keyboard buttons or
   drag-and-drop, and reparent or reassign a whole subtree to another team
   with a live descendant-count preview before committing. Sprint lifecycle,
-  boards, and insights follow in subsequent increments.
+  boards, and insights follow in subsequent increments. See
+  [docs/features/native-sprint-planning.md](docs/features/native-sprint-planning.md)
+  for the full architecture, file map, and usage guide.
 
 ## Tech stack
 
@@ -110,6 +112,7 @@ src/modules/backlog/
 src/lib/            Cross-cutting helpers (Supabase clients, date utils, ...)
 supabase/migrations/ Schema, RLS policies, and triggers, in applied order
 docs/operations/    Verified local-dev and release-process notes
+docs/features/      Reference docs for shipped features (architecture, usage)
 ```
 
 ## Learn more
