@@ -65,6 +65,19 @@ describe('Azure DevOps generated database types', () => {
     );
   });
 
+  it('includes the atomic Azure DevOps OAuth connection persistence RPC signature', () => {
+    const definition = functionDefinition(
+      'persist_azure_devops_oauth_connection',
+    );
+
+    expect(definition).toMatch(
+      /Args: \{\s*target_access_token_ciphertext: string;\s*target_actor_id: string;\s*target_authorized_user_display_name: string;\s*target_authorized_user_email\?: string;\s*target_authorized_user_id: string;\s*target_granted_scopes: string\[\];\s*target_organization_id: string;\s*target_refresh_token_ciphertext: string;\s*target_tenant_id: string;\s*target_token_expires_at: string;\s*\};/,
+    );
+    expect(definition).toMatch(
+      /Returns: \{\s*connection_id: string;\s*connection_status: Database\['public'\]\['Enums'\]\['azure_devops_connection_status'\];\s*credentials_applied: boolean;\s*was_existing: boolean;\s*\}\[];/,
+    );
+  });
+
   it('includes the Azure DevOps team link configuration RPC signature', () => {
     const definition = functionDefinition('configure_azure_devops_team_link');
 

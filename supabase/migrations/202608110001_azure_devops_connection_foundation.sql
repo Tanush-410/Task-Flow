@@ -293,6 +293,189 @@ as $$
   returning oauth_state.pkce_verifier_ciphertext, oauth_state.return_path;
 $$;
 
+create or replace function public.persist_azure_devops_oauth_connection(
+  target_organization_id uuid,
+  target_actor_id uuid,
+  target_tenant_id text,
+  target_authorized_user_id text,
+  target_authorized_user_display_name text,
+  target_granted_scopes text[],
+  target_access_token_ciphertext text,
+  target_refresh_token_ciphertext text,
+  target_token_expires_at timestamptz,
+  target_authorized_user_email text default null
+)
+returns table (
+  connection_id uuid,
+  connection_status public.azure_devops_connection_status,
+  was_existing boolean,
+  credentials_applied boolean
+)
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  existing_connection public.azure_devops_connections%rowtype;
+  target_status public.azure_devops_connection_status;
+begin
+  if not exists (
+    select 1
+    from public.organization_memberships as membership
+    where membership.organization_id = target_organization_id
+      and membership.user_id = target_actor_id
+      and membership.role = 'admin'
+      and membership.status = 'active'
+  ) then
+    raise exception using
+      errcode = '42501',
+      message = 'active organization admin required';
+  end if;
+
+  if target_organization_id is null
+    or target_actor_id is null
+    or target_tenant_id is null
+    or char_length(btrim(target_tenant_id)) not between 1 and 256
+    or target_tenant_id ~ '[[:cntrl:]]'
+    or target_authorized_user_id is null
+    or char_length(btrim(target_authorized_user_id)) not between 1 and 256
+    or target_authorized_user_id ~ '[[:cntrl:]]'
+    or target_authorized_user_display_name is null
+    or char_length(btrim(target_authorized_user_display_name)) not between 1 and 200
+    or target_authorized_user_display_name ~ '[[:cntrl:]]'
+    or (
+      target_authorized_user_email is not null
+      and (
+        char_length(btrim(target_authorized_user_email)) not between 3 and 320
+        or target_authorized_user_email ~ '[[:cntrl:]]'
+      )
+    )
+    or target_granted_scopes is null
+    or cardinality(target_granted_scopes) not between 1 and 100
+    or exists (
+      select 1
+      from unnest(target_granted_scopes) as granted_scope
+      where granted_scope is null
+        or char_length(btrim(granted_scope)) not between 1 and 2048
+        or granted_scope ~ '[[:cntrl:]]'
+    )
+    or target_access_token_ciphertext is null
+    or char_length(btrim(target_access_token_ciphertext)) not between 1 and 16384
+    or target_access_token_ciphertext ~ '[[:cntrl:]]'
+    or target_refresh_token_ciphertext is null
+    or char_length(btrim(target_refresh_token_ciphertext)) not between 1 and 16384
+    or target_refresh_token_ciphertext ~ '[[:cntrl:]]'
+    or target_token_expires_at is null
+    or target_token_expires_at < statement_timestamp() + interval '1 minute' then
+    raise exception using
+      errcode = '22023',
+      message = 'invalid Azure DevOps OAuth connection input';
+  end if;
+
+  perform pg_catalog.pg_advisory_xact_lock(
+    pg_catalog.hashtextextended(target_organization_id::text, 0)
+  );
+
+  select connection.*
+  into existing_connection
+  from public.azure_devops_connections as connection
+  where connection.organization_id = target_organization_id
+  for update;
+
+  if not found then
+    insert into public.azure_devops_connections (
+      organization_id,
+      tenant_id,
+      authorized_user_id,
+      authorized_user_display_name,
+      authorized_user_email,
+      granted_scopes,
+      access_token_ciphertext,
+      refresh_token_ciphertext,
+      token_expires_at,
+      status,
+      safe_error_code,
+      last_verified_at,
+      created_by
+    )
+    values (
+      target_organization_id,
+      target_tenant_id,
+      target_authorized_user_id,
+      target_authorized_user_display_name,
+      target_authorized_user_email,
+      target_granted_scopes,
+      target_access_token_ciphertext,
+      target_refresh_token_ciphertext,
+      target_token_expires_at,
+      'pending',
+      null,
+      statement_timestamp(),
+      target_actor_id
+    )
+    returning id, status
+    into connection_id, connection_status;
+
+    was_existing := false;
+    credentials_applied := true;
+    return next;
+    return;
+  end if;
+
+  connection_id := existing_connection.id;
+  was_existing := true;
+
+  if existing_connection.token_expires_at is not null
+    and target_token_expires_at < existing_connection.token_expires_at then
+    connection_status := existing_connection.status;
+    credentials_applied := false;
+    return next;
+    return;
+  end if;
+
+  target_status := case
+    when existing_connection.azure_organization_id is not null
+      and existing_connection.azure_organization_name is not null
+      and existing_connection.azure_organization_url is not null
+      and exists (
+        select 1
+        from public.azure_devops_team_links as link
+        where link.organization_id = target_organization_id
+          and link.connection_id = existing_connection.id
+          and link.status = 'configured'
+      )
+    then 'configured'::public.azure_devops_connection_status
+    else 'pending'::public.azure_devops_connection_status
+  end;
+
+  update public.azure_devops_connections as connection
+  set
+    tenant_id = target_tenant_id,
+    authorized_user_id = target_authorized_user_id,
+    authorized_user_display_name = target_authorized_user_display_name,
+    authorized_user_email = target_authorized_user_email,
+    granted_scopes = target_granted_scopes,
+    access_token_ciphertext = target_access_token_ciphertext,
+    refresh_token_ciphertext = target_refresh_token_ciphertext,
+    token_expires_at = target_token_expires_at,
+    status = target_status,
+    safe_error_code = null,
+    last_verified_at = statement_timestamp()
+  where connection.id = existing_connection.id
+    and connection.organization_id = target_organization_id
+  returning connection.status into connection_status;
+
+  if not found then
+    raise exception using
+      errcode = '40001',
+      message = 'Azure DevOps connection changed during persistence';
+  end if;
+
+  credentials_applied := true;
+  return next;
+end;
+$$;
+
 create or replace function public.configure_azure_devops_team_link(
   target_organization_id uuid,
   target_connection_id uuid,
@@ -498,6 +681,10 @@ revoke all on function public.prevent_azure_devops_team_link_provenance_change()
 from public, anon, authenticated;
 revoke all on function public.consume_azure_devops_oauth_state(text, uuid, uuid)
 from public, anon, authenticated;
+revoke all on function public.persist_azure_devops_oauth_connection(
+  uuid, uuid, text, text, text, text[], text, text, timestamptz, text
+)
+from public, anon, authenticated;
 revoke all on function public.configure_azure_devops_team_link(
   uuid, uuid, uuid, text, text, text, text, uuid
 )
@@ -514,6 +701,10 @@ to service_role;
 grant execute on function public.prevent_azure_devops_team_link_provenance_change()
 to service_role;
 grant execute on function public.consume_azure_devops_oauth_state(text, uuid, uuid)
+to service_role;
+grant execute on function public.persist_azure_devops_oauth_connection(
+  uuid, uuid, text, text, text, text[], text, text, timestamptz, text
+)
 to service_role;
 grant execute on function public.configure_azure_devops_team_link(
   uuid, uuid, uuid, text, text, text, text, uuid

@@ -3,16 +3,16 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const mocks = vi.hoisted(() => ({
   currentDeploymentEnvironment: vi.fn(),
   evaluateFeatureFlag: vi.fn(),
+  getMembershipAccess: vi.fn(),
   redirect: vi.fn((location: string) => {
     throw new Error(`REDIRECT:${location}`);
   }),
-  requireAdmin: vi.fn(),
 }));
 
 vi.mock('server-only', () => ({}));
 vi.mock('next/navigation', () => ({ redirect: mocks.redirect }));
 vi.mock('@/modules/members/queries', () => ({
-  requireAdmin: mocks.requireAdmin,
+  getMembershipAccess: mocks.getMembershipAccess,
 }));
 vi.mock('@/modules/operations/deployment-environment', () => ({
   currentDeploymentEnvironment: mocks.currentDeploymentEnvironment,
@@ -21,7 +21,10 @@ vi.mock('@/modules/operations/feature-flags', () => ({
   evaluateFeatureFlag: mocks.evaluateFeatureFlag,
 }));
 
-import { requireAzureDevOpsAdmin } from '@/modules/azure-devops/connections/access';
+import {
+  getAzureDevOpsAdminAccess,
+  requireAzureDevOpsAdmin,
+} from '@/modules/azure-devops/connections/access';
 
 const membership = {
   organizationId: '10000000-0000-4000-8000-000000000001',
@@ -29,22 +32,29 @@ const membership = {
   role: 'admin' as const,
 };
 
-describe('requireAzureDevOpsAdmin', () => {
+describe('Azure DevOps admin access', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mocks.requireAdmin.mockResolvedValue(membership);
+    mocks.getMembershipAccess.mockResolvedValue({
+      kind: 'membership',
+      membership,
+    });
     mocks.currentDeploymentEnvironment.mockReturnValue('staging');
     mocks.evaluateFeatureFlag.mockResolvedValue(true);
   });
 
-  it.each(['/login', '/my-day'])(
-    'delegates base access failures from requireAdmin (%s)',
+  it.each(['/login', '/access-pending'] as const)(
+    'preserves the membership redirect result %s without evaluating the flag',
     async (location) => {
-      mocks.requireAdmin.mockRejectedValue(new Error(`REDIRECT:${location}`));
+      mocks.getMembershipAccess.mockResolvedValue({
+        kind: 'redirect',
+        location,
+      });
 
-      await expect(requireAzureDevOpsAdmin()).rejects.toThrow(
-        `REDIRECT:${location}`,
-      );
+      await expect(getAzureDevOpsAdminAccess()).resolves.toEqual({
+        kind: 'redirect',
+        location,
+      });
 
       expect(mocks.currentDeploymentEnvironment).not.toHaveBeenCalled();
       expect(mocks.evaluateFeatureFlag).not.toHaveBeenCalled();
@@ -52,10 +62,29 @@ describe('requireAzureDevOpsAdmin', () => {
     },
   );
 
-  it('evaluates the integration flag with the exact verified membership scope', async () => {
-    await expect(requireAzureDevOpsAdmin()).resolves.toEqual(membership);
+  it('redirects employees to my-day without evaluating the flag', async () => {
+    mocks.getMembershipAccess.mockResolvedValue({
+      kind: 'membership',
+      membership: { ...membership, role: 'employee' },
+    });
 
-    expect(mocks.requireAdmin).toHaveBeenCalledOnce();
+    await expect(getAzureDevOpsAdminAccess()).resolves.toEqual({
+      kind: 'redirect',
+      location: '/my-day',
+    });
+
+    expect(mocks.currentDeploymentEnvironment).not.toHaveBeenCalled();
+    expect(mocks.evaluateFeatureFlag).not.toHaveBeenCalled();
+    expect(mocks.redirect).not.toHaveBeenCalled();
+  });
+
+  it('evaluates the integration flag with the exact verified admin scope', async () => {
+    await expect(getAzureDevOpsAdminAccess()).resolves.toEqual({
+      kind: 'allowed',
+      membership,
+    });
+
+    expect(mocks.getMembershipAccess).toHaveBeenCalledOnce();
     expect(mocks.currentDeploymentEnvironment).toHaveBeenCalledOnce();
     expect(mocks.evaluateFeatureFlag).toHaveBeenCalledWith({
       key: 'azure_devops_integration',
@@ -67,14 +96,14 @@ describe('requireAzureDevOpsAdmin', () => {
     expect(mocks.redirect).not.toHaveBeenCalled();
   });
 
-  it('redirects to settings when the integration flag is disabled', async () => {
+  it('returns a settings redirect when the integration flag is disabled', async () => {
     mocks.evaluateFeatureFlag.mockResolvedValue(false);
 
-    await expect(requireAzureDevOpsAdmin()).rejects.toThrow(
-      'REDIRECT:/settings',
-    );
-
-    expect(mocks.redirect).toHaveBeenCalledWith('/settings');
+    await expect(getAzureDevOpsAdminAccess()).resolves.toEqual({
+      kind: 'redirect',
+      location: '/settings',
+    });
+    expect(mocks.redirect).not.toHaveBeenCalled();
   });
 
   it.each([
@@ -91,9 +120,21 @@ describe('requireAzureDevOpsAdmin', () => {
       );
     }
 
-    await expect(requireAzureDevOpsAdmin()).rejects.toThrow(
-      'REDIRECT:/settings',
-    );
-    expect(mocks.redirect).toHaveBeenCalledWith('/settings');
+    await expect(getAzureDevOpsAdminAccess()).resolves.toEqual({
+      kind: 'redirect',
+      location: '/settings',
+    });
+    expect(mocks.redirect).not.toHaveBeenCalled();
+  });
+
+  it('keeps the throwing require wrapper for page and action consumers', async () => {
+    await expect(requireAzureDevOpsAdmin()).resolves.toEqual(membership);
+
+    mocks.getMembershipAccess.mockResolvedValue({
+      kind: 'redirect',
+      location: '/login',
+    });
+    await expect(requireAzureDevOpsAdmin()).rejects.toThrow('REDIRECT:/login');
+    expect(mocks.redirect).toHaveBeenCalledWith('/login');
   });
 });

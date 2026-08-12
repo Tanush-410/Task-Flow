@@ -1,6 +1,6 @@
 begin;
 
-select plan(97);
+select plan(111);
 
 select has_type(
   'public',
@@ -191,6 +191,12 @@ select has_function(
 );
 select has_function(
   'public',
+  'persist_azure_devops_oauth_connection',
+  array['uuid', 'uuid', 'text', 'text', 'text', 'text[]', 'text', 'text', 'timestamp with time zone', 'text'],
+  'atomic OAuth connection persistence function exists'
+);
+select has_function(
+  'public',
   'configure_azure_devops_team_link',
   array['uuid', 'uuid', 'uuid', 'text', 'text', 'text', 'text', 'uuid'],
   'team link configuration function exists'
@@ -202,7 +208,7 @@ select has_function(
   'disconnect function exists'
 );
 select ok(
-  (select count(*) = 7
+  (select count(*) = 8
      and bool_and(procedure.prosecdef and coalesce(procedure.proconfig, '{}') @> array['search_path=""'])
    from pg_catalog.pg_proc as procedure
    join pg_catalog.pg_namespace as namespace
@@ -214,6 +220,7 @@ select ok(
        'validate_azure_devops_team_link_organization',
        'prevent_azure_devops_team_link_provenance_change',
        'consume_azure_devops_oauth_state',
+       'persist_azure_devops_oauth_connection',
        'configure_azure_devops_team_link',
        'disconnect_azure_devops_connection'
      )),
@@ -225,6 +232,7 @@ select ok(
   and has_function_privilege('service_role', 'public.validate_azure_devops_team_link_organization()', 'execute')
   and has_function_privilege('service_role', 'public.prevent_azure_devops_team_link_provenance_change()', 'execute')
   and has_function_privilege('service_role', 'public.consume_azure_devops_oauth_state(text,uuid,uuid)', 'execute')
+  and has_function_privilege('service_role', 'public.persist_azure_devops_oauth_connection(uuid,uuid,text,text,text,text[],text,text,timestamp with time zone,text)', 'execute')
   and has_function_privilege('service_role', 'public.configure_azure_devops_team_link(uuid,uuid,uuid,text,text,text,text,uuid)', 'execute')
   and has_function_privilege('service_role', 'public.disconnect_azure_devops_connection(uuid,uuid)', 'execute'),
   'service role can execute Azure DevOps RPCs'
@@ -240,11 +248,26 @@ select ok(
   and not has_function_privilege('authenticated', 'public.prevent_azure_devops_team_link_provenance_change()', 'execute')
   and not has_function_privilege('anon', 'public.consume_azure_devops_oauth_state(text,uuid,uuid)', 'execute')
   and not has_function_privilege('authenticated', 'public.consume_azure_devops_oauth_state(text,uuid,uuid)', 'execute')
+  and not has_function_privilege('anon', 'public.persist_azure_devops_oauth_connection(uuid,uuid,text,text,text,text[],text,text,timestamp with time zone,text)', 'execute')
+  and not has_function_privilege('authenticated', 'public.persist_azure_devops_oauth_connection(uuid,uuid,text,text,text,text[],text,text,timestamp with time zone,text)', 'execute')
   and not has_function_privilege('anon', 'public.configure_azure_devops_team_link(uuid,uuid,uuid,text,text,text,text,uuid)', 'execute')
   and not has_function_privilege('authenticated', 'public.configure_azure_devops_team_link(uuid,uuid,uuid,text,text,text,text,uuid)', 'execute')
   and not has_function_privilege('anon', 'public.disconnect_azure_devops_connection(uuid,uuid)', 'execute')
   and not has_function_privilege('authenticated', 'public.disconnect_azure_devops_connection(uuid,uuid)', 'execute'),
   'browser roles cannot execute Azure DevOps RPCs'
+);
+select ok(
+  position(
+    'pg_advisory_xact_lock' in pg_get_functiondef(
+      'public.persist_azure_devops_oauth_connection(uuid,uuid,text,text,text,text[],text,text,timestamp with time zone,text)'::regprocedure
+    )
+  ) > 0
+  and position(
+    'hashtextextended(target_organization_id::text' in pg_get_functiondef(
+      'public.persist_azure_devops_oauth_connection(uuid,uuid,text,text,text,text[],text,text,timestamp with time zone,text)'::regprocedure
+    )
+  ) > 0,
+  'OAuth connection persistence serializes writes by organization'
 );
 
 select is(
@@ -280,8 +303,19 @@ values
     '00000000-0000-0000-0000-000000000001'
   );
 
+update public.organization_memberships
+set role = 'admin'
+where organization_id = '10000000-0000-0000-0000-000000000001'
+  and user_id = '00000000-0000-0000-0000-000000000002';
+
 insert into public.planning_teams (id, organization_id, name, created_by)
 values
+  (
+    '40000000-0000-0000-0000-000000000098',
+    '10000000-0000-0000-0000-000000000001',
+    'Azure DevOps persistence team',
+    '00000000-0000-0000-0000-000000000001'
+  ),
   (
     '40000000-0000-0000-0000-000000000091',
     '10000000-0000-0000-0000-000000000001',
@@ -300,6 +334,176 @@ values
     'Azure DevOps cross-org team',
     '00000000-0000-0000-0000-000000000001'
   );
+
+set local role service_role;
+select results_eq(
+  $$select connection_status::text || ':' || was_existing::text || ':' || credentials_applied::text
+    from public.persist_azure_devops_oauth_connection(
+      '10000000-0000-0000-0000-000000000001',
+      '00000000-0000-0000-0000-000000000001',
+      'tenant-initial', '98000000-0000-4000-8000-000000000001',
+      'Initial Azure Admin', array['scope.initial'],
+      'access-initial', 'refresh-initial', now() + interval '2 hours',
+      'initial@example.test'
+    )$$,
+  array['pending:false:true'],
+  'atomic persistence inserts a pending connection for an active admin'
+);
+select results_eq(
+  $$select created_by::text || ':' || tenant_id || ':' || access_token_ciphertext || ':' || refresh_token_ciphertext
+    from public.azure_devops_connections
+    where organization_id = '10000000-0000-0000-0000-000000000001'$$,
+  array['00000000-0000-0000-0000-000000000001:tenant-initial:access-initial:refresh-initial'],
+  'the initial persistence stores paired credentials and creator provenance'
+);
+select results_eq(
+  $$select was_existing::text || ':' || credentials_applied::text
+    from public.persist_azure_devops_oauth_connection(
+      '10000000-0000-0000-0000-000000000001',
+      '00000000-0000-0000-0000-000000000002',
+      'tenant-second', '98000000-0000-4000-8000-000000000002',
+      'Second Azure Admin', array['scope.second'],
+      'access-second', 'refresh-second', now() + interval '3 hours',
+      'second@example.test'
+    )$$,
+  array['true:true'],
+  'a second active admin can reconnect the organization connection'
+);
+select results_eq(
+  $$select created_by::text || ':' || authorized_user_id || ':' || tenant_id
+    from public.azure_devops_connections
+    where organization_id = '10000000-0000-0000-0000-000000000001'$$,
+  array['00000000-0000-0000-0000-000000000001:98000000-0000-4000-8000-000000000002:tenant-second'],
+  'second-admin reconnect preserves the original creator while updating identity'
+);
+
+reset role;
+update public.azure_devops_connections
+set
+  azure_organization_id = '99000000-0000-4000-8000-000000000009',
+  azure_organization_name = 'Persistence Organization',
+  azure_organization_url = 'https://dev.azure.com/persistence-org'
+where organization_id = '10000000-0000-0000-0000-000000000001';
+insert into public.azure_devops_team_links (
+  organization_id, connection_id, planning_team_id,
+  azure_project_id, azure_project_name, azure_team_id, azure_team_name,
+  status, created_by
+)
+select
+  connection.organization_id,
+  connection.id,
+  '40000000-0000-0000-0000-000000000098',
+  'project-persist', 'Persistence Project', 'team-persist', 'Persistence Team',
+  'configured',
+  '00000000-0000-0000-0000-000000000001'
+from public.azure_devops_connections as connection
+where connection.organization_id = '10000000-0000-0000-0000-000000000001';
+
+set local role service_role;
+select results_eq(
+  $$select connection_status::text || ':' || was_existing::text || ':' || credentials_applied::text
+    from public.persist_azure_devops_oauth_connection(
+      '10000000-0000-0000-0000-000000000001',
+      '00000000-0000-0000-0000-000000000002',
+      'tenant-configured', '98000000-0000-4000-8000-000000000003',
+      'Configured Azure Admin', array['scope.configured'],
+      'access-configured', 'refresh-configured', now() + interval '4 hours'
+    )$$,
+  array['configured:true:true'],
+  'a reconnect with an exact configured link restores configured status'
+);
+select results_eq(
+  $$select status::text || ':' || azure_organization_id
+    from public.azure_devops_connections
+    where organization_id = '10000000-0000-0000-0000-000000000001'$$,
+  array['configured:99000000-0000-4000-8000-000000000009'],
+  'configured reconnect preserves the Azure organization selection'
+);
+
+reset role;
+update public.azure_devops_team_links
+set status = 'disconnected'
+where organization_id = '10000000-0000-0000-0000-000000000001';
+set local role service_role;
+select results_eq(
+  $$select connection_status::text || ':' || credentials_applied::text
+    from public.persist_azure_devops_oauth_connection(
+      '10000000-0000-0000-0000-000000000001',
+      '00000000-0000-0000-0000-000000000002',
+      'tenant-newest', '98000000-0000-4000-8000-000000000004',
+      'Newest Azure Admin', array['scope.newest'],
+      'access-newest', 'refresh-newest', now() + interval '5 hours',
+      'newest@example.test'
+    )$$,
+  array['pending:true'],
+  'a reconnect with only disconnected links returns the connection to pending'
+);
+select results_eq(
+  $$select connection.status::text || ':' || link.status::text
+    from public.azure_devops_connections as connection
+    join public.azure_devops_team_links as link on link.connection_id = connection.id
+    where connection.organization_id = '10000000-0000-0000-0000-000000000001'$$,
+  array['pending:disconnected'],
+  'reconnect does not reactivate disconnected team links'
+);
+select results_eq(
+  $$select connection_status::text || ':' || was_existing::text || ':' || credentials_applied::text
+    from public.persist_azure_devops_oauth_connection(
+      '10000000-0000-0000-0000-000000000001',
+      '00000000-0000-0000-0000-000000000001',
+      'tenant-stale', '98000000-0000-4000-8000-000000000005',
+      'Stale Azure Admin', array['scope.stale'],
+      'access-stale', 'refresh-stale', now() + interval '4 hours',
+      'stale@example.test'
+    )$$,
+  array['pending:true:false'],
+  'an older concurrent credential result is explicitly ignored'
+);
+select results_eq(
+  $$select tenant_id || ':' || authorized_user_id || ':' || access_token_ciphertext || ':' || status::text
+    from public.azure_devops_connections
+    where organization_id = '10000000-0000-0000-0000-000000000001'$$,
+  array['tenant-newest:98000000-0000-4000-8000-000000000004:access-newest:pending'],
+  'stale persistence leaves credentials identity and status unchanged'
+);
+reset role;
+update public.organization_memberships
+set role = 'employee'
+where organization_id = '10000000-0000-0000-0000-000000000001'
+  and user_id = '00000000-0000-0000-0000-000000000002';
+set local role service_role;
+select throws_ok(
+  $$select * from public.persist_azure_devops_oauth_connection(
+      '10000000-0000-0000-0000-000000000001',
+      '00000000-0000-0000-0000-000000000002',
+      'tenant', '98000000-0000-4000-8000-000000000006', 'Nonadmin',
+      array['scope'], 'access', 'refresh', now() + interval '1 hour'
+    )$$,
+  '42501',
+  'active organization admin required',
+  'non-admin actors cannot persist OAuth connections'
+);
+select throws_ok(
+  $$select * from public.persist_azure_devops_oauth_connection(
+      '10000000-0000-0000-0000-000000000099',
+      '00000000-0000-0000-0000-000000000001',
+      'tenant', '98000000-0000-4000-8000-000000000007', 'Crossorg',
+      array['scope'], 'access', 'refresh', now() + interval '1 hour'
+    )$$,
+  '42501',
+  'active organization admin required',
+  'an admin cannot persist a different organization connection'
+);
+
+reset role;
+delete from public.azure_devops_team_links
+where organization_id = '10000000-0000-0000-0000-000000000001';
+delete from public.azure_devops_connections
+where organization_id = '10000000-0000-0000-0000-000000000001';
+update public.organization_memberships
+set role = 'employee'
+where organization_id = '10000000-0000-0000-0000-000000000001'
+  and user_id = '00000000-0000-0000-0000-000000000002';
 
 select throws_ok(
   $$insert into public.azure_devops_connections (

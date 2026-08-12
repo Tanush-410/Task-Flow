@@ -1538,6 +1538,26 @@ export type Database = {
           role: Database['public']['Enums']['membership_role'];
         }[];
       };
+      persist_azure_devops_oauth_connection: {
+        Args: {
+          target_access_token_ciphertext: string;
+          target_actor_id: string;
+          target_authorized_user_display_name: string;
+          target_authorized_user_email?: string;
+          target_authorized_user_id: string;
+          target_granted_scopes: string[];
+          target_organization_id: string;
+          target_refresh_token_ciphertext: string;
+          target_tenant_id: string;
+          target_token_expires_at: string;
+        };
+        Returns: {
+          connection_id: string;
+          connection_status: Database['public']['Enums']['azure_devops_connection_status'];
+          credentials_applied: boolean;
+          was_existing: boolean;
+        }[];
+      };
       register_organization_admin: {
         Args: { organization_name: string; organization_timezone: string };
         Returns: string;
