@@ -25,6 +25,12 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from '@/components/ui/collapsible';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 import type { BacklogWorkItem } from '@/modules/backlog/queries';
@@ -42,20 +48,26 @@ const TYPE_LABELS: Record<WorkItemType, string> = {
   epic: 'Epic',
   feature: 'Feature',
   user_story: 'User story',
+  bug: 'Bug',
   task: 'Task',
 };
 
-const CHILD_TYPE_BY_PARENT: Record<WorkItemType, WorkItemType | null> = {
-  epic: 'feature',
-  feature: 'user_story',
-  user_story: 'task',
-  task: null,
+// A feature is the one type with two legal child types (a user_story or a
+// bug), so every entry is a list even though the other types only ever
+// have zero or one legal child type.
+const CHILD_TYPES_BY_PARENT: Record<WorkItemType, WorkItemType[]> = {
+  epic: ['feature'],
+  feature: ['user_story', 'bug'],
+  user_story: ['task'],
+  bug: ['task'],
+  task: [],
 };
 
 const TYPE_VARIANT: Record<WorkItemType, BadgeVariant> = {
   epic: 'default',
   feature: 'secondary',
   user_story: 'outline',
+  bug: 'destructive',
   task: 'outline',
 };
 
@@ -205,11 +217,14 @@ export function BacklogRow({
   teamId: string;
 }) {
   const [editingEstimate, setEditingEstimate] = useState(false);
+  const [pendingChildType, setPendingChildType] = useState<WorkItemType | null>(
+    null,
+  );
   const hasChildren = item.children.length > 0;
   const isOpen = !collapsedIds.has(item.id);
   const estimate = formatEstimate(item);
   const pending = pendingIds.has(item.id);
-  const childType = CHILD_TYPE_BY_PARENT[item.type];
+  const childTypes = CHILD_TYPES_BY_PARENT[item.type];
 
   const typedSiblings = siblings.filter(
     (sibling) => sibling.type === item.type,
@@ -327,14 +342,14 @@ export function BacklogRow({
         ) : null}
 
         <div className="flex shrink-0 items-center gap-0.5">
-          {childType ? (
+          {childTypes.length === 1 ? (
             <CreateWorkItemForm
               parentTaskId={item.id}
               parentTitle={item.title}
               planningTeamId={teamId}
               trigger={
                 <Button
-                  aria-label={`Add ${TYPE_LABELS[childType].toLowerCase()} under ${item.title}`}
+                  aria-label={`Add ${TYPE_LABELS[childTypes[0]!].toLowerCase()} under ${item.title}`}
                   size="icon-xs"
                   type="button"
                   variant="ghost"
@@ -342,7 +357,42 @@ export function BacklogRow({
                   <Plus aria-hidden />
                 </Button>
               }
-              type={childType}
+              type={childTypes[0]!}
+            />
+          ) : childTypes.length > 1 ? (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  aria-label={`Add work item under ${item.title}`}
+                  size="icon-xs"
+                  type="button"
+                  variant="ghost"
+                >
+                  <Plus aria-hidden />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start">
+                {childTypes.map((option) => (
+                  <DropdownMenuItem
+                    key={option}
+                    onSelect={() => setPendingChildType(option)}
+                  >
+                    Add {TYPE_LABELS[option].toLowerCase()}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          ) : null}
+          {pendingChildType ? (
+            <CreateWorkItemForm
+              onOpenChange={(next) => {
+                if (!next) setPendingChildType(null);
+              }}
+              open
+              parentTaskId={item.id}
+              parentTitle={item.title}
+              planningTeamId={teamId}
+              type={pendingChildType}
             />
           ) : null}
           <MoveWorkItemDialog

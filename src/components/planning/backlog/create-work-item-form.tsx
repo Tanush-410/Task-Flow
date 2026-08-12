@@ -32,6 +32,7 @@ const TYPE_LABELS: Record<WorkItemType, string> = {
   epic: 'Epic',
   feature: 'Feature',
   user_story: 'User story',
+  bug: 'Bug',
   task: 'Task',
 };
 
@@ -48,15 +49,21 @@ export function CreateWorkItemForm({
   parentTaskId,
   parentTitle,
   trigger,
+  open: controlledOpen,
+  onOpenChange: controlledOnOpenChange,
 }: {
   planningTeamId: string;
   type: WorkItemType;
   parentTaskId: string | null;
   parentTitle?: string;
-  trigger: ReactNode;
+  trigger?: ReactNode;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }) {
   const router = useRouter();
-  const [open, setOpen] = useState(false);
+  const [internalOpen, setInternalOpen] = useState(false);
+  const open = controlledOpen ?? internalOpen;
+  const setOpen = controlledOnOpenChange ?? setInternalOpen;
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<ActionError | null>(null);
   const [title, setTitle] = useState('');
@@ -121,7 +128,7 @@ export function CreateWorkItemForm({
       }}
       open={open}
     >
-      <DialogTrigger asChild>{trigger}</DialogTrigger>
+      {trigger ? <DialogTrigger asChild>{trigger}</DialogTrigger> : null}
       <DialogContent className="sm:max-w-sm">
         <DialogHeader>
           <DialogTitle>New {TYPE_LABELS[type].toLowerCase()}</DialogTitle>

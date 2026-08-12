@@ -1,6 +1,12 @@
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
+// jsdom doesn't implement pointer capture; radix's DropdownMenu (built on
+// its Menu primitive) calls these when opening/closing via pointer events.
+Element.prototype.hasPointerCapture = vi.fn().mockReturnValue(false);
+Element.prototype.setPointerCapture = vi.fn();
+Element.prototype.releasePointerCapture = vi.fn();
+
 const mocks = vi.hoisted(() => ({
   push: vi.fn(),
   refresh: vi.fn(),
@@ -369,5 +375,145 @@ describe('BacklogTree', () => {
     expect(
       screen.queryByRole('button', { name: /Add .* under Task A/ }),
     ).not.toBeInTheDocument();
+  });
+
+  it('offers a two-option add-child menu on a feature (user story or bug)', () => {
+    render(
+      <BacklogTree
+        items={baseTree()}
+        memberNameById={memberNameById}
+        teamId={teamId}
+      />,
+    );
+
+    // A feature has two legal child types, so it gets a menu instead of a
+    // single fixed-type button.
+    expect(
+      screen.queryByRole('button', {
+        name: 'Add user story under Feature under B',
+      }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole('button', {
+        name: 'Add work item under Feature under B',
+      }),
+    ).toBeVisible();
+  });
+
+  it('creates a user story from the two-option add-child menu', async () => {
+    mocks.createWorkItem.mockResolvedValue({
+      ok: true,
+      data: { workItemId: 'new-story-id' },
+    });
+
+    render(
+      <BacklogTree
+        items={baseTree()}
+        memberNameById={memberNameById}
+        teamId={teamId}
+      />,
+    );
+
+    fireEvent.pointerDown(
+      screen.getByRole('button', {
+        name: 'Add work item under Feature under B',
+      }),
+      { button: 0 },
+    );
+    fireEvent.click(
+      await screen.findByRole('menuitem', { name: 'Add user story' }),
+    );
+    expect(screen.getByText('Under “Feature under B”')).toBeVisible();
+    fireEvent.change(screen.getByLabelText('Title'), {
+      target: { value: 'Sign up form' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Create user story' }));
+
+    await vi.waitFor(() =>
+      expect(mocks.createWorkItem).toHaveBeenCalledWith(
+        expect.objectContaining({
+          parentTaskId: featureId,
+          type: 'user_story',
+          title: 'Sign up form',
+        }),
+      ),
+    );
+  });
+
+  it('creates a bug from the two-option add-child menu', async () => {
+    mocks.createWorkItem.mockResolvedValue({
+      ok: true,
+      data: { workItemId: 'new-bug-id' },
+    });
+
+    render(
+      <BacklogTree
+        items={baseTree()}
+        memberNameById={memberNameById}
+        teamId={teamId}
+      />,
+    );
+
+    fireEvent.pointerDown(
+      screen.getByRole('button', {
+        name: 'Add work item under Feature under B',
+      }),
+      { button: 0 },
+    );
+    fireEvent.click(await screen.findByRole('menuitem', { name: 'Add bug' }));
+    expect(screen.getByRole('heading', { name: 'New bug' })).toBeVisible();
+    expect(screen.getByText('Under “Feature under B”')).toBeVisible();
+    fireEvent.change(screen.getByLabelText('Title'), {
+      target: { value: 'Save button does nothing' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Create bug' }));
+
+    await vi.waitFor(() =>
+      expect(mocks.createWorkItem).toHaveBeenCalledWith(
+        expect.objectContaining({
+          parentTaskId: featureId,
+          type: 'bug',
+          title: 'Save button does nothing',
+        }),
+      ),
+    );
+  });
+
+  it('shows a bug badge with a distinct variant', () => {
+    const treeWithBug: BacklogWorkItem[] = [
+      item({
+        id: epicAId,
+        title: 'Epic A',
+        children: [
+          item({
+            id: featureId,
+            type: 'feature',
+            parentTaskId: epicAId,
+            title: 'Feature A',
+            children: [
+              item({
+                id: '30000000-0000-0000-0000-000000000006',
+                type: 'bug',
+                parentTaskId: featureId,
+                title: 'Save button does nothing',
+              }),
+            ],
+          }),
+        ],
+      }),
+    ];
+
+    render(
+      <BacklogTree
+        items={treeWithBug}
+        memberNameById={memberNameById}
+        teamId={teamId}
+      />,
+    );
+
+    expect(screen.getByText('Bug')).toBeVisible();
+    expect(
+      screen.getByRole('link', { name: 'Save button does nothing' }),
+    ).toBeVisible();
   });
 });

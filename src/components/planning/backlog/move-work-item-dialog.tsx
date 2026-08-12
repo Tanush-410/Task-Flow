@@ -34,6 +34,7 @@ const TYPE_LABELS: Record<WorkItemType, string> = {
   epic: 'Epic',
   feature: 'Feature',
   user_story: 'User story',
+  bug: 'Bug',
   task: 'Task',
 };
 
