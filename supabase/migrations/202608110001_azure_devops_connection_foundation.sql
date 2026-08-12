@@ -52,7 +52,7 @@ create table public.azure_devops_connections (
   safe_error_code text
     check (
       safe_error_code is null
-      or safe_error_code ~ '^[a-z0-9_]{1,100}$'
+      or safe_error_code ~ '^[A-Z][A-Z0-9_]{0,99}$'
     ),
   last_verified_at timestamptz,
   created_by uuid not null references public.profiles (id),

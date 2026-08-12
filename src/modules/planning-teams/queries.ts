@@ -3,7 +3,10 @@ import 'server-only';
 import { redirect } from 'next/navigation';
 
 import { createServerSupabase } from '@/lib/supabase/server';
-import { requireMembership } from '@/modules/members/queries';
+import {
+  requireMembership,
+  type MembershipContext,
+} from '@/modules/members/queries';
 
 export type PlanningTeamRole = 'admin' | 'planner' | 'member';
 
@@ -39,6 +42,13 @@ export async function listPlanningTeams(
   input: { includeArchived?: boolean } = {},
 ): Promise<PlanningTeamSummary[]> {
   const membership = await requireMembership();
+  return listPlanningTeamsForMembership(membership, input);
+}
+
+export async function listPlanningTeamsForMembership(
+  membership: MembershipContext,
+  input: { includeArchived?: boolean } = {},
+): Promise<PlanningTeamSummary[]> {
   const supabase = await createServerSupabase();
   let teamQuery = supabase
     .from('planning_teams')

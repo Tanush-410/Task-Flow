@@ -1,6 +1,6 @@
 begin;
 
-select plan(95);
+select plan(97);
 
 select has_type(
   'public',
@@ -387,6 +387,21 @@ values
     null,
     '00000000-0000-0000-0000-000000000001'
   );
+
+select lives_ok(
+  $$update public.azure_devops_connections
+    set safe_error_code = 'AZURE_RECONNECT_REQUIRED'
+    where id = '70000000-0000-0000-0000-000000000001'$$,
+  'approved uppercase safe error codes are persisted'
+);
+select throws_ok(
+  $$update public.azure_devops_connections
+    set safe_error_code = 'reconnect_required'
+    where id = '70000000-0000-0000-0000-000000000001'$$,
+  '23514',
+  null,
+  'lowercase safe error codes are rejected'
+);
 
 select throws_ok(
   $sql$do $mutation$
