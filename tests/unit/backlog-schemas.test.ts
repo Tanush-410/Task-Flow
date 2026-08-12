@@ -74,6 +74,40 @@ describe('workItemCreateSchema', () => {
       }).success,
     ).toBe(false);
   });
+
+  it('accepts a bug with repro steps, severity, and a found-in-build note', () => {
+    const result = workItemCreateSchema.safeParse({
+      planningTeamId,
+      parentTaskId,
+      type: 'bug',
+      title: 'Save button does nothing',
+      reproSteps: 'Click Save on an empty form',
+      severity: 'high',
+      foundInBuild: '1.4.0',
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it('accepts a bug with story points, like a user story', () => {
+    const result = workItemCreateSchema.safeParse({
+      planningTeamId,
+      parentTaskId,
+      type: 'bug',
+      title: 'Save button does nothing',
+      storyPoints: 2,
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it('rejects repro steps, severity, or a found-in-build note on a non-bug', () => {
+    const result = workItemCreateSchema.safeParse({
+      planningTeamId,
+      type: 'epic',
+      title: 'Invalid',
+      reproSteps: 'Not applicable',
+    });
+    expect(result.success).toBe(false);
+  });
 });
 
 describe('workItemPlanningFieldsUpdateSchema', () => {
@@ -103,6 +137,24 @@ describe('workItemPlanningFieldsUpdateSchema', () => {
       taskId,
       originalHours: 8,
       remainingHours: 6,
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it('accepts a change to only the bug detail fields', () => {
+    const result = workItemPlanningFieldsUpdateSchema.safeParse({
+      taskId,
+      reproSteps: 'Updated repro steps',
+      severity: 'urgent',
+      foundInBuild: '1.5.0',
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it('allows clearing severity back to null', () => {
+    const result = workItemPlanningFieldsUpdateSchema.safeParse({
+      taskId,
+      severity: null,
     });
     expect(result.success).toBe(true);
   });

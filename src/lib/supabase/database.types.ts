@@ -1167,6 +1167,7 @@ export type Database = {
           created_by: string;
           description: string;
           due_at: string | null;
+          found_in_build: string | null;
           id: string;
           organization_id: string;
           original_hours: number | null;
@@ -1176,6 +1177,8 @@ export type Database = {
           published_at: string | null;
           recurrence: Database['public']['Enums']['task_recurrence'];
           remaining_hours: number | null;
+          repro_steps: string | null;
+          severity: Database['public']['Enums']['task_priority'] | null;
           start_at: string | null;
           status: Database['public']['Enums']['task_status'];
           story_points: number | null;
@@ -1191,6 +1194,7 @@ export type Database = {
           created_by: string;
           description?: string;
           due_at?: string | null;
+          found_in_build?: string | null;
           id?: string;
           organization_id: string;
           original_hours?: number | null;
@@ -1200,6 +1204,8 @@ export type Database = {
           published_at?: string | null;
           recurrence?: Database['public']['Enums']['task_recurrence'];
           remaining_hours?: number | null;
+          repro_steps?: string | null;
+          severity?: Database['public']['Enums']['task_priority'] | null;
           start_at?: string | null;
           status?: Database['public']['Enums']['task_status'];
           story_points?: number | null;
@@ -1215,6 +1221,7 @@ export type Database = {
           created_by?: string;
           description?: string;
           due_at?: string | null;
+          found_in_build?: string | null;
           id?: string;
           organization_id?: string;
           original_hours?: number | null;
@@ -1224,6 +1231,8 @@ export type Database = {
           published_at?: string | null;
           recurrence?: Database['public']['Enums']['task_recurrence'];
           remaining_hours?: number | null;
+          repro_steps?: string | null;
+          severity?: Database['public']['Enums']['task_priority'] | null;
           start_at?: string | null;
           status?: Database['public']['Enums']['task_status'];
           story_points?: number | null;
@@ -1311,9 +1320,12 @@ export type Database = {
       create_work_item: {
         Args: {
           item_description: string;
+          item_found_in_build?: string;
           item_original_hours?: number;
           item_priority: Database['public']['Enums']['task_priority'];
           item_remaining_hours?: number;
+          item_repro_steps?: string;
+          item_severity?: Database['public']['Enums']['task_priority'];
           item_story_points?: number;
           item_title: string;
           item_type: Database['public']['Enums']['work_item_type'];
@@ -1464,7 +1476,7 @@ export type Database = {
       task_priority: 'low' | 'medium' | 'high' | 'urgent';
       task_recurrence: 'none' | 'daily' | 'weekly' | 'monthly';
       task_status: 'draft' | 'published' | 'archived';
-      work_item_type: 'epic' | 'feature' | 'user_story' | 'task';
+      work_item_type: 'epic' | 'feature' | 'user_story' | 'task' | 'bug';
     };
     CompositeTypes: {
       [_ in never]: never;
@@ -1629,7 +1641,7 @@ export const Constants = {
       task_priority: ['low', 'medium', 'high', 'urgent'],
       task_recurrence: ['none', 'daily', 'weekly', 'monthly'],
       task_status: ['draft', 'published', 'archived'],
-      work_item_type: ['epic', 'feature', 'user_story', 'task'],
+      work_item_type: ['epic', 'feature', 'user_story', 'task', 'bug'],
     },
   },
 } as const;
