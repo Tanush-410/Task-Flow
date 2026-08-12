@@ -1,6 +1,6 @@
 begin;
 
-select plan(46);
+select plan(60);
 
 -- Schema
 
@@ -12,6 +12,9 @@ select has_column('public', 'tasks', 'story_points', 'tasks store story point es
 select has_column('public', 'tasks', 'original_hours', 'tasks store original hour estimates');
 select has_column('public', 'tasks', 'remaining_hours', 'tasks store remaining hour estimates');
 select has_column('public', 'tasks', 'backlog_rank', 'tasks store their backlog rank');
+select has_column('public', 'tasks', 'repro_steps', 'tasks store bug repro steps');
+select has_column('public', 'tasks', 'severity', 'tasks store bug severity');
+select has_column('public', 'tasks', 'found_in_build', 'tasks store the bug''s found-in-build note');
 
 -- Column-level collate "C" is what makes a plain `order by backlog_rank`
 -- (e.g. from PostgREST/supabase-js, which cannot request a collation)
@@ -38,7 +41,7 @@ select has_function(
 );
 select has_function(
   'public', 'create_work_item',
-  array['uuid', 'work_item_type', 'text', 'text', 'task_priority', 'uuid', 'numeric', 'numeric', 'numeric'],
+  array['uuid', 'work_item_type', 'text', 'text', 'task_priority', 'uuid', 'numeric', 'numeric', 'numeric', 'text', 'task_priority', 'text'],
   'work item creation function exists'
 );
 select has_function(
@@ -85,14 +88,21 @@ select ok(
 );
 
 select ok(
-  has_function_privilege('authenticated', 'public.create_work_item(uuid,work_item_type,text,text,task_priority,uuid,numeric,numeric,numeric)', 'execute')
+  has_column_privilege('authenticated', 'public.tasks', 'repro_steps', 'update')
+  and has_column_privilege('authenticated', 'public.tasks', 'severity', 'update')
+  and has_column_privilege('authenticated', 'public.tasks', 'found_in_build', 'update'),
+  'bug detail columns remain directly writable'
+);
+
+select ok(
+  has_function_privilege('authenticated', 'public.create_work_item(uuid,work_item_type,text,text,task_priority,uuid,numeric,numeric,numeric,text,task_priority,text)', 'execute')
   and has_function_privilege('authenticated', 'public.move_work_item(uuid,uuid,boolean,uuid)', 'execute')
   and has_function_privilege('authenticated', 'public.reestimate_work_item_hours(uuid,numeric,numeric)', 'execute'),
   'authenticated users can execute the work item RPCs'
 );
 
 select ok(
-  not has_function_privilege('anon', 'public.create_work_item(uuid,work_item_type,text,text,task_priority,uuid,numeric,numeric,numeric)', 'execute'),
+  not has_function_privilege('anon', 'public.create_work_item(uuid,work_item_type,text,text,task_priority,uuid,numeric,numeric,numeric,text,task_priority,text)', 'execute'),
   'anonymous users cannot execute the work item RPCs'
 );
 
@@ -300,6 +310,56 @@ select lives_ok(
   'a second feature under the same epic is valid'
 );
 
+-- Bug hierarchy: a bug is a child of a feature (sibling of user_story), and
+-- can itself parent tasks exactly like a user_story can.
+
+select throws_ok(
+  $$insert into public.tasks (organization_id, created_by, title, work_item_type, planning_team_id)
+    values (
+      '10000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000001', 'Parentless bug',
+      'bug', '50000000-0000-0000-0000-000000000001'
+    )$$,
+  '23514', null, 'a bug requires a parent'
+);
+
+select throws_ok(
+  $$insert into public.tasks (organization_id, created_by, title, work_item_type, planning_team_id, parent_task_id)
+    values (
+      '10000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000001', 'Bug under epic',
+      'bug', '50000000-0000-0000-0000-000000000001', '60000000-0000-0000-0000-000000000001'
+    )$$,
+  '23514', null, 'a bug may only be parented by a feature'
+);
+
+select lives_ok(
+  $$insert into public.tasks (id, organization_id, created_by, title, work_item_type, planning_team_id, parent_task_id)
+    values (
+      '60000000-0000-0000-0000-000000000008',
+      '10000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000001', 'Backlog bug',
+      'bug', '50000000-0000-0000-0000-000000000001', '60000000-0000-0000-0000-000000000002'
+    )$$,
+  'a bug under a feature is valid'
+);
+
+select throws_ok(
+  $$insert into public.tasks (organization_id, created_by, title, work_item_type, planning_team_id, parent_task_id)
+    values (
+      '10000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000001', 'Story under bug',
+      'user_story', '50000000-0000-0000-0000-000000000001', '60000000-0000-0000-0000-000000000008'
+    )$$,
+  '23514', null, 'a user story may not be parented by a bug'
+);
+
+select lives_ok(
+  $$insert into public.tasks (id, organization_id, created_by, title, work_item_type, planning_team_id, parent_task_id)
+    values (
+      '60000000-0000-0000-0000-000000000009',
+      '10000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000001', 'Task under bug',
+      'task', '50000000-0000-0000-0000-000000000001', '60000000-0000-0000-0000-000000000008'
+    )$$,
+  'a task may be parented by a bug as well as a user story'
+);
+
 -- Estimate constraints
 
 select throws_ok(
@@ -322,6 +382,19 @@ select throws_ok(
     set original_hours = 4, remaining_hours = 8
     where id = '60000000-0000-0000-0000-000000000004'$$,
   '23514', null, 'remaining hours cannot exceed original hours'
+);
+
+-- Bug-specific fields require work_item_type = 'bug'
+
+select throws_ok(
+  $$update public.tasks set repro_steps = 'Click X, then Y' where id = '60000000-0000-0000-0000-000000000004'$$,
+  '23514', null, 'a non-bug cannot carry repro steps'
+);
+
+select lives_ok(
+  $$update public.tasks set repro_steps = 'Click X, then Y', severity = 'high', found_in_build = '1.2.3'
+    where id = '60000000-0000-0000-0000-000000000008'$$,
+  'a bug can carry repro steps, severity, and a found-in-build note'
 );
 
 -- Rank uniqueness
@@ -349,13 +422,41 @@ select set_config(
 
 select is(
   public.count_work_item_descendants('60000000-0000-0000-0000-000000000001'),
-  4,
-  'the epic fixture has four descendants (two features, one story, one task)'
+  6,
+  'the epic fixture has six descendants (two features, one story, one task, one bug, one task under the bug)'
 );
 select is(
   public.count_work_item_descendants('60000000-0000-0000-0000-000000000004'),
   0,
   'a leaf task has no descendants'
+);
+
+select public.create_work_item(
+  target_planning_team_id := '50000000-0000-0000-0000-000000000001',
+  item_type := 'bug',
+  item_title := 'RPC-created bug',
+  item_description := '',
+  item_priority := 'high',
+  target_parent_task_id := '60000000-0000-0000-0000-000000000002',
+  item_repro_steps := 'Open the app and click Save',
+  item_severity := 'critical',
+  item_found_in_build := '2.0.0-rc1'
+);
+
+select is(
+  (select repro_steps from public.tasks where title = 'RPC-created bug'),
+  'Open the app and click Save',
+  'create_work_item sets repro steps for a bug'
+);
+select is(
+  (select severity from public.tasks where title = 'RPC-created bug'),
+  'critical',
+  'create_work_item sets severity for a bug'
+);
+select is(
+  (select found_in_build from public.tasks where title = 'RPC-created bug'),
+  '2.0.0-rc1',
+  'create_work_item sets found-in-build for a bug'
 );
 
 reset role;
