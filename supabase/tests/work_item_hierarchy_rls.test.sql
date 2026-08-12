@@ -1,6 +1,6 @@
 begin;
 
-select plan(44);
+select plan(45);
 
 -- Schema
 
@@ -276,8 +276,9 @@ select throws_ok(
 );
 
 select lives_ok(
-  $$insert into public.tasks (organization_id, created_by, title, work_item_type, planning_team_id, parent_task_id)
+  $$insert into public.tasks (id, organization_id, created_by, title, work_item_type, planning_team_id, parent_task_id)
     values (
+      '60000000-0000-0000-0000-000000000007',
       '10000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000001', 'Second feature',
       'feature', '50000000-0000-0000-0000-000000000001', '60000000-0000-0000-0000-000000000001'
     )$$,
@@ -323,16 +324,26 @@ select throws_ok(
 
 -- Descendant counting
 
+set local role authenticated;
+select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-000000000001', true);
+select set_config(
+  'request.jwt.claims',
+  '{"sub":"00000000-0000-0000-0000-000000000001","role":"authenticated"}',
+  true
+);
+
 select is(
   public.count_work_item_descendants('60000000-0000-0000-0000-000000000001'),
-  3,
-  'the epic fixture has three descendants (feature, story, task)'
+  4,
+  'the epic fixture has four descendants (two features, one story, one task)'
 );
 select is(
   public.count_work_item_descendants('60000000-0000-0000-0000-000000000004'),
   0,
   'a leaf task has no descendants'
 );
+
+reset role;
 
 -- RLS visibility: admin-001 (implicit member via is_admin) vs employee-002
 -- (explicit member of team A only) vs an outside employee
@@ -371,10 +382,15 @@ select set_config(
 
 select lives_ok(
   $$select public.move_work_item(
-    '60000000-0000-0000-0000-000000000003', '60000000-0000-0000-0000-000000000002',
+    '60000000-0000-0000-0000-000000000003', '60000000-0000-0000-0000-000000000007',
     '50000000-0000-0000-0000-000000000001', false
   )$$,
   'reparenting within the same team never requires include_descendants'
+);
+select is(
+  (select parent_task_id from public.tasks where id = '60000000-0000-0000-0000-000000000003'),
+  '60000000-0000-0000-0000-000000000007',
+  'the user story now reports the new sibling feature as its parent'
 );
 
 select throws_ok(

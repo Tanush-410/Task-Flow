@@ -43,10 +43,12 @@ select policies_are(
     'tasks_insert_members',
     'tasks_select_admins_by_org',
     'tasks_select_creator',
+    'tasks_select_planning_team_member',
     'tasks_update_admins',
+    'tasks_update_planning_team_member',
     'tasks_view_participants'
   ],
-  'tasks have the current member and admin policies'
+  'tasks have the current member, admin, and planning-team policies'
 );
 
 select policies_are(
@@ -65,8 +67,8 @@ select policies_are(
 select policies_are(
   'public',
   'task_activity_events',
-  array['task_activity_view_participants'],
-  'activity events are visible to task participants'
+  array['task_activity_view_participants', 'task_activity_view_planning_team_member'],
+  'activity events are visible to task participants and planning-team members'
 );
 
 select policies_are(
