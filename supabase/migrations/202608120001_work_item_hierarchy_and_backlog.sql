@@ -207,16 +207,21 @@ $$;
 -- the planning team, re-validates the client's parent claim against the
 -- parent's own team rather than trusting it, and appends the new item at
 -- the end of its sibling scope.
+-- Optional parameters are declared last (Postgres requires every
+-- parameter after the first one with a default to also have one); the
+-- defaults exist purely so generated TypeScript types allow null/omitted
+-- values, since every real caller supplies them by name regardless of
+-- position.
 create or replace function public.create_work_item(
   target_planning_team_id uuid,
-  target_parent_task_id uuid,
   item_type public.work_item_type,
   item_title text,
   item_description text,
   item_priority public.task_priority,
-  item_story_points numeric,
-  item_original_hours numeric,
-  item_remaining_hours numeric
+  target_parent_task_id uuid default null,
+  item_story_points numeric default null,
+  item_original_hours numeric default null,
+  item_remaining_hours numeric default null
 )
 returns uuid
 language plpgsql
@@ -280,8 +285,8 @@ $$;
 -- caller to rebalance and retry.
 create or replace function public.assign_backlog_rank(
   target_task_id uuid,
-  before_task_id uuid,
-  after_task_id uuid
+  before_task_id uuid default null,
+  after_task_id uuid default null
 )
 returns text
 language plpgsql
@@ -340,8 +345,8 @@ $$;
 -- retry of assign_backlog_rank.
 create or replace function public.rebalance_backlog_siblings(
   target_team_id uuid,
-  target_parent_task_id uuid,
-  target_work_item_type public.work_item_type
+  target_work_item_type public.work_item_type,
+  target_parent_task_id uuid default null
 )
 returns integer
 language plpgsql
@@ -436,9 +441,9 @@ $$;
 -- whenever the target has any.
 create or replace function public.move_work_item(
   target_task_id uuid,
-  new_parent_task_id uuid,
   new_planning_team_id uuid,
-  include_descendants boolean
+  include_descendants boolean,
+  new_parent_task_id uuid default null
 )
 returns integer
 language plpgsql
@@ -730,25 +735,25 @@ $$;
 revoke all on function public.is_task_planning_team_member(uuid) from public, anon, authenticated;
 revoke all on function public.backlog_rank_midpoint(text, text) from public, anon, authenticated;
 revoke all on function public.create_work_item(
-  uuid, uuid, public.work_item_type, text, text, public.task_priority, numeric, numeric, numeric
+  uuid, public.work_item_type, text, text, public.task_priority, uuid, numeric, numeric, numeric
 ) from public, anon, authenticated;
 revoke all on function public.assign_backlog_rank(uuid, uuid, uuid) from public, anon, authenticated;
-revoke all on function public.rebalance_backlog_siblings(uuid, uuid, public.work_item_type)
+revoke all on function public.rebalance_backlog_siblings(uuid, public.work_item_type, uuid)
 from public, anon, authenticated;
 revoke all on function public.count_work_item_descendants(uuid) from public, anon, authenticated;
-revoke all on function public.move_work_item(uuid, uuid, uuid, boolean) from public, anon, authenticated;
+revoke all on function public.move_work_item(uuid, uuid, boolean, uuid) from public, anon, authenticated;
 revoke all on function public.reestimate_work_item_hours(uuid, numeric, numeric)
 from public, anon, authenticated;
 
 grant execute on function public.is_task_planning_team_member(uuid) to authenticated;
 grant execute on function public.create_work_item(
-  uuid, uuid, public.work_item_type, text, text, public.task_priority, numeric, numeric, numeric
+  uuid, public.work_item_type, text, text, public.task_priority, uuid, numeric, numeric, numeric
 ) to authenticated;
 grant execute on function public.assign_backlog_rank(uuid, uuid, uuid) to authenticated;
-grant execute on function public.rebalance_backlog_siblings(uuid, uuid, public.work_item_type)
+grant execute on function public.rebalance_backlog_siblings(uuid, public.work_item_type, uuid)
 to authenticated;
 grant execute on function public.count_work_item_descendants(uuid) to authenticated;
-grant execute on function public.move_work_item(uuid, uuid, uuid, boolean) to authenticated;
+grant execute on function public.move_work_item(uuid, uuid, boolean, uuid) to authenticated;
 grant execute on function public.reestimate_work_item_hours(uuid, numeric, numeric)
 to authenticated;
 -- backlog_rank_midpoint stays internal: every caller reaches it indirectly

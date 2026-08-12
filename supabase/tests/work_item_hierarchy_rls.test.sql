@@ -23,7 +23,7 @@ select has_function(
 );
 select has_function(
   'public', 'create_work_item',
-  array['uuid', 'uuid', 'work_item_type', 'text', 'text', 'task_priority', 'numeric', 'numeric', 'numeric'],
+  array['uuid', 'work_item_type', 'text', 'text', 'task_priority', 'uuid', 'numeric', 'numeric', 'numeric'],
   'work item creation function exists'
 );
 select has_function(
@@ -31,7 +31,7 @@ select has_function(
   'rank assignment function exists'
 );
 select has_function(
-  'public', 'rebalance_backlog_siblings', array['uuid', 'uuid', 'work_item_type'],
+  'public', 'rebalance_backlog_siblings', array['uuid', 'work_item_type', 'uuid'],
   'sibling rebalance function exists'
 );
 select has_function(
@@ -39,7 +39,7 @@ select has_function(
   'descendant counting function exists'
 );
 select has_function(
-  'public', 'move_work_item', array['uuid', 'uuid', 'uuid', 'boolean'],
+  'public', 'move_work_item', array['uuid', 'uuid', 'boolean', 'uuid'],
   'reparent function exists'
 );
 select has_function(
@@ -70,14 +70,14 @@ select ok(
 );
 
 select ok(
-  has_function_privilege('authenticated', 'public.create_work_item(uuid,uuid,work_item_type,text,text,task_priority,numeric,numeric,numeric)', 'execute')
-  and has_function_privilege('authenticated', 'public.move_work_item(uuid,uuid,uuid,boolean)', 'execute')
+  has_function_privilege('authenticated', 'public.create_work_item(uuid,work_item_type,text,text,task_priority,uuid,numeric,numeric,numeric)', 'execute')
+  and has_function_privilege('authenticated', 'public.move_work_item(uuid,uuid,boolean,uuid)', 'execute')
   and has_function_privilege('authenticated', 'public.reestimate_work_item_hours(uuid,numeric,numeric)', 'execute'),
   'authenticated users can execute the work item RPCs'
 );
 
 select ok(
-  not has_function_privilege('anon', 'public.create_work_item(uuid,uuid,work_item_type,text,text,task_priority,numeric,numeric,numeric)', 'execute'),
+  not has_function_privilege('anon', 'public.create_work_item(uuid,work_item_type,text,text,task_priority,uuid,numeric,numeric,numeric)', 'execute'),
   'anonymous users cannot execute the work item RPCs'
 );
 
@@ -382,8 +382,10 @@ select set_config(
 
 select lives_ok(
   $$select public.move_work_item(
-    '60000000-0000-0000-0000-000000000003', '60000000-0000-0000-0000-000000000007',
-    '50000000-0000-0000-0000-000000000001', false
+    target_task_id := '60000000-0000-0000-0000-000000000003',
+    new_planning_team_id := '50000000-0000-0000-0000-000000000001',
+    include_descendants := false,
+    new_parent_task_id := '60000000-0000-0000-0000-000000000007'
   )$$,
   'reparenting within the same team never requires include_descendants'
 );
@@ -395,8 +397,9 @@ select is(
 
 select throws_ok(
   $$select public.move_work_item(
-    '60000000-0000-0000-0000-000000000001', null,
-    '50000000-0000-0000-0000-000000000002', false
+    target_task_id := '60000000-0000-0000-0000-000000000001',
+    new_planning_team_id := '50000000-0000-0000-0000-000000000002',
+    include_descendants := false
   )$$,
   '23514', null,
   'moving an item with descendants to a different team requires include_descendants'
@@ -404,8 +407,9 @@ select throws_ok(
 
 select lives_ok(
   $$select public.move_work_item(
-    '60000000-0000-0000-0000-000000000001', null,
-    '50000000-0000-0000-0000-000000000002', true
+    target_task_id := '60000000-0000-0000-0000-000000000001',
+    new_planning_team_id := '50000000-0000-0000-0000-000000000002',
+    include_descendants := true
   )$$,
   'moving an item with descendants to a different team succeeds when include_descendants is set'
 );

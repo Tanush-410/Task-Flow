@@ -1280,8 +1280,8 @@ export type Database = {
       };
       assign_backlog_rank: {
         Args: {
-          after_task_id: string;
-          before_task_id: string;
+          after_task_id?: string;
+          before_task_id?: string;
           target_task_id: string;
         };
         Returns: string;
@@ -1311,13 +1311,13 @@ export type Database = {
       create_work_item: {
         Args: {
           item_description: string;
-          item_original_hours: number;
+          item_original_hours?: number;
           item_priority: Database['public']['Enums']['task_priority'];
-          item_remaining_hours: number;
-          item_story_points: number;
+          item_remaining_hours?: number;
+          item_story_points?: number;
           item_title: string;
           item_type: Database['public']['Enums']['work_item_type'];
-          target_parent_task_id: string;
+          target_parent_task_id?: string;
           target_planning_team_id: string;
         };
         Returns: string;
@@ -1379,7 +1379,7 @@ export type Database = {
       move_work_item: {
         Args: {
           include_descendants: boolean;
-          new_parent_task_id: string;
+          new_parent_task_id?: string;
           new_planning_team_id: string;
           target_task_id: string;
         };
@@ -1387,7 +1387,7 @@ export type Database = {
       };
       rebalance_backlog_siblings: {
         Args: {
-          target_parent_task_id: string;
+          target_parent_task_id?: string;
           target_team_id: string;
           target_work_item_type: Database['public']['Enums']['work_item_type'];
         };
