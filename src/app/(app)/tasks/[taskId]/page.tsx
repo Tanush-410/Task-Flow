@@ -58,6 +58,16 @@ const RECURRENCE_LABELS: Record<string, string> = {
   monthly: 'Repeats monthly',
 };
 
+const SEVERITY_VARIANT: Record<
+  string,
+  'secondary' | 'default' | 'destructive'
+> = {
+  low: 'secondary',
+  medium: 'secondary',
+  high: 'default',
+  urgent: 'destructive',
+};
+
 export default async function TaskDetailPage({
   params,
 }: {
@@ -195,6 +205,40 @@ export default async function TaskDetailPage({
           </p>
         ) : null}
       </div>
+
+      {task.work_item_type === 'bug' ? (
+        <Card>
+          <CardHeader>
+            <CardTitle>Bug details</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="flex flex-wrap items-center gap-2">
+              <Badge variant={SEVERITY_VARIANT[task.severity ?? 'medium']}>
+                {PRIORITY_LABELS[task.severity ?? 'medium']} severity
+              </Badge>
+              {task.found_in_build ? (
+                <span className="text-sm text-muted-foreground">
+                  Found in build {task.found_in_build}
+                </span>
+              ) : null}
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-foreground">
+                Repro steps
+              </p>
+              {task.repro_steps ? (
+                <p className="mt-1 max-w-3xl leading-7 whitespace-pre-wrap text-sm text-muted-foreground">
+                  {task.repro_steps}
+                </p>
+              ) : (
+                <p className="mt-1 text-sm text-muted-foreground">
+                  No repro steps recorded.
+                </p>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      ) : null}
 
       {myAssignment ? (
         <Card>
