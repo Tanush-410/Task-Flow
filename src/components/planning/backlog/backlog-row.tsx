@@ -8,11 +8,13 @@ import {
   ChevronRight,
   ChevronUp,
   GripVertical,
+  Plus,
   X,
 } from 'lucide-react';
 import Link from 'next/link';
 import { useState, type FormEvent } from 'react';
 
+import { CreateWorkItemForm } from '@/components/planning/backlog/create-work-item-form';
 import { PersonAvatar } from '@/components/person-avatar';
 import { Badge, type badgeVariants } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -39,6 +41,13 @@ const TYPE_LABELS: Record<WorkItemType, string> = {
   feature: 'Feature',
   user_story: 'User story',
   task: 'Task',
+};
+
+const CHILD_TYPE_BY_PARENT: Record<WorkItemType, WorkItemType | null> = {
+  epic: 'feature',
+  feature: 'user_story',
+  user_story: 'task',
+  task: null,
 };
 
 const TYPE_VARIANT: Record<WorkItemType, BadgeVariant> = {
@@ -176,6 +185,7 @@ export function BacklogRow({
   onEstimateSave,
   memberNameById,
   pendingIds,
+  teamId,
 }: {
   item: BacklogWorkItem;
   depth: number;
@@ -190,12 +200,14 @@ export function BacklogRow({
   onEstimateSave: (item: BacklogWorkItem, patch: EstimatePatch) => void;
   memberNameById: Record<string, string>;
   pendingIds: Set<string>;
+  teamId: string;
 }) {
   const [editingEstimate, setEditingEstimate] = useState(false);
   const hasChildren = item.children.length > 0;
   const isOpen = !collapsedIds.has(item.id);
   const estimate = formatEstimate(item);
   const pending = pendingIds.has(item.id);
+  const childType = CHILD_TYPE_BY_PARENT[item.type];
 
   const typedSiblings = siblings.filter(
     (sibling) => sibling.type === item.type,
@@ -313,6 +325,24 @@ export function BacklogRow({
         ) : null}
 
         <div className="flex shrink-0 items-center gap-0.5">
+          {childType ? (
+            <CreateWorkItemForm
+              parentTaskId={item.id}
+              parentTitle={item.title}
+              planningTeamId={teamId}
+              trigger={
+                <Button
+                  aria-label={`Add ${TYPE_LABELS[childType].toLowerCase()} under ${item.title}`}
+                  size="icon-xs"
+                  type="button"
+                  variant="ghost"
+                >
+                  <Plus aria-hidden />
+                </Button>
+              }
+              type={childType}
+            />
+          ) : null}
           <Button
             aria-label={`Move ${item.title} up`}
             disabled={!canMoveUp}
@@ -361,6 +391,7 @@ export function BacklogRow({
                 onToggle={onToggle}
                 pendingIds={pendingIds}
                 siblings={item.children}
+                teamId={teamId}
               />
             ))}
           </div>

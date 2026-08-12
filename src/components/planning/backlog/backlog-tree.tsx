@@ -9,7 +9,7 @@ import {
   type DragEndEvent,
   type DragStartEvent,
 } from '@dnd-kit/core';
-import { ListTree } from 'lucide-react';
+import { ListTree, Plus } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useMemo, useState } from 'react';
 
@@ -17,6 +17,7 @@ import {
   BacklogRow,
   type EstimatePatch,
 } from '@/components/planning/backlog/backlog-row';
+import { CreateWorkItemForm } from '@/components/planning/backlog/create-work-item-form';
 import {
   buildBacklogIndex,
   reorderSiblings,
@@ -42,16 +43,29 @@ function collectParentIds(items: BacklogWorkItem[]): string[] {
 export function BacklogTree({
   items: initialItems,
   memberNameById,
+  teamId,
 }: {
   items: BacklogWorkItem[];
   memberNameById: Record<string, string>;
+  teamId: string;
 }) {
   const router = useRouter();
   const [items, setItems] = useState(initialItems);
+  const [syncedItems, setSyncedItems] = useState(initialItems);
   const [collapsedIds, setCollapsedIds] = useState<Set<string>>(new Set());
   const [pendingIds, setPendingIds] = useState<Set<string>>(new Set());
   const [activeId, setActiveId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  // Reconciles with the server after router.refresh() -- necessary (not
+  // just belt-and-suspenders) for creations, which add a node that has no
+  // optimistic local counterpart to patch in place. Adjusting state during
+  // render (rather than in an effect) avoids the extra commit-then-effect
+  // render pass for what is, from React's point of view, a derived value.
+  if (initialItems !== syncedItems) {
+    setSyncedItems(initialItems);
+    setItems(initialItems);
+  }
 
   const treeIndex = useMemo(() => buildBacklogIndex(items), [items]);
   const parentIds = useMemo(() => collectParentIds(items), [items]);
@@ -169,9 +183,24 @@ export function BacklogTree({
     );
   }
 
+  const newEpicTrigger = (
+    <CreateWorkItemForm
+      parentTaskId={null}
+      planningTeamId={teamId}
+      trigger={
+        <Button size="sm" type="button">
+          <Plus aria-hidden />
+          New epic
+        </Button>
+      }
+      type="epic"
+    />
+  );
+
   if (items.length === 0) {
     return (
       <EmptyState
+        action={newEpicTrigger}
         description="Create an epic to start building out this team's backlog, or clear your filters."
         icon={ListTree}
         title="No work items match these filters"
@@ -197,25 +226,28 @@ export function BacklogTree({
         </div>
       ) : null}
 
-      <div className="flex justify-end gap-2">
-        <Button
-          disabled={collapsedIds.size === 0}
-          onClick={() => setCollapsedIds(new Set())}
-          size="sm"
-          type="button"
-          variant="ghost"
-        >
-          Expand all
-        </Button>
-        <Button
-          disabled={parentIds.length === 0}
-          onClick={() => setCollapsedIds(new Set(parentIds))}
-          size="sm"
-          type="button"
-          variant="ghost"
-        >
-          Collapse all
-        </Button>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        {newEpicTrigger}
+        <div className="flex gap-2">
+          <Button
+            disabled={collapsedIds.size === 0}
+            onClick={() => setCollapsedIds(new Set())}
+            size="sm"
+            type="button"
+            variant="ghost"
+          >
+            Expand all
+          </Button>
+          <Button
+            disabled={parentIds.length === 0}
+            onClick={() => setCollapsedIds(new Set(parentIds))}
+            size="sm"
+            type="button"
+            variant="ghost"
+          >
+            Collapse all
+          </Button>
+        </div>
       </div>
 
       <DndContext
@@ -240,6 +272,7 @@ export function BacklogTree({
               onToggle={toggle}
               pendingIds={pendingIds}
               siblings={items}
+              teamId={teamId}
             />
           ))}
         </div>

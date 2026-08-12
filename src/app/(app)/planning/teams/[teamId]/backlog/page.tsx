@@ -84,7 +84,11 @@ export default async function BacklogPage({
         type={activeType ?? 'all'}
       />
 
-      <BacklogTree items={tree} memberNameById={memberNameById} />
+      <BacklogTree
+        items={tree}
+        memberNameById={memberNameById}
+        teamId={teamId}
+      />
     </section>
   );
 }
