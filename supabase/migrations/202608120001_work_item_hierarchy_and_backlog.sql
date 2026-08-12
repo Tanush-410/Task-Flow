@@ -12,7 +12,14 @@ alter table public.tasks
   add column story_points numeric(6,2),
   add column original_hours numeric(8,2),
   add column remaining_hours numeric(8,2),
-  add column backlog_rank text;
+  -- collate "C" at the column level (not just in the unique index and the
+  -- ranking functions below) so a plain `order by backlog_rank` from
+  -- PostgREST/supabase-js -- which has no way to request a collation --
+  -- still sorts by byte value, matching the fractional-rank algorithm's
+  -- assumption. The database's default collation sorts case-insensitively
+  -- (e.g. "k" before "V"), which silently breaks rank order once a mix of
+  -- upper- and lowercase digits appears.
+  add column backlog_rank text collate "C";
 
 alter table public.tasks
   add constraint tasks_story_points_nonnegative_check

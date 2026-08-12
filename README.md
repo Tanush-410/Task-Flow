@@ -33,10 +33,14 @@ black-and-gold shadcn/ui design system.
   has in progress right now, grouped by person.
 - **Dashboard** — at-a-glance counts for active, overdue, delayed, and
   recently completed work, plus the org-wide on-time completion rate.
-- **Sprint planning (feature flagged)** — the first native planning increment
-  lets organizations create delivery teams, assign planners and members, set
-  daily capacity, and choose a default sprint cadence. Backlog hierarchy,
-  sprint lifecycle, boards, and insights follow in subsequent increments.
+- **Sprint planning (feature flagged)** — organizations create delivery
+  teams, assign planners and members, and set daily capacity and a default
+  sprint cadence. Each team gets a ranked backlog: build out an
+  Epic → Feature → User Story → Task hierarchy, estimate with story points
+  or hours, reorder with keyboard buttons or drag-and-drop, and reparent or
+  reassign a whole subtree to another team with a live descendant-count
+  preview before committing. Sprint lifecycle, boards, and insights follow
+  in subsequent increments.
 
 ## Tech stack
 
@@ -100,6 +104,8 @@ src/modules/        Domain logic: queries + server actions per feature area
                      (tasks, assignments, members, notifications, ...)
 src/modules/planning-teams/
                     Sprint-planning team validation, queries, and actions
+src/modules/backlog/
+                    Work-item hierarchy, ranking, and backlog queries/actions
 src/lib/            Cross-cutting helpers (Supabase clients, date utils, ...)
 supabase/migrations/ Schema, RLS policies, and triggers, in applied order
 docs/operations/    Verified local-dev and release-process notes

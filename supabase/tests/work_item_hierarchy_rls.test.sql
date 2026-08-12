@@ -1,6 +1,6 @@
 begin;
 
-select plan(45);
+select plan(46);
 
 -- Schema
 
@@ -12,6 +12,21 @@ select has_column('public', 'tasks', 'story_points', 'tasks store story point es
 select has_column('public', 'tasks', 'original_hours', 'tasks store original hour estimates');
 select has_column('public', 'tasks', 'remaining_hours', 'tasks store remaining hour estimates');
 select has_column('public', 'tasks', 'backlog_rank', 'tasks store their backlog rank');
+
+-- Column-level collate "C" is what makes a plain `order by backlog_rank`
+-- (e.g. from PostgREST/supabase-js, which cannot request a collation)
+-- sort by byte value, matching the fractional-rank algorithm's own
+-- comparisons. The database's default collation instead sorts
+-- case-insensitively (e.g. "k" before "V"), which silently breaks rank
+-- order once a mix of upper- and lowercase digits appears.
+select is(
+  (
+    select collation_name from information_schema.columns
+    where table_schema = 'public' and table_name = 'tasks' and column_name = 'backlog_rank'
+  ),
+  'C',
+  'backlog_rank is collate "C" so unqualified ORDER BY matches byte order'
+);
 
 select has_function(
   'public', 'is_task_planning_team_member', array['uuid'],
