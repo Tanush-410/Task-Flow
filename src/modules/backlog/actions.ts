@@ -7,12 +7,19 @@ import { revalidatePath } from 'next/cache';
 import type { ActionResult } from '@/lib/result';
 import { createServerSupabase } from '@/lib/supabase/server';
 import { requireMembership } from '@/modules/members/queries';
+import { listPlanningTeams } from '@/modules/planning-teams/queries';
 
+import {
+  getWorkItemDescendantCount,
+  listValidParentCandidates,
+  type ParentCandidate,
+} from './queries';
 import {
   moveWorkItemSchema,
   rankBacklogItemSchema,
   workItemCreateSchema,
   workItemPlanningFieldsUpdateSchema,
+  type WorkItemType,
 } from './schemas';
 
 export type BacklogActionCode =
@@ -295,4 +302,39 @@ export async function rankBacklogItem(
   } catch {
     return failure('WORK_ITEM_SAVE_FAILED', traceId);
   }
+}
+
+export type MoveWorkItemOptions = {
+  descendantCount: number;
+  candidates: ParentCandidate[];
+};
+
+/**
+ * Powers the move/reparent dialog. Epics have no parent type to search
+ * for (`listValidParentCandidates` always returns `[]` for one), so an
+ * epic's "candidates" are its visible planning teams instead -- the
+ * dialog treats `candidate.planningTeamId` as the destination team and
+ * always sends `newParentTaskId: null` for that case.
+ */
+export async function fetchWorkItemMoveOptions(
+  taskId: string,
+  type: WorkItemType,
+): Promise<MoveWorkItemOptions> {
+  const [descendantCount, candidates] = await Promise.all([
+    getWorkItemDescendantCount(taskId),
+    type === 'epic'
+      ? listPlanningTeams().then((teams) =>
+          teams
+            .filter((team) => !team.isArchived)
+            .map((team) => ({
+              id: team.id,
+              title: team.name,
+              planningTeamId: team.id,
+              planningTeamName: team.name,
+            })),
+        )
+      : listValidParentCandidates(type),
+  ]);
+
+  return { descendantCount, candidates };
 }

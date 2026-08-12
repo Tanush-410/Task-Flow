@@ -7,6 +7,7 @@ import {
   ChevronDown,
   ChevronRight,
   ChevronUp,
+  FolderInput,
   GripVertical,
   Plus,
   X,
@@ -15,6 +16,7 @@ import Link from 'next/link';
 import { useState, type FormEvent } from 'react';
 
 import { CreateWorkItemForm } from '@/components/planning/backlog/create-work-item-form';
+import { MoveWorkItemDialog } from '@/components/planning/backlog/move-work-item-dialog';
 import { PersonAvatar } from '@/components/person-avatar';
 import { Badge, type badgeVariants } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -343,6 +345,22 @@ export function BacklogRow({
               type={childType}
             />
           ) : null}
+          <MoveWorkItemDialog
+            currentTeamId={teamId}
+            taskId={item.id}
+            title={item.title}
+            trigger={
+              <Button
+                aria-label={`Move ${item.title}`}
+                size="icon-xs"
+                type="button"
+                variant="ghost"
+              >
+                <FolderInput aria-hidden />
+              </Button>
+            }
+            type={item.type}
+          />
           <Button
             aria-label={`Move ${item.title} up`}
             disabled={!canMoveUp}

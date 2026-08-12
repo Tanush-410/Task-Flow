@@ -7,6 +7,8 @@ const mocks = vi.hoisted(() => ({
   rankBacklogItem: vi.fn(),
   updateWorkItemPlanningFields: vi.fn(),
   createWorkItem: vi.fn(),
+  moveWorkItem: vi.fn(),
+  fetchWorkItemMoveOptions: vi.fn(),
 }));
 
 vi.mock('next/navigation', () => ({
@@ -16,6 +18,8 @@ vi.mock('@/modules/backlog/actions', () => ({
   rankBacklogItem: mocks.rankBacklogItem,
   updateWorkItemPlanningFields: mocks.updateWorkItemPlanningFields,
   createWorkItem: mocks.createWorkItem,
+  moveWorkItem: mocks.moveWorkItem,
+  fetchWorkItemMoveOptions: mocks.fetchWorkItemMoveOptions,
 }));
 
 import { BacklogTree } from '@/components/planning/backlog/backlog-tree';

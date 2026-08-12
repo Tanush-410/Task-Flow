@@ -4,6 +4,9 @@ const mocks = vi.hoisted(() => ({
   createServerSupabase: vi.fn(),
   requireMembership: vi.fn(),
   revalidatePath: vi.fn(),
+  getWorkItemDescendantCount: vi.fn(),
+  listValidParentCandidates: vi.fn(),
+  listPlanningTeams: vi.fn(),
 }));
 
 vi.mock('server-only', () => ({}));
@@ -14,9 +17,17 @@ vi.mock('@/lib/supabase/server', () => ({
 vi.mock('@/modules/members/queries', () => ({
   requireMembership: mocks.requireMembership,
 }));
+vi.mock('@/modules/backlog/queries', () => ({
+  getWorkItemDescendantCount: mocks.getWorkItemDescendantCount,
+  listValidParentCandidates: mocks.listValidParentCandidates,
+}));
+vi.mock('@/modules/planning-teams/queries', () => ({
+  listPlanningTeams: mocks.listPlanningTeams,
+}));
 
 import {
   createWorkItem,
+  fetchWorkItemMoveOptions,
   moveWorkItem,
   rankBacklogItem,
   updateWorkItemPlanningFields,
@@ -114,12 +125,10 @@ describe('createWorkItem', () => {
   });
 
   it('does not leak database error details', async () => {
-    const rpc = vi
-      .fn()
-      .mockResolvedValue({
-        data: null,
-        error: { message: 'sensitive detail' },
-      });
+    const rpc = vi.fn().mockResolvedValue({
+      data: null,
+      error: { message: 'sensitive detail' },
+    });
     mocks.createServerSupabase.mockResolvedValue({ rpc });
 
     const result = await createWorkItem({
@@ -301,5 +310,58 @@ describe('rankBacklogItem', () => {
       ([name]) => name === 'assign_backlog_rank',
     );
     expect(assignCalls).toHaveLength(2);
+  });
+});
+
+describe('fetchWorkItemMoveOptions', () => {
+  it('returns valid parent candidates for a non-epic type', async () => {
+    mocks.getWorkItemDescendantCount.mockResolvedValue(3);
+    mocks.listValidParentCandidates.mockResolvedValue([
+      {
+        id: 'epic-1',
+        title: 'Ship the thing',
+        planningTeamId: planningTeamId,
+        planningTeamName: 'Platform',
+      },
+    ]);
+
+    const result = await fetchWorkItemMoveOptions(taskId, 'feature');
+
+    expect(mocks.listValidParentCandidates).toHaveBeenCalledWith('feature');
+    expect(mocks.listPlanningTeams).not.toHaveBeenCalled();
+    expect(result).toEqual({
+      descendantCount: 3,
+      candidates: [
+        {
+          id: 'epic-1',
+          title: 'Ship the thing',
+          planningTeamId,
+          planningTeamName: 'Platform',
+        },
+      ],
+    });
+  });
+
+  it('returns visible non-archived teams as candidates for an epic', async () => {
+    mocks.getWorkItemDescendantCount.mockResolvedValue(0);
+    mocks.listPlanningTeams.mockResolvedValue([
+      { id: 'team-1', name: 'Platform', isArchived: false },
+      { id: 'team-2', name: 'Retired team', isArchived: true },
+    ]);
+
+    const result = await fetchWorkItemMoveOptions(taskId, 'epic');
+
+    expect(mocks.listValidParentCandidates).not.toHaveBeenCalled();
+    expect(result).toEqual({
+      descendantCount: 0,
+      candidates: [
+        {
+          id: 'team-1',
+          title: 'Platform',
+          planningTeamId: 'team-1',
+          planningTeamName: 'Platform',
+        },
+      ],
+    });
   });
 });
