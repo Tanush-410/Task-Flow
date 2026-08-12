@@ -139,6 +139,33 @@ describe('createWorkItem', () => {
 
     expect(JSON.stringify(result)).not.toContain('sensitive');
   });
+
+  it('passes bug detail fields through to the RPC', async () => {
+    const rpc = vi.fn().mockResolvedValue({ data: taskId, error: null });
+    mocks.createServerSupabase.mockResolvedValue({ rpc });
+
+    await createWorkItem({
+      planningTeamId,
+      parentTaskId,
+      type: 'bug',
+      title: 'Save button does nothing',
+      reproSteps: 'Click Save on an empty form',
+      severity: 'high',
+      foundInBuild: '1.4.0',
+    });
+
+    expect(rpc).toHaveBeenCalledWith('create_work_item', {
+      target_planning_team_id: planningTeamId,
+      target_parent_task_id: parentTaskId,
+      item_type: 'bug',
+      item_title: 'Save button does nothing',
+      item_description: '',
+      item_priority: 'medium',
+      item_repro_steps: 'Click Save on an empty form',
+      item_severity: 'high',
+      item_found_in_build: '1.4.0',
+    });
+  });
 });
 
 describe('updateWorkItemPlanningFields', () => {
@@ -192,6 +219,30 @@ describe('updateWorkItemPlanningFields', () => {
       new_remaining_hours: 6,
     });
     expect(from).not.toHaveBeenCalled();
+  });
+
+  it('updates bug detail fields with a plain table update', async () => {
+    const rpc = vi.fn();
+    const update = query({ data: { id: taskId }, error: null });
+    mocks.createServerSupabase.mockResolvedValue({
+      from: vi.fn(() => update),
+      rpc,
+    });
+
+    const result = await updateWorkItemPlanningFields({
+      taskId,
+      reproSteps: 'Updated repro steps',
+      severity: 'urgent',
+      foundInBuild: '1.5.0',
+    });
+
+    expect(result).toEqual({ ok: true, data: { taskId } });
+    expect(update.update).toHaveBeenCalledWith({
+      repro_steps: 'Updated repro steps',
+      severity: 'urgent',
+      found_in_build: '1.5.0',
+    });
+    expect(rpc).not.toHaveBeenCalled();
   });
 });
 

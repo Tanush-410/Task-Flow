@@ -112,6 +112,15 @@ export async function createWorkItem(
       ...(parsed.data.remainingHours != null
         ? { item_remaining_hours: parsed.data.remainingHours }
         : {}),
+      ...(parsed.data.reproSteps != null
+        ? { item_repro_steps: parsed.data.reproSteps }
+        : {}),
+      ...(parsed.data.severity != null
+        ? { item_severity: parsed.data.severity }
+        : {}),
+      ...(parsed.data.foundInBuild != null
+        ? { item_found_in_build: parsed.data.foundInBuild }
+        : {}),
     });
 
     if (error || !data) return mapRpcError(error, traceId);
@@ -161,6 +170,9 @@ export async function updateWorkItemPlanningFields(
       priority: 'low' | 'medium' | 'high' | 'urgent';
       story_points: number | null;
       remaining_hours: number | null;
+      repro_steps: string | null;
+      severity: 'low' | 'medium' | 'high' | 'urgent' | null;
+      found_in_build: string | null;
     }> = {};
     if (parsed.data.title !== undefined) patch.title = parsed.data.title;
     if (parsed.data.description !== undefined) {
@@ -173,6 +185,15 @@ export async function updateWorkItemPlanningFields(
     }
     if (parsed.data.remainingHours !== undefined) {
       patch.remaining_hours = parsed.data.remainingHours;
+    }
+    if (parsed.data.reproSteps !== undefined) {
+      patch.repro_steps = parsed.data.reproSteps;
+    }
+    if (parsed.data.severity !== undefined) {
+      patch.severity = parsed.data.severity;
+    }
+    if (parsed.data.foundInBuild !== undefined) {
+      patch.found_in_build = parsed.data.foundInBuild;
     }
 
     const { data, error } = await supabase
