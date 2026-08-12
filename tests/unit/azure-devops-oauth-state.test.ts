@@ -196,13 +196,30 @@ describe('createOAuthAttempt', () => {
     await expect(
       createOAuthAttempt(
         {
-          organizationId: 'f44d8307-00eb-08bf-0e79-34476e569fd5',
+          // TaskFlow's own ids don't require RFC 4122 version/variant
+          // nibbles (see src/lib/schemas.ts) — this case must stay invalid
+          // for a different reason: a non-hex character.
+          organizationId: 'f44d8307-00eb-08bf-0e79-34476e569fzz',
           userId,
         },
         createDependencies(fake.admin),
       ),
     ).rejects.toMatchObject({ code: 'INVALID_OAUTH_ATTEMPT' });
     expect(fake.from).not.toHaveBeenCalled();
+  });
+
+  it('accepts ids shaped like supabase/seed.sql fixtures, which have no RFC 4122 version/variant nibbles', async () => {
+    const fake = makeAdmin();
+
+    await expect(
+      createOAuthAttempt(
+        {
+          organizationId: '10000000-0000-0000-0000-000000000001',
+          userId: '00000000-0000-0000-0000-000000000001',
+        },
+        createDependencies(fake.admin),
+      ),
+    ).resolves.toMatchObject({ state: expect.any(String) });
   });
 
   it('fails safely when persistence fails', async () => {
@@ -458,7 +475,10 @@ describe('consumeOAuthAttempt', () => {
       },
       {
         state: randomBytes(32).toString('base64url'),
-        organizationId: '00000000-0000-0000-0000-000000000000',
+        // Non-hex character — TaskFlow's own ids don't require RFC 4122
+        // version/variant nibbles (see src/lib/schemas.ts), so an
+        // all-zeros id like seed data uses must NOT be rejected here.
+        organizationId: '00000000-0000-0000-0000-00000000000z',
         userId,
       },
     ]) {

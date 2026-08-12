@@ -271,21 +271,25 @@ select ok(
 );
 
 select is(
-  (select count(*)::integer from public.feature_flags where key = 'azure_devops_integration'),
+  (
+    select count(*)::integer
+    from public.feature_flags
+    where key = 'azure_devops_integration' and organization_id is null
+  ),
   3,
-  'exactly three Azure DevOps rollout rows exist'
+  'exactly three global Azure DevOps rollout rows exist'
 );
 select results_eq(
   $$select environment::text || ':' || enabled::text || ':' || rollout_percentage::text
     from public.feature_flags
-    where key = 'azure_devops_integration'
+    where key = 'azure_devops_integration' and organization_id is null
     order by environment::text$$,
   array[
     'development:true:100',
     'production:false:0',
     'staging:false:0'
   ],
-  'Azure DevOps rollout defaults are environment-safe'
+  'global Azure DevOps rollout defaults are environment-safe'
 );
 
 insert into public.organizations (id, name, timezone, created_by)

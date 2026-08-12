@@ -10,8 +10,13 @@ import { decryptSecret, encryptSecret, type EncryptionKey } from './crypto';
 const SETTINGS_PATH = '/settings/integrations/azure-devops';
 const RANDOM_BYTES = 32;
 const EXPIRY_MILLISECONDS = 10 * 60 * 1_000;
+// organizationId/userId are TaskFlow's own ids, not externally issued ones.
+// Postgres's `uuid` column type accepts any 8-4-4-4-12 hex string; it does
+// not enforce the RFC 4122 version/variant nibbles a stricter pattern would
+// require, and supabase/seed.sql relies on that (e.g.
+// 10000000-0000-0000-0000-000000000001). See src/lib/schemas.ts.
 const UUID_PATTERN =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const BASE64URL_PATTERN = /^[A-Za-z0-9_-]+$/;
 const PKCE_VERIFIER_PATTERN = /^[A-Za-z0-9._~-]{43,128}$/;
 const CONTROL_CHARACTER_PATTERN = /[\u0000-\u001f\u007f]/;

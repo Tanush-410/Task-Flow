@@ -2,6 +2,7 @@ import 'server-only';
 
 import { z } from 'zod';
 
+import { uuidSchema } from '@/lib/schemas';
 import { createAdminSupabase } from '@/lib/supabase/admin';
 import type { MembershipContext } from '@/modules/members/context';
 import {
@@ -41,8 +42,8 @@ const connectionStatus = z.enum([
   'disconnected',
 ]);
 const authorizedUserFields = {
-  id: z.uuid(),
-  organization_id: z.uuid(),
+  id: uuidSchema,
+  organization_id: uuidSchema,
   authorized_user_display_name: boundedSafeString(0, 200),
   authorized_user_email: z.email().max(320).nullable(),
 };
@@ -51,7 +52,6 @@ const trustworthyConnectionSchema = z
   .passthrough();
 const connectionFields = {
   ...authorizedUserFields,
-  organization_id: z.uuid(),
   status: connectionStatus,
   last_verified_at: timestamp.nullable(),
   safe_error_code: azureDevOpsSafeErrorCodeSchema.nullable(),
@@ -78,10 +78,10 @@ const connectionRowSchema = z.union([
 ]);
 const teamLinkRowSchema = z
   .object({
-    id: z.uuid(),
-    organization_id: z.uuid(),
-    connection_id: z.uuid(),
-    planning_team_id: z.uuid(),
+    id: uuidSchema,
+    organization_id: uuidSchema,
+    connection_id: uuidSchema,
+    planning_team_id: uuidSchema,
     azure_project_name: boundedSafeString(1, 256),
     azure_team_name: boundedSafeString(1, 256),
     status: z.enum(['configured', 'paused', 'disconnected']),
