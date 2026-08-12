@@ -6,11 +6,15 @@ import { requirePlanningTeamAccess } from '@/modules/planning-teams/queries';
 
 import type { WorkItemType } from './schemas';
 
-const PARENT_TYPE_BY_CHILD: Record<WorkItemType, WorkItemType | null> = {
-  epic: null,
-  feature: 'epic',
-  user_story: 'feature',
-  task: 'user_story',
+// A task is the one type with two legal parent types (a user_story or a
+// bug), so every entry is a list even though the other three types only
+// ever have zero or one valid parent type.
+const PARENT_TYPES_BY_CHILD: Record<WorkItemType, WorkItemType[]> = {
+  epic: [],
+  feature: ['epic'],
+  user_story: ['feature'],
+  bug: ['feature'],
+  task: ['user_story', 'bug'],
 };
 
 export type BacklogWorkItem = {
@@ -23,6 +27,9 @@ export type BacklogWorkItem = {
   originalHours: number | null;
   remainingHours: number | null;
   backlogRank: string | null;
+  reproSteps: string | null;
+  severity: 'low' | 'medium' | 'high' | 'urgent' | null;
+  foundInBuild: string | null;
   assigneeIds: string[];
   children: BacklogWorkItem[];
 };
@@ -102,7 +109,7 @@ export async function listBacklogHierarchy(
     supabase
       .from('tasks')
       .select(
-        'id,parent_task_id,work_item_type,title,priority,story_points,original_hours,remaining_hours,backlog_rank',
+        'id,parent_task_id,work_item_type,title,priority,story_points,original_hours,remaining_hours,backlog_rank,repro_steps,severity,found_in_build',
       )
       .eq('planning_team_id', teamId)
       .order('backlog_rank', { ascending: true }),
@@ -135,6 +142,9 @@ export async function listBacklogHierarchy(
       originalHours: row.original_hours,
       remainingHours: row.remaining_hours,
       backlogRank: row.backlog_rank,
+      reproSteps: row.repro_steps,
+      severity: row.severity,
+      foundInBuild: row.found_in_build,
       assigneeIds: assigneesByTask.get(row.id) ?? [],
       children: [],
     });
@@ -171,8 +181,8 @@ export async function getWorkItemDescendantCount(
 export async function listValidParentCandidates(
   childType: WorkItemType,
 ): Promise<ParentCandidate[]> {
-  const parentType = PARENT_TYPE_BY_CHILD[childType];
-  if (!parentType) return [];
+  const parentTypes = PARENT_TYPES_BY_CHILD[childType];
+  if (parentTypes.length === 0) return [];
 
   const membership = await requireMembership();
   const supabase = await createServerSupabase();
@@ -210,7 +220,7 @@ export async function listValidParentCandidates(
     .from('tasks')
     .select('id,title,planning_team_id')
     .in('planning_team_id', visibleTeamIds)
-    .eq('work_item_type', parentType)
+    .in('work_item_type', parentTypes)
     .order('backlog_rank', { ascending: true });
 
   if (candidatesError || !candidates) return [];

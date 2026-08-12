@@ -178,6 +178,43 @@ describe('listBacklogHierarchy', () => {
 
     await expect(listBacklogHierarchy(teamId)).resolves.toEqual([]);
   });
+
+  it('maps bug fields through onto the tree node', async () => {
+    const bugId = '30000000-0000-0000-0000-000000000005';
+    const tasksQuery = query({
+      data: [
+        {
+          id: bugId,
+          parent_task_id: null,
+          work_item_type: 'bug',
+          title: 'Save button does nothing',
+          priority: 'high',
+          story_points: 3,
+          original_hours: null,
+          remaining_hours: null,
+          backlog_rank: 'A',
+          repro_steps: 'Click Save on an empty form',
+          severity: 'high',
+          found_in_build: '1.4.0',
+        },
+      ],
+      error: null,
+    });
+    const assignmentsQuery = query({ data: [], error: null });
+    mocks.createServerSupabase.mockResolvedValue({
+      from: vi.fn((table: string) =>
+        table === 'tasks' ? tasksQuery : assignmentsQuery,
+      ),
+    });
+
+    const tree = await listBacklogHierarchy(teamId);
+
+    expect(tree[0]).toMatchObject({
+      reproSteps: 'Click Save on an empty form',
+      severity: 'high',
+      foundInBuild: '1.4.0',
+    });
+  });
 });
 
 describe('getWorkItemDescendantCount', () => {
@@ -238,5 +275,73 @@ describe('listValidParentCandidates', () => {
       },
     ]);
     expect(call).toBeGreaterThan(0);
+    expect(candidatesQuery.in).toHaveBeenCalledWith('work_item_type', ['epic']);
+  });
+
+  it('returns candidates of either legal parent type for a task', async () => {
+    const membershipsQuery = query({
+      data: [{ planning_team_id: teamId }],
+      error: null,
+    });
+    const teamsQuery = query({
+      data: [{ id: teamId, name: 'Backlog team' }],
+      error: null,
+    });
+    const candidatesQuery = query({
+      data: [{ id: storyId, title: 'Sign up form', planning_team_id: teamId }],
+      error: null,
+    });
+    mocks.createServerSupabase.mockResolvedValue({
+      from: vi.fn((table: string) => {
+        if (table === 'planning_team_members') return membershipsQuery;
+        if (table === 'planning_teams') return teamsQuery;
+        return candidatesQuery;
+      }),
+    });
+
+    await listValidParentCandidates('task');
+
+    expect(candidatesQuery.in).toHaveBeenCalledWith('work_item_type', [
+      'user_story',
+      'bug',
+    ]);
+  });
+
+  it('returns feature candidates for a bug, just like a user story', async () => {
+    const membershipsQuery = query({
+      data: [{ planning_team_id: teamId }],
+      error: null,
+    });
+    const teamsQuery = query({
+      data: [{ id: teamId, name: 'Backlog team' }],
+      error: null,
+    });
+    const candidatesQuery = query({
+      data: [
+        { id: featureId, title: 'Onboarding flow', planning_team_id: teamId },
+      ],
+      error: null,
+    });
+    mocks.createServerSupabase.mockResolvedValue({
+      from: vi.fn((table: string) => {
+        if (table === 'planning_team_members') return membershipsQuery;
+        if (table === 'planning_teams') return teamsQuery;
+        return candidatesQuery;
+      }),
+    });
+
+    const candidates = await listValidParentCandidates('bug');
+
+    expect(candidatesQuery.in).toHaveBeenCalledWith('work_item_type', [
+      'feature',
+    ]);
+    expect(candidates).toEqual([
+      {
+        id: featureId,
+        title: 'Onboarding flow',
+        planningTeamId: teamId,
+        planningTeamName: 'Backlog team',
+      },
+    ]);
   });
 });
