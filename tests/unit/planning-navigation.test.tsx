@@ -25,6 +25,7 @@ describe('Planning navigation', () => {
     (role) => {
       render(
         <AppShell
+          completedToday={0}
           displayName="Team Member"
           planningEnabled
           role={role}
@@ -45,6 +46,7 @@ describe('Planning navigation', () => {
   it('hides Planning when the feature is disabled', () => {
     render(
       <AppShell
+        completedToday={0}
         displayName="Team Member"
         planningEnabled={false}
         role="admin"

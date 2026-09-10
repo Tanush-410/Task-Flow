@@ -176,3 +176,134 @@ input {
     @apply font-sans;
   }
 }
+
+/* One-shot shine sweep for a primary CTA's first paint (landing hero). */
+@keyframes shimmer-once {
+  0%,
+  30% {
+    transform: translateX(-150%) skewX(-20deg);
+  }
+  70%,
+  100% {
+    transform: translateX(150%) skewX(-20deg);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .shimmer-once {
+    position: relative;
+    overflow: hidden;
+  }
+  .shimmer-once::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    transform: translateX(-150%) skewX(-20deg);
+    background: linear-gradient(
+      115deg,
+      transparent 35%,
+      rgba(255, 255, 255, 0.45) 50%,
+      transparent 65%
+    );
+    animation: shimmer-once 1.8s ease-out 0.6s 1 both;
+  }
+}
+
+/* Brand mark: scales/rotates in on first paint, then a slow recurring
+   shine sweep every ~8s as a quiet "alive" cue. */
+@keyframes brand-in {
+  from {
+    opacity: 0;
+    transform: scale(0.5) rotate(-20deg);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) rotate(0deg);
+  }
+}
+
+@keyframes brand-shimmer {
+  0% {
+    transform: translateX(-150%) skewX(-20deg);
+    opacity: 0;
+  }
+  6% {
+    opacity: 1;
+  }
+  22% {
+    transform: translateX(150%) skewX(-20deg);
+    opacity: 0;
+  }
+  100% {
+    transform: translateX(150%) skewX(-20deg);
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .brand-mark {
+    animation: brand-in 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  }
+  .brand-mark::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      115deg,
+      transparent 35%,
+      rgba(255, 255, 255, 0.55) 50%,
+      transparent 65%
+    );
+    animation: brand-shimmer 8s ease-in-out infinite;
+  }
+}
+
+/* Animated checkmark: circle + check both draw in via stroke-dasharray. */
+@keyframes checkmark-circle {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes checkmark-check {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+.checkmark-circle {
+  stroke-dasharray: 63;
+  stroke-dashoffset: 63;
+}
+
+.checkmark-check {
+  stroke-dasharray: 16;
+  stroke-dashoffset: 16;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .checkmark-circle {
+    animation: checkmark-circle 0.4s ease-out forwards;
+  }
+  .checkmark-check {
+    animation: checkmark-check 0.3s ease-out 0.35s forwards;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .checkmark-circle,
+  .checkmark-check {
+    stroke-dashoffset: 0;
+  }
+}
+
+/* Toast priority accents (glass Toaster, see ui/sonner.tsx). */
+.cn-toast {
+  backdrop-filter: blur(16px);
+}
+.cn-toast.toast-urgent {
+  border-left: 3px solid var(--destructive);
+}
+.cn-toast.toast-success {
+  border-left: 3px solid oklch(0.72 0.17 152);
+}

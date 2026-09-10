@@ -7,11 +7,13 @@ import {
 import Link from 'next/link';
 import type { ComponentType } from 'react';
 
+import { Greeting } from '@/components/greeting';
 import { StatTile } from '@/components/stat-tile';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { EmptyState } from '@/components/ui/empty-state';
 import { PageHeader } from '@/components/ui/page-header';
+import { getCurrentProfile } from '@/modules/members/queries';
 import { getEmployeeCompletionReport } from '@/modules/reports/queries';
 import {
   getDashboardSummary,
@@ -48,10 +50,11 @@ function MetricCard({
 }
 
 export default async function DashboardPage() {
-  const [summary, recentTasks, completionStats] = await Promise.all([
+  const [summary, recentTasks, completionStats, profile] = await Promise.all([
     getDashboardSummary(),
     listRecentOrganizationTasks(5),
     getEmployeeCompletionReport(),
+    getCurrentProfile(),
   ]);
 
   const totalCompleted = completionStats.reduce(
@@ -75,7 +78,7 @@ export default async function DashboardPage() {
             <Badge variant="success">{onTimePercentage}% on time</Badge>
           )
         }
-        eyebrow="Overview"
+        eyebrow={<Greeting name={profile.displayName || 'there'} />}
         headingId="dashboard-heading"
         title="Dashboard"
       />

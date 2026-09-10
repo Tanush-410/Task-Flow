@@ -14,6 +14,17 @@ import {
 
 const POLL_INTERVAL_MS = 15_000;
 
+const URGENT_TYPES = new Set([
+  'assignment_delayed',
+  'acknowledgement_required',
+]);
+
+function toastAccent(notificationType: string): string | undefined {
+  if (URGENT_TYPES.has(notificationType)) return 'toast-urgent';
+  if (notificationType === 'assignment_completed') return 'toast-success';
+  return undefined;
+}
+
 export function NotificationBell({
   userId,
   initialUnreadCount,
@@ -50,7 +61,7 @@ export function NotificationBell({
       const since = sinceRef.current;
       const { data } = await supabase
         .from('task_notifications')
-        .select('id,title,body,created_at')
+        .select('id,title,body,created_at,notification_type')
         .eq('recipient_id', userId)
         .gt('created_at', since)
         .order('created_at', { ascending: true });
@@ -68,7 +79,10 @@ export function NotificationBell({
 
       for (const record of data) {
         const title = record.title ?? 'New notification';
-        toast(title, { description: record.body });
+        toast(title, {
+          description: record.body,
+          className: toastAccent(record.notification_type),
+        });
         if (showNative) {
           const native = new Notification(title, { body: record.body });
           native.onclick = () => {

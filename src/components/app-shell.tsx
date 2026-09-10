@@ -13,6 +13,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 
 import { AppNavLink } from './app-nav-link';
+import { AvatarProgressRing } from './avatar-progress-ring';
 import { BrandMark } from './brand-mark';
 import { CommandPalette } from './command-palette';
 import { NotificationBell } from './notification-bell';
@@ -29,6 +30,7 @@ export function AppShell({
   displayName,
   planningEnabled,
   unreadNotificationCount,
+  completedToday,
 }: {
   children: ReactNode;
   role: Role;
@@ -36,6 +38,7 @@ export function AppShell({
   displayName: string;
   planningEnabled: boolean;
   unreadNotificationCount: number;
+  completedToday: number;
 }) {
   const items = navItemsForRole(role, planningEnabled);
   const home = role === 'admin' ? '/dashboard' : '/my-day';
@@ -67,8 +70,13 @@ export function AppShell({
           aria-label="Primary"
           className="flex gap-1 overflow-x-auto px-3 pb-3 md:flex-1 md:flex-col md:overflow-visible md:px-4 md:py-3"
         >
-          {items.map(({ href, icon: Icon, label }) => (
-            <AppNavLink href={href} key={href}>
+          {items.map(({ href, icon: Icon, label, boardHref, viewScope }) => (
+            <AppNavLink
+              boardHref={boardHref}
+              href={href}
+              key={href}
+              viewScope={viewScope}
+            >
               <Icon
                 aria-hidden={true}
                 className="size-[18px] text-muted-foreground transition-colors group-hover:text-muted-foreground group-aria-[current=page]:text-primary"
@@ -85,7 +93,9 @@ export function AppShell({
                 className="flex w-full items-center gap-3 rounded-xl px-2 py-2 text-left transition-colors hover:bg-muted focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-primary"
                 type="button"
               >
-                <PersonAvatar displayName={displayName} userId={userId} />
+                <AvatarProgressRing completedToday={completedToday}>
+                  <PersonAvatar displayName={displayName} userId={userId} />
+                </AvatarProgressRing>
                 <span className="min-w-0 flex-1">
                   <span className="block truncate text-sm font-semibold text-foreground">
                     {displayName}

@@ -1,14 +1,21 @@
-import { AlertTriangle, CheckCircle2, ListChecks } from 'lucide-react';
+import {
+  AlertTriangle,
+  CheckCircle2,
+  ListChecks,
+  Sparkles,
+} from 'lucide-react';
 import Link from 'next/link';
 
+import { Greeting } from '@/components/greeting';
 import { StatTile } from '@/components/stat-tile';
 import { TaskAssignmentGroup } from '@/components/task-assignment-group';
+import { EmptyState } from '@/components/ui/empty-state';
 import { PageHeader } from '@/components/ui/page-header';
 import {
   listMyAssignmentsWithTasks,
   type MyAssignmentWithTask,
 } from '@/modules/assignments/queries';
-import { requireEmployee } from '@/modules/members/queries';
+import { getCurrentProfile, requireEmployee } from '@/modules/members/queries';
 
 function isSameDay(a: Date, b: Date): boolean {
   return (
@@ -20,7 +27,10 @@ function isSameDay(a: Date, b: Date): boolean {
 
 export default async function MyDayPage() {
   await requireEmployee();
-  const rows = await listMyAssignmentsWithTasks();
+  const [rows, profile] = await Promise.all([
+    listMyAssignmentsWithTasks(),
+    getCurrentProfile(),
+  ]);
   const now = new Date();
   const threeDaysAgo = new Date(now.getTime() - 3 * 24 * 60 * 60 * 1000);
   const weekStart = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
@@ -67,7 +77,7 @@ export default async function MyDayPage() {
     <section aria-labelledby="my-day-heading" className="space-y-8">
       <PageHeader
         description="Overdue work comes first, followed by what's due today or high priority."
-        eyebrow="Focus"
+        eyebrow={<Greeting name={profile.displayName || 'there'} />}
         headingId="my-day-heading"
         title="My Day"
       />
@@ -91,9 +101,11 @@ export default async function MyDayPage() {
       ) : null}
 
       {rows.length === 0 ? (
-        <p className="text-base text-muted-foreground">
-          You have no assignments yet. New tasks will show up here.
-        </p>
+        <EmptyState
+          description="Once an admin assigns you something, it'll land right here — overdue and urgent work first."
+          icon={Sparkles}
+          title="Nothing on your plate yet"
+        />
       ) : (
         <>
           <TaskAssignmentGroup rows={overdue} title="Overdue" />

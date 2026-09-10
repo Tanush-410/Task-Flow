@@ -16,10 +16,11 @@ export default async function TasksBoardPage() {
 
       <ViewSwitcher
         items={[
-          { href: '/tasks', label: 'List' },
-          { href: '/tasks/board', label: 'Board' },
+          { href: '/tasks', label: 'List', view: 'list' },
+          { href: '/tasks/board', label: 'Board', view: 'board' },
           { href: '/calendar', label: 'Calendar' },
         ]}
+        scope="tasks"
       />
 
       <TaskBoard assignments={assignments} showAssignee />

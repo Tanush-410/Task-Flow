@@ -36,10 +36,11 @@ export default async function MyTasksBoardPage() {
 
       <ViewSwitcher
         items={[
-          { href: '/my-tasks', label: 'List' },
-          { href: '/my-tasks/board', label: 'Board' },
+          { href: '/my-tasks', label: 'List', view: 'list' },
+          { href: '/my-tasks/board', label: 'Board', view: 'board' },
           { href: '/calendar', label: 'Calendar' },
         ]}
+        scope="my-tasks"
       />
 
       <TaskBoard assignments={assignments} />

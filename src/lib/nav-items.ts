@@ -21,11 +21,20 @@ export type NavigationItem = {
   href: string;
   icon: ComponentType<{ 'aria-hidden'?: boolean; className?: string }>;
   label: string;
+  /** The Board-view equivalent of `href`, for the "remember last view" nav. */
+  boardHref?: string;
+  viewScope?: string;
 };
 
 export const adminNavItems: NavigationItem[] = [
   { href: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
-  { href: '/tasks', icon: ListChecks, label: 'All Tasks' },
+  {
+    href: '/tasks',
+    icon: ListChecks,
+    label: 'All Tasks',
+    boardHref: '/tasks/board',
+    viewScope: 'tasks',
+  },
   { href: '/calendar', icon: CalendarDays, label: 'Calendar' },
   { href: '/employees', icon: UsersRound, label: 'Employees' },
   { href: '/current-work', icon: ListTodo, label: 'Current Work' },
@@ -38,7 +47,13 @@ export const adminNavItems: NavigationItem[] = [
 
 export const employeeNavItems: NavigationItem[] = [
   { href: '/my-day', icon: CalendarCheck, label: 'My Day' },
-  { href: '/my-tasks', icon: CheckSquare2, label: 'My Tasks' },
+  {
+    href: '/my-tasks',
+    icon: CheckSquare2,
+    label: 'My Tasks',
+    boardHref: '/my-tasks/board',
+    viewScope: 'my-tasks',
+  },
   { href: '/calendar', icon: CalendarDays, label: 'Calendar' },
   { href: '/my-progress', icon: TrendingUp, label: 'My Progress' },
   { href: '/notes', icon: StickyNote, label: 'Notes' },

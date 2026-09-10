@@ -95,10 +95,11 @@ export default async function TasksPage({
 
       <ViewSwitcher
         items={[
-          { href: '/tasks', label: 'List' },
-          { href: '/tasks/board', label: 'Board' },
+          { href: '/tasks', label: 'List', view: 'list' },
+          { href: '/tasks/board', label: 'Board', view: 'board' },
           { href: '/calendar', label: 'Calendar' },
         ]}
+        scope="tasks"
       />
 
       <div className="flex flex-wrap items-center justify-between gap-3">

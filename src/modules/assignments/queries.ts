@@ -106,3 +106,20 @@ export async function getAssignmentById(assignmentId: string) {
     .eq('id', assignmentId)
     .maybeSingle();
 }
+
+/** Feeds the sidebar's avatar momentum ring -- how many the current user has completed today. */
+export async function getTodayCompletionCount(): Promise<number> {
+  const membership = await requireMembership();
+  const supabase = await createServerSupabase();
+  const startOfDay = new Date();
+  startOfDay.setHours(0, 0, 0, 0);
+
+  const { count } = await supabase
+    .from('task_assignments')
+    .select('id', { count: 'exact', head: true })
+    .eq('assignee_id', membership.userId)
+    .eq('status', 'completed')
+    .gte('completed_at', startOfDay.toISOString());
+
+  return count ?? 0;
+}

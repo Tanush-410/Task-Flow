@@ -1,15 +1,17 @@
 import * as React from 'react';
 import { cva, type VariantProps } from 'class-variance-authority';
+import { Loader2Icon } from 'lucide-react';
 import { Slot } from 'radix-ui';
 
 import { cn } from '@/lib/utils';
 
 const buttonVariants = cva(
-  "group/button inline-flex shrink-0 items-center justify-center rounded-lg border border-transparent bg-clip-padding text-sm font-medium whitespace-nowrap transition-all outline-none select-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 active:not-aria-[haspopup]:translate-y-px disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+  "group/button relative inline-flex shrink-0 items-center justify-center overflow-hidden rounded-lg border border-transparent bg-clip-padding text-sm font-medium whitespace-nowrap transition-all outline-none select-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 active:not-aria-[haspopup]:translate-y-px active:not-aria-[haspopup]:scale-[0.97] disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
   {
     variants: {
       variant: {
-        default: 'bg-primary text-primary-foreground hover:bg-primary/80',
+        default:
+          "bg-primary text-primary-foreground shadow-[inset_0_1px_0_rgba(255,255,255,0.25)] hover:bg-primary/80 hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.25),0_0_0_1px_var(--glass-border),0_0_20px_var(--glass-glow)] before:absolute before:inset-0 before:-translate-x-full before:bg-[linear-gradient(115deg,transparent_35%,rgba(255,255,255,0.35)_50%,transparent_65%)] before:transition-transform before:duration-700 before:ease-out before:content-[''] hover:before:translate-x-full",
         outline:
           'border-border bg-background hover:bg-muted hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:border-input dark:bg-input/30 dark:hover:bg-input/50',
         secondary:
@@ -46,10 +48,15 @@ function Button({
   variant = 'default',
   size = 'default',
   asChild = false,
+  loading = false,
+  disabled,
+  children,
   ...props
 }: React.ComponentProps<'button'> &
   VariantProps<typeof buttonVariants> & {
     asChild?: boolean;
+    /** Shows a spinner and disables the button, for a pending server action. */
+    loading?: boolean;
   }) {
   const Comp = asChild ? Slot.Root : 'button';
 
@@ -58,9 +65,22 @@ function Button({
       data-slot="button"
       data-variant={variant}
       data-size={size}
+      aria-busy={loading || undefined}
       className={cn(buttonVariants({ variant, size, className }))}
+      disabled={disabled || loading}
       {...props}
-    />
+    >
+      {asChild ? (
+        children
+      ) : (
+        <>
+          {loading ? (
+            <Loader2Icon aria-hidden className="animate-spin" />
+          ) : null}
+          {children}
+        </>
+      )}
+    </Comp>
   );
 }
 

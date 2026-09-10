@@ -1,4 +1,7 @@
+import { CheckSquare2 } from 'lucide-react';
+
 import { TaskAssignmentGroup } from '@/components/task-assignment-group';
+import { EmptyState } from '@/components/ui/empty-state';
 import { PageHeader } from '@/components/ui/page-header';
 import { ViewSwitcher } from '@/components/view-switcher';
 import {
@@ -50,16 +53,19 @@ export default async function MyTasksPage() {
 
       <ViewSwitcher
         items={[
-          { href: '/my-tasks', label: 'List' },
-          { href: '/my-tasks/board', label: 'Board' },
+          { href: '/my-tasks', label: 'List', view: 'list' },
+          { href: '/my-tasks/board', label: 'Board', view: 'board' },
           { href: '/calendar', label: 'Calendar' },
         ]}
+        scope="my-tasks"
       />
 
       {rows.length === 0 ? (
-        <p className="text-base text-muted-foreground">
-          No tasks are assigned to you yet.
-        </p>
+        <EmptyState
+          description="Work your admin assigns to you will show up here, grouped by how soon it's due."
+          icon={CheckSquare2}
+          title="No tasks assigned yet"
+        />
       ) : (
         <>
           <TaskAssignmentGroup rows={overdue} title="Overdue" />

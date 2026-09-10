@@ -331,7 +331,8 @@ export function TaskForm({
       <div className="flex flex-wrap items-center gap-3">
         <Button
           className="disabled:cursor-not-allowed"
-          disabled={pending || employees.length === 0}
+          disabled={employees.length === 0}
+          loading={pending}
           size="lg"
           type="submit"
         >

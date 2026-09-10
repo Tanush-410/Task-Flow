@@ -97,7 +97,7 @@ export function LoginForm({ nextPath }: { nextPath?: string }) {
 
       <Button
         className="w-full disabled:cursor-wait"
-        disabled={pending}
+        loading={pending}
         size="lg"
         type="submit"
       >

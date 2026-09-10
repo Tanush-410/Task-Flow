@@ -165,7 +165,7 @@ export function LandingPage() {
             of exactly what is due, delayed, or done.
           </p>
           <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
-            <Button asChild className="h-12 px-6 text-sm">
+            <Button asChild className="h-12 px-6 text-sm shimmer-once">
               <Link href="/signup">Create your workspace</Link>
             </Button>
             <Button asChild className="h-12 px-6 text-sm" variant="outline">

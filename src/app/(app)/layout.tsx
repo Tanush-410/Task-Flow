@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 
 import { AppShell } from '@/components/app-shell';
+import { getTodayCompletionCount } from '@/modules/assignments/queries';
 import {
   getCurrentProfile,
   requireMembership,
@@ -15,8 +16,8 @@ export default async function ProtectedLayout({
   children: ReactNode;
 }) {
   const membership = await requireMembership();
-  const [profile, unreadNotificationCount, planningEnabled] = await Promise.all(
-    [
+  const [profile, unreadNotificationCount, planningEnabled, completedToday] =
+    await Promise.all([
       getCurrentProfile(),
       countUnreadNotifications(),
       evaluateFeatureFlag({
@@ -26,11 +27,12 @@ export default async function ProtectedLayout({
         organizationId: membership.organizationId,
         role: membership.role,
       }),
-    ],
-  );
+      getTodayCompletionCount(),
+    ]);
 
   return (
     <AppShell
+      completedToday={completedToday}
       displayName={profile.displayName || 'You'}
       planningEnabled={planningEnabled}
       role={membership.role}

@@ -26,6 +26,7 @@ describe('AppShell', () => {
   it('shows admin navigation without employee-only links', () => {
     render(
       <AppShell
+        completedToday={0}
         displayName="Asha Admin"
         planningEnabled={false}
         role="admin"
@@ -49,6 +50,7 @@ describe('AppShell', () => {
   it('shows employee navigation without admin-only links', () => {
     render(
       <AppShell
+        completedToday={0}
         displayName="Priya Employee"
         planningEnabled={false}
         role="employee"

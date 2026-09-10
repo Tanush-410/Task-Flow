@@ -10,6 +10,7 @@ import {
   updateAssignmentProgress,
 } from '@/modules/assignments/actions';
 import { Button } from '@/components/ui/button';
+import { CheckmarkBurst } from '@/components/ui/checkmark-burst';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 
@@ -62,6 +63,7 @@ export function AssignmentControls({
     null,
   );
   const completingRef = useRef(false);
+  const [justCompleted, setJustCompleted] = useState(false);
 
   const pending = statusPending || progressPending;
   const error =
@@ -83,7 +85,10 @@ export function AssignmentControls({
 
   if (assignment.status === 'completed') {
     return (
-      <p className="rounded-xl border border-emerald-500/25 bg-emerald-500/10 px-4 py-3 text-sm font-semibold text-emerald-300">
+      <p className="flex items-center gap-2 rounded-xl border border-emerald-500/25 bg-emerald-500/10 px-4 py-3 text-sm font-semibold text-emerald-300">
+        {justCompleted ? (
+          <CheckmarkBurst className="size-4 shrink-0 text-emerald-300" />
+        ) : null}
         You marked this task complete.
       </p>
     );
@@ -145,13 +150,14 @@ export function AssignmentControls({
           action={statusAction}
           onSubmit={() => {
             completingRef.current = true;
+            setJustCompleted(true);
           }}
         >
           <input name="assignmentId" type="hidden" value={assignment.id} />
           <input name="status" type="hidden" value="completed" />
           <Button
             className="bg-emerald-700 hover:bg-emerald-800"
-            disabled={pending}
+            loading={pending}
             size="sm"
             type="submit"
           >

@@ -10,6 +10,10 @@ import { changeAssignmentStatus } from '@/modules/assignments/actions';
 import type { MyAssignmentWithTask } from '@/modules/assignments/queries';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { CheckmarkBurst } from '@/components/ui/checkmark-burst';
+
+/** Lets the drawn-checkmark play before the item leaves the list on refresh. */
+const REFRESH_DELAY_MS = 450;
 
 const STATUS_LABELS: Record<string, string> = {
   not_started: 'Not started',
@@ -31,12 +35,13 @@ const STATUS_BADGE_VARIANT: Record<
 function QuickCompleteButton({ assignmentId }: { assignmentId: string }) {
   const router = useRouter();
   const [pending, setPending] = useState(false);
+  const [done, setDone] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   return (
     <div className="flex shrink-0 flex-col items-end gap-1">
       <Button
-        disabled={pending}
+        loading={pending && !done}
         onClick={() => {
           setPending(true);
           setError(null);
@@ -44,7 +49,8 @@ function QuickCompleteButton({ assignmentId }: { assignmentId: string }) {
             (result) => {
               if (result.ok) {
                 celebrateTaskCompleted();
-                router.refresh();
+                setDone(true);
+                setTimeout(() => router.refresh(), REFRESH_DELAY_MS);
               } else {
                 setPending(false);
                 setError(result.error.message);
@@ -56,8 +62,12 @@ function QuickCompleteButton({ assignmentId }: { assignmentId: string }) {
         type="button"
         variant="outline"
       >
-        <Check aria-hidden />
-        {pending ? 'Completing…' : 'Mark complete'}
+        {done ? (
+          <CheckmarkBurst className="size-4" />
+        ) : pending ? null : (
+          <Check aria-hidden />
+        )}
+        {done ? 'Completed' : pending ? 'Completing…' : 'Mark complete'}
       </Button>
       {error ? (
         <p className="max-w-[200px] text-right text-xs text-red-400">{error}</p>
