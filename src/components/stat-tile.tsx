@@ -22,7 +22,7 @@ export function StatTile({
   const valueIsRed = tone === 'danger' && Number(value) > 0;
 
   return (
-    <Card className="p-5 sm:p-5">
+    <Card className="p-5 sm:p-5" variant="glass">
       <span
         className={`grid size-8 place-items-center rounded-lg ${TONE_CHIP[tone]}`}
       >

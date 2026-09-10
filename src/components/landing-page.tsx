@@ -125,12 +125,12 @@ const steps: {
 
 export function LandingPage() {
   return (
-    <main className="min-h-screen bg-background text-foreground">
+    <main className="min-h-screen text-foreground">
       <header className="mx-auto flex w-full max-w-6xl items-center justify-between px-5 py-6 sm:px-8">
         <div className="flex items-center gap-2.5 font-semibold tracking-[-0.02em]">
           <span
             aria-hidden="true"
-            className="grid size-8 place-items-center rounded-lg bg-primary text-sm text-primary-foreground"
+            className="grid size-8 place-items-center rounded-lg bg-[radial-gradient(circle_at_30%_25%,var(--primary-hover),var(--primary)_65%)] text-sm text-primary-foreground shadow-[0_0_16px_var(--glass-glow)]"
           >
             T
           </span>
@@ -181,7 +181,7 @@ export function LandingPage() {
         className="mx-auto grid w-full max-w-5xl grid-cols-1 gap-4 px-5 pb-20 sm:grid-cols-2 sm:px-8 lg:grid-cols-3"
       >
         {features.map((feature, index) => (
-          <Card className="shadow-card" key={feature.title}>
+          <Card className="shadow-card" key={feature.title} variant="glass">
             <CardContent>
               <span
                 aria-hidden="true"
@@ -241,7 +241,7 @@ export function LandingPage() {
             </ul>
           </div>
 
-          <Card className="shadow-card-lg">
+          <Card className="shadow-card-lg" variant="glass">
             <CardContent className="p-0">
               <div className="divide-y divide-border">
                 <div className="flex items-center gap-2 px-4 py-3">
@@ -355,7 +355,7 @@ export function LandingPage() {
           <div className="flex items-center gap-2.5 text-sm font-semibold tracking-[-0.02em] text-foreground">
             <span
               aria-hidden="true"
-              className="grid size-6 place-items-center rounded-md bg-primary text-xs text-primary-foreground"
+              className="grid size-6 place-items-center rounded-md bg-[radial-gradient(circle_at_30%_25%,var(--primary-hover),var(--primary)_65%)] text-xs text-primary-foreground"
             >
               T
             </span>

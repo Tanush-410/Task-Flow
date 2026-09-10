@@ -90,8 +90,8 @@ export function AppShell({
   const home = role === 'admin' ? '/dashboard' : '/my-day';
 
   return (
-    <div className="min-h-screen bg-background text-foreground md:grid md:grid-cols-[260px_minmax(0,1fr)]">
-      <aside className="border-b border-border bg-card md:sticky md:top-0 md:flex md:h-screen md:flex-col md:border-r md:border-b-0">
+    <div className="min-h-screen text-foreground md:grid md:grid-cols-[260px_minmax(0,1fr)]">
+      <aside className="border-b border-border bg-card/90 backdrop-blur-md md:sticky md:top-0 md:flex md:h-screen md:flex-col md:border-r md:border-b-0">
         <div className="flex min-h-16 items-center justify-between px-5 md:min-h-20 md:px-6">
           <Link
             className="inline-flex items-center gap-2.5 rounded-md font-semibold tracking-[-0.02em] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-primary"
@@ -99,7 +99,7 @@ export function AppShell({
           >
             <span
               aria-hidden="true"
-              className="grid size-8 place-items-center rounded-lg bg-primary text-sm text-primary-foreground"
+              className="grid size-8 place-items-center rounded-lg bg-[radial-gradient(circle_at_30%_25%,var(--primary-hover),var(--primary)_65%)] text-sm text-primary-foreground shadow-[0_0_16px_var(--glass-glow)]"
             >
               T
             </span>

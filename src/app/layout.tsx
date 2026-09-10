@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import { Geist } from 'next/font/google';
 import { cn } from '@/lib/utils';
+import { AmbientBackground } from '@/components/ambient-background';
 import { Toaster } from '@/components/ui/sonner';
 import { TooltipProvider } from '@/components/ui/tooltip';
 
@@ -27,6 +28,7 @@ export default function RootLayout({
       lang="en"
     >
       <body className="flex min-h-full flex-col">
+        <AmbientBackground />
         <TooltipProvider delayDuration={200}>{children}</TooltipProvider>
         <Toaster position="bottom-right" />
       </body>
