@@ -1,7 +1,16 @@
 'use client';
 
 import dynamic from 'next/dynamic';
-import { Component, useSyncExternalStore, type ReactNode } from 'react';
+import {
+  Component,
+  useEffect,
+  useRef,
+  useState,
+  useSyncExternalStore,
+  type ReactNode,
+} from 'react';
+
+import { TASK_COMPLETED_EVENT } from '@/lib/celebrate';
 
 // next/dynamic(..., { ssr: false }) must be called from inside a Client
 // Component in this Next.js version -- it can no longer be called directly
@@ -74,6 +83,30 @@ function useAnimate(): boolean {
   );
 }
 
+const BOOST_DURATION_MS = 2500;
+
+/** Briefly true after any task is marked complete, for a milestone pulse. */
+function useBoost(): boolean {
+  const [boost, setBoost] = useState(false);
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    function handleCompleted() {
+      setBoost(true);
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+      timeoutRef.current = setTimeout(() => setBoost(false), BOOST_DURATION_MS);
+    }
+
+    window.addEventListener(TASK_COMPLETED_EVENT, handleCompleted);
+    return () => {
+      window.removeEventListener(TASK_COMPLETED_EVENT, handleCompleted);
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    };
+  }, []);
+
+  return boost;
+}
+
 /**
  * A single ambient shader-gradient layer, mounted once in the root layout
  * so every route shares one canvas instead of paying for one per page.
@@ -84,6 +117,7 @@ function useAnimate(): boolean {
 export function AmbientBackground() {
   const ready = useWebGLReady();
   const animate = useAnimate();
+  const boost = useBoost();
 
   if (!ready) return null;
 
@@ -93,7 +127,7 @@ export function AmbientBackground() {
       className="pointer-events-none fixed inset-0 -z-10 overflow-hidden"
     >
       <ShaderErrorBoundary>
-        <AmbientShaderScene animate={animate} />
+        <AmbientShaderScene animate={animate} boost={boost} />
       </ShaderErrorBoundary>
       <div className="absolute inset-0 bg-gradient-to-b from-background/30 via-background/70 to-background" />
     </div>

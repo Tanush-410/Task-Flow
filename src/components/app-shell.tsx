@@ -1,25 +1,9 @@
-import {
-  Activity,
-  Bell,
-  CalendarCheck,
-  CalendarDays,
-  ChartNoAxesCombined,
-  CheckSquare2,
-  ChevronsUpDown,
-  LayoutDashboard,
-  ListChecks,
-  ListTodo,
-  PanelsTopLeft,
-  Settings,
-  StickyNote,
-  TrendingUp,
-  UserRound,
-  UsersRound,
-} from 'lucide-react';
+import { ChevronsUpDown, Settings, UserRound } from 'lucide-react';
 import Link from 'next/link';
-import type { ComponentType, ReactNode } from 'react';
+import type { ReactNode } from 'react';
 
 import type { MembershipContext } from '@/modules/members/context';
+import { navItemsForRole } from '@/lib/nav-items';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -29,46 +13,14 @@ import {
 } from '@/components/ui/dropdown-menu';
 
 import { AppNavLink } from './app-nav-link';
-import { GlobalSearch } from './global-search';
+import { BrandMark } from './brand-mark';
+import { CommandPalette } from './command-palette';
 import { NotificationBell } from './notification-bell';
 import { PersonAvatar } from './person-avatar';
+import { RouteTransition } from './route-transition';
 import { SignOutMenuItem } from './sign-out-menu-item';
 
 type Role = MembershipContext['role'];
-type NavigationItem = {
-  href: string;
-  icon: ComponentType<{ 'aria-hidden'?: boolean; className?: string }>;
-  label: string;
-};
-
-const adminItems: NavigationItem[] = [
-  { href: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
-  { href: '/tasks', icon: ListChecks, label: 'All Tasks' },
-  { href: '/calendar', icon: CalendarDays, label: 'Calendar' },
-  { href: '/employees', icon: UsersRound, label: 'Employees' },
-  { href: '/current-work', icon: ListTodo, label: 'Current Work' },
-  { href: '/reports', icon: ChartNoAxesCombined, label: 'Reports' },
-  { href: '/activity', icon: Activity, label: 'Activity' },
-  { href: '/notes', icon: StickyNote, label: 'Notes' },
-  { href: '/notifications', icon: Bell, label: 'Notifications' },
-  { href: '/settings', icon: Settings, label: 'Settings' },
-];
-
-const employeeItems: NavigationItem[] = [
-  { href: '/my-day', icon: CalendarCheck, label: 'My Day' },
-  { href: '/my-tasks', icon: CheckSquare2, label: 'My Tasks' },
-  { href: '/calendar', icon: CalendarDays, label: 'Calendar' },
-  { href: '/my-progress', icon: TrendingUp, label: 'My Progress' },
-  { href: '/notes', icon: StickyNote, label: 'Notes' },
-  { href: '/notifications', icon: Bell, label: 'Notifications' },
-  { href: '/profile', icon: UserRound, label: 'Profile' },
-];
-
-const planningItem: NavigationItem = {
-  href: '/planning',
-  icon: PanelsTopLeft,
-  label: 'Planning',
-};
 
 export function AppShell({
   children,
@@ -85,8 +37,7 @@ export function AppShell({
   planningEnabled: boolean;
   unreadNotificationCount: number;
 }) {
-  const roleItems = role === 'admin' ? adminItems : employeeItems;
-  const items = planningEnabled ? [...roleItems, planningItem] : roleItems;
+  const items = navItemsForRole(role, planningEnabled);
   const home = role === 'admin' ? '/dashboard' : '/my-day';
 
   return (
@@ -97,16 +48,11 @@ export function AppShell({
             className="inline-flex items-center gap-2.5 rounded-md font-semibold tracking-[-0.02em] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-primary"
             href={home}
           >
-            <span
-              aria-hidden="true"
-              className="grid size-8 place-items-center rounded-lg bg-[radial-gradient(circle_at_30%_25%,var(--primary-hover),var(--primary)_65%)] text-sm text-primary-foreground shadow-[0_0_16px_var(--glass-glow)]"
-            >
-              T
-            </span>
+            <BrandMark />
             <span>TaskFlow</span>
           </Link>
           <div className="flex items-center gap-1">
-            <GlobalSearch />
+            <CommandPalette planningEnabled={planningEnabled} role={role} />
             <NotificationBell
               initialUnreadCount={unreadNotificationCount}
               userId={userId}
@@ -173,7 +119,9 @@ export function AppShell({
       </aside>
 
       <main className="min-w-0 px-5 py-8 sm:px-8 md:px-10 md:py-10">
-        <div className="mx-auto w-full max-w-6xl">{children}</div>
+        <div className="mx-auto w-full max-w-6xl">
+          <RouteTransition>{children}</RouteTransition>
+        </div>
       </main>
     </div>
   );

@@ -18,6 +18,7 @@ import {
 } from '@/components/board/board-card';
 import { BoardColumn } from '@/components/board/board-column';
 import { DelayReasonDialog } from '@/components/board/delay-reason-dialog';
+import { celebrateTaskCompleted } from '@/lib/celebrate';
 import { changeAssignmentStatus } from '@/modules/assignments/actions';
 
 const COLUMNS: {
@@ -86,6 +87,10 @@ export function TaskBoard({
       moveCard(assignment.assignmentId, previousStatus);
       setError(result.error.message);
       return;
+    }
+
+    if (status === 'completed') {
+      celebrateTaskCompleted();
     }
 
     router.refresh();

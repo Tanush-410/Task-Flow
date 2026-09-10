@@ -1,4 +1,5 @@
 import { cleanup, render, screen } from '@testing-library/react';
+import type { ReactNode } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('@/components/notification-bell', () => ({
@@ -9,8 +10,12 @@ vi.mock('@/components/sign-out-menu-item', () => ({
   SignOutMenuItem: () => null,
 }));
 
-vi.mock('@/components/global-search', () => ({
-  GlobalSearch: () => null,
+vi.mock('@/components/command-palette', () => ({
+  CommandPalette: () => null,
+}));
+
+vi.mock('@/components/route-transition', () => ({
+  RouteTransition: ({ children }: { children: ReactNode }) => children,
 }));
 
 import { AppShell } from '@/components/app-shell';

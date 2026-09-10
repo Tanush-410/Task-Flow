@@ -3,6 +3,7 @@ import './globals.css';
 import { Geist } from 'next/font/google';
 import { cn } from '@/lib/utils';
 import { AmbientBackground } from '@/components/ambient-background';
+import { CelebrationHost } from '@/components/celebration-host';
 import { Toaster } from '@/components/ui/sonner';
 import { TooltipProvider } from '@/components/ui/tooltip';
 
@@ -29,6 +30,7 @@ export default function RootLayout({
     >
       <body className="flex min-h-full flex-col">
         <AmbientBackground />
+        <CelebrationHost />
         <TooltipProvider delayDuration={200}>{children}</TooltipProvider>
         <Toaster position="bottom-right" />
       </body>

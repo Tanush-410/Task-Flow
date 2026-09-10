@@ -9,7 +9,7 @@ import { createServerSupabase } from '@/lib/supabase/server';
 
 import { deliverInvitation } from './invitation-delivery';
 import { reportInvitationCleanupFailure } from './invitation-reporting';
-import { requireAdmin } from './queries';
+import { listOrganizationMembers, requireAdmin } from './queries';
 import { invitationAcceptanceSchema, invitationSchema } from './schemas';
 
 const INVITATION_CREATE_ERROR = {
@@ -183,4 +183,28 @@ export async function acceptInvitation(
   } catch {
     return { ok: false, error: { ...INVITATION_ACCEPT_ERROR, traceId } };
   }
+}
+
+export type PaletteMember = {
+  userId: string;
+  displayName: string;
+  role: 'admin' | 'employee';
+};
+
+/**
+ * Admin-only (enforced by `listOrganizationMembers` -> `requireAdmin`) --
+ * feeds the command palette's "People" group. Returns the full active
+ * roster rather than taking a query, since org rosters here are small
+ * enough that client-side fuzzy filtering (via cmdk) is cheaper than a
+ * round trip per keystroke.
+ */
+export async function listPeopleForCommandPalette(): Promise<PaletteMember[]> {
+  const members = await listOrganizationMembers();
+  return members
+    .filter((member) => member.status === 'active')
+    .map((member) => ({
+      userId: member.userId,
+      displayName: member.displayName,
+      role: member.role,
+    }));
 }

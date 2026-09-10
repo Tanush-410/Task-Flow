@@ -20,6 +20,10 @@ import type { ComponentType } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import { ScrollReveal } from '@/components/ui/scroll-reveal';
+import { SpotlightCard } from '@/components/ui/spotlight-card';
+
+import { BrandMark } from './brand-mark';
 
 const CHART_TOKENS = [
   '--chart-1',
@@ -128,12 +132,7 @@ export function LandingPage() {
     <main className="min-h-screen text-foreground">
       <header className="mx-auto flex w-full max-w-6xl items-center justify-between px-5 py-6 sm:px-8">
         <div className="flex items-center gap-2.5 font-semibold tracking-[-0.02em]">
-          <span
-            aria-hidden="true"
-            className="grid size-8 place-items-center rounded-lg bg-[radial-gradient(circle_at_30%_25%,var(--primary-hover),var(--primary)_65%)] text-sm text-primary-foreground shadow-[0_0_16px_var(--glass-glow)]"
-          >
-            T
-          </span>
+          <BrandMark />
           TaskFlow
         </div>
         <nav aria-label="Account" className="flex items-center gap-3">
@@ -181,23 +180,27 @@ export function LandingPage() {
         className="mx-auto grid w-full max-w-5xl grid-cols-1 gap-4 px-5 pb-20 sm:grid-cols-2 sm:px-8 lg:grid-cols-3"
       >
         {features.map((feature, index) => (
-          <Card className="shadow-card" key={feature.title} variant="glass">
-            <CardContent>
-              <span
-                aria-hidden="true"
-                className="grid size-10 place-items-center rounded-xl"
-                style={chipStyle(index)}
-              >
-                <feature.icon aria-hidden className="size-5" />
-              </span>
-              <h2 className="mt-4 text-lg font-semibold tracking-[-0.02em] text-foreground">
-                {feature.title}
-              </h2>
-              <p className="mt-2 text-[15px] leading-6 text-muted-foreground">
-                {feature.description}
-              </p>
-            </CardContent>
-          </Card>
+          <ScrollReveal key={feature.title}>
+            <SpotlightCard>
+              <Card className="shadow-card" variant="glass">
+                <CardContent>
+                  <span
+                    aria-hidden="true"
+                    className="grid size-10 place-items-center rounded-xl"
+                    style={chipStyle(index)}
+                  >
+                    <feature.icon aria-hidden className="size-5" />
+                  </span>
+                  <h2 className="mt-4 text-lg font-semibold tracking-[-0.02em] text-foreground">
+                    {feature.title}
+                  </h2>
+                  <p className="mt-2 text-[15px] leading-6 text-muted-foreground">
+                    {feature.description}
+                  </p>
+                </CardContent>
+              </Card>
+            </SpotlightCard>
+          </ScrollReveal>
         ))}
       </section>
 
@@ -205,7 +208,7 @@ export function LandingPage() {
         aria-labelledby="sprint-planning-heading"
         className="border-t border-border bg-muted/30"
       >
-        <div className="mx-auto grid w-full max-w-5xl grid-cols-1 items-center gap-12 px-5 py-20 sm:px-8 lg:grid-cols-2">
+        <ScrollReveal className="mx-auto grid w-full max-w-5xl grid-cols-1 items-center gap-12 px-5 py-20 sm:px-8 lg:grid-cols-2">
           <div>
             <span className="inline-flex items-center gap-1.5 rounded-full bg-primary-soft px-3 py-1 text-xs font-semibold text-primary">
               <GitBranch aria-hidden className="size-3.5" />
@@ -241,49 +244,51 @@ export function LandingPage() {
             </ul>
           </div>
 
-          <Card className="shadow-card-lg" variant="glass">
-            <CardContent className="p-0">
-              <div className="divide-y divide-border">
-                <div className="flex items-center gap-2 px-4 py-3">
-                  <Badge>Epic</Badge>
-                  <span className="text-sm font-medium text-foreground">
-                    Checkout redesign
-                  </span>
+          <SpotlightCard>
+            <Card className="shadow-card-lg" variant="glass">
+              <CardContent className="p-0">
+                <div className="divide-y divide-border">
+                  <div className="flex items-center gap-2 px-4 py-3">
+                    <Badge>Epic</Badge>
+                    <span className="text-sm font-medium text-foreground">
+                      Checkout redesign
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2 py-3 pr-4 pl-8">
+                    <Badge variant="secondary">Feature</Badge>
+                    <span className="text-sm font-medium text-foreground">
+                      Payment flow
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2 py-3 pr-4 pl-14">
+                    <Badge variant="outline">User story</Badge>
+                    <span className="text-sm font-medium text-foreground">
+                      Add saved cards
+                    </span>
+                    <span className="ml-auto text-xs text-muted-foreground">
+                      5 pts
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2 py-3 pr-4 pl-14">
+                    <Badge variant="destructive">Bug</Badge>
+                    <span className="text-sm font-medium text-foreground">
+                      Retry fails silently
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2 py-3 pr-4 pl-20">
+                    <Badge variant="outline">Task</Badge>
+                    <span className="text-sm font-medium text-foreground">
+                      Add retry telemetry
+                    </span>
+                    <span className="ml-auto text-xs text-muted-foreground">
+                      3h / 5h
+                    </span>
+                  </div>
                 </div>
-                <div className="flex items-center gap-2 py-3 pr-4 pl-8">
-                  <Badge variant="secondary">Feature</Badge>
-                  <span className="text-sm font-medium text-foreground">
-                    Payment flow
-                  </span>
-                </div>
-                <div className="flex items-center gap-2 py-3 pr-4 pl-14">
-                  <Badge variant="outline">User story</Badge>
-                  <span className="text-sm font-medium text-foreground">
-                    Add saved cards
-                  </span>
-                  <span className="ml-auto text-xs text-muted-foreground">
-                    5 pts
-                  </span>
-                </div>
-                <div className="flex items-center gap-2 py-3 pr-4 pl-14">
-                  <Badge variant="destructive">Bug</Badge>
-                  <span className="text-sm font-medium text-foreground">
-                    Retry fails silently
-                  </span>
-                </div>
-                <div className="flex items-center gap-2 py-3 pr-4 pl-20">
-                  <Badge variant="outline">Task</Badge>
-                  <span className="text-sm font-medium text-foreground">
-                    Add retry telemetry
-                  </span>
-                  <span className="ml-auto text-xs text-muted-foreground">
-                    3h / 5h
-                  </span>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+              </CardContent>
+            </Card>
+          </SpotlightCard>
+        </ScrollReveal>
       </section>
 
       <section
@@ -303,7 +308,10 @@ export function LandingPage() {
             </h2>
           </div>
 
-          <ol className="mt-14 grid grid-cols-1 gap-10 sm:grid-cols-3 sm:gap-6">
+          <ScrollReveal
+            as="ol"
+            className="mt-14 grid grid-cols-1 gap-10 sm:grid-cols-3 sm:gap-6"
+          >
             {steps.map((step, index) => (
               <li
                 className="relative text-center sm:text-left"
@@ -325,12 +333,12 @@ export function LandingPage() {
                 </p>
               </li>
             ))}
-          </ol>
+          </ScrollReveal>
         </div>
       </section>
 
       <section className="mx-auto w-full max-w-5xl px-5 pb-20 sm:px-8">
-        <div className="relative overflow-hidden rounded-3xl border border-primary/25 bg-primary-soft px-8 py-14 text-center shadow-card-lg sm:px-16">
+        <ScrollReveal className="relative overflow-hidden rounded-3xl border border-primary/25 bg-primary-soft px-8 py-14 text-center shadow-card-lg sm:px-16">
           <div
             aria-hidden="true"
             className="pointer-events-none absolute top-1/2 left-1/2 -z-10 h-[28rem] w-[28rem] -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary/20 blur-3xl"
@@ -347,18 +355,13 @@ export function LandingPage() {
               <Link href="/signup">Create your workspace</Link>
             </Button>
           </div>
-        </div>
+        </ScrollReveal>
       </section>
 
       <footer className="border-t border-border">
         <div className="mx-auto flex w-full max-w-6xl flex-col items-center justify-between gap-4 px-5 py-8 sm:flex-row sm:px-8">
           <div className="flex items-center gap-2.5 text-sm font-semibold tracking-[-0.02em] text-foreground">
-            <span
-              aria-hidden="true"
-              className="grid size-6 place-items-center rounded-md bg-[radial-gradient(circle_at_30%_25%,var(--primary-hover),var(--primary)_65%)] text-xs text-primary-foreground"
-            >
-              T
-            </span>
+            <BrandMark size="sm" />
             TaskFlow
           </div>
           <p className="text-sm text-muted-foreground">

@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 
+import { celebrateTaskCompleted } from '@/lib/celebrate';
 import { changeAssignmentStatus } from '@/modules/assignments/actions';
 import type { MyAssignmentWithTask } from '@/modules/assignments/queries';
 import { Badge } from '@/components/ui/badge';
@@ -42,6 +43,7 @@ function QuickCompleteButton({ assignmentId }: { assignmentId: string }) {
           changeAssignmentStatus({ assignmentId, status: 'completed' }).then(
             (result) => {
               if (result.ok) {
+                celebrateTaskCompleted();
                 router.refresh();
               } else {
                 setPending(false);

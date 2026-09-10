@@ -1,8 +1,9 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useActionState, useEffect, useState } from 'react';
+import { useActionState, useEffect, useRef, useState } from 'react';
 
+import { celebrateTaskCompleted } from '@/lib/celebrate';
 import type { ActionResult } from '@/lib/result';
 import {
   changeAssignmentStatus,
@@ -60,6 +61,7 @@ export function AssignmentControls({
     submitProgress,
     null,
   );
+  const completingRef = useRef(false);
 
   const pending = statusPending || progressPending;
   const error =
@@ -69,6 +71,10 @@ export function AssignmentControls({
 
   useEffect(() => {
     if (statusState?.ok || progressState?.ok) {
+      if (statusState?.ok && completingRef.current) {
+        celebrateTaskCompleted();
+      }
+      completingRef.current = false;
       router.refresh();
     }
   }, [statusState, progressState, router]);
@@ -135,7 +141,12 @@ export function AssignmentControls({
           </>
         ) : null}
 
-        <form action={statusAction}>
+        <form
+          action={statusAction}
+          onSubmit={() => {
+            completingRef.current = true;
+          }}
+        >
           <input name="assignmentId" type="hidden" value={assignment.id} />
           <input name="status" type="hidden" value="completed" />
           <Button

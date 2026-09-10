@@ -7,7 +7,14 @@ import { ShaderGradient, ShaderGradientCanvas } from '@shadergradient/react';
  * ambient-background.tsx) so it can be `next/dynamic(..., { ssr: false })`
  * imported as a single chunk, keeping Three.js out of the initial bundle.
  */
-export function AmbientShaderScene({ animate }: { animate: boolean }) {
+export function AmbientShaderScene({
+  animate,
+  boost = false,
+}: {
+  animate: boolean;
+  /** Briefly brighter + faster, for a task-completion milestone pulse. */
+  boost?: boolean;
+}) {
   return (
     <ShaderGradientCanvas
       pixelDensity={1}
@@ -17,7 +24,7 @@ export function AmbientShaderScene({ animate }: { animate: boolean }) {
     >
       <ShaderGradient
         animate={animate ? 'on' : 'off'}
-        brightness={0.8}
+        brightness={boost ? 1.15 : 0.8}
         cAzimuthAngle={180}
         cDistance={2.8}
         cPolarAngle={80}
@@ -39,8 +46,8 @@ export function AmbientShaderScene({ animate }: { animate: boolean }) {
         uAmplitude={0}
         uDensity={1.5}
         uFrequency={0}
-        uSpeed={0.15}
-        uStrength={1.5}
+        uSpeed={boost ? 0.4 : 0.15}
+        uStrength={boost ? 2 : 1.5}
       />
     </ShaderGradientCanvas>
   );
