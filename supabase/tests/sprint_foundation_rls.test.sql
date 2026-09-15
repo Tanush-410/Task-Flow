@@ -1,6 +1,6 @@
 begin;
 
-select plan(44);
+select plan(54);
 
 select has_type('public', 'planning_role', 'planning role enum exists');
 select has_table('public', 'planning_teams', 'planning teams exist');
@@ -14,6 +14,54 @@ select has_function(
   'replace_planning_team_members',
   array['uuid', 'jsonb'],
   'transactional team roster replacement exists'
+);
+
+select has_type('public', 'sprint_status', 'sprint status enum exists');
+select has_table('public', 'sprints', 'sprints exist');
+select has_column('public', 'tasks', 'sprint_id', 'tasks can belong to a sprint');
+select has_index(
+  'public',
+  'sprints',
+  'sprints_one_active_per_team_idx',
+  'at most one active sprint per team'
+);
+select has_index(
+  'public',
+  'sprints',
+  'sprints_team_status_idx',
+  'sprints are indexed by team and status'
+);
+select has_function(
+  'public',
+  'validate_task_sprint_team',
+  array[]::text[],
+  'sprint/team consistency trigger function exists'
+);
+
+select policies_are(
+  'public',
+  'sprints',
+  array['sprints_view_team_member', 'sprints_manage_planner_or_admin'],
+  'sprints have explicit policies'
+);
+
+select ok(
+  not has_table_privilege('anon', 'public.sprints', 'select'),
+  'anonymous users have no sprint access'
+);
+
+select ok(
+  has_table_privilege('authenticated', 'public.sprints', 'select')
+  and has_table_privilege('authenticated', 'public.sprints', 'insert')
+  and has_table_privilege('authenticated', 'public.sprints', 'update')
+  and has_table_privilege('authenticated', 'public.sprints', 'delete'),
+  'authenticated users receive sprint grants subject to RLS'
+);
+
+select ok(
+  has_column_privilege('authenticated', 'public.tasks', 'sprint_id', 'update')
+  and not has_column_privilege('authenticated', 'public.tasks', 'organization_id', 'update'),
+  'sprint assignment is a grantable task column, provenance columns are not'
 );
 
 select policies_are(

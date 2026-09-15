@@ -16,6 +16,7 @@ import { useMemo, useState } from 'react';
 import {
   BacklogRow,
   type EstimatePatch,
+  type SprintOption,
 } from '@/components/planning/backlog/backlog-row';
 import { CreateWorkItemForm } from '@/components/planning/backlog/create-work-item-form';
 import {
@@ -43,10 +44,12 @@ function collectParentIds(items: BacklogWorkItem[]): string[] {
 export function BacklogTree({
   items: initialItems,
   memberNameById,
+  sprints,
   teamId,
 }: {
   items: BacklogWorkItem[];
   memberNameById: Record<string, string>;
+  sprints: SprintOption[];
   teamId: string;
 }) {
   const router = useRouter();
@@ -135,6 +138,34 @@ export function BacklogTree({
     const result = await updateWorkItemPlanningFields({
       taskId: item.id,
       ...patch,
+    });
+
+    setPendingIds((previous) => {
+      const next = new Set(previous);
+      next.delete(item.id);
+      return next;
+    });
+
+    if (!result.ok) {
+      setItems(previousItems);
+      setError(result.error.message);
+      return;
+    }
+    router.refresh();
+  }
+
+  async function commitSprintChange(
+    item: BacklogWorkItem,
+    sprintId: string | null,
+  ) {
+    const previousItems = items;
+    setItems((current) => updateItemInTree(current, item.id, { sprintId }));
+    setPendingIds((previous) => new Set(previous).add(item.id));
+    setError(null);
+
+    const result = await updateWorkItemPlanningFields({
+      taskId: item.id,
+      sprintId,
     });
 
     setPendingIds((previous) => {
@@ -269,9 +300,11 @@ export function BacklogTree({
               memberNameById={memberNameById}
               onEstimateSave={commitEstimate}
               onMove={commitRank}
+              onSprintChange={commitSprintChange}
               onToggle={toggle}
               pendingIds={pendingIds}
               siblings={items}
+              sprints={sprints}
               teamId={teamId}
             />
           ))}

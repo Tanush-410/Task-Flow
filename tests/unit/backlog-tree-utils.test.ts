@@ -22,6 +22,7 @@ function item(overrides: Partial<BacklogWorkItem>): BacklogWorkItem {
     reproSteps: null,
     severity: null,
     foundInBuild: null,
+    sprintId: null,
     assigneeIds: [],
     children: [],
     ...overrides,

@@ -30,6 +30,7 @@ export type BacklogWorkItem = {
   reproSteps: string | null;
   severity: 'low' | 'medium' | 'high' | 'urgent' | null;
   foundInBuild: string | null;
+  sprintId: string | null;
   assigneeIds: string[];
   children: BacklogWorkItem[];
 };
@@ -109,7 +110,7 @@ export async function listBacklogHierarchy(
     supabase
       .from('tasks')
       .select(
-        'id,parent_task_id,work_item_type,title,priority,story_points,original_hours,remaining_hours,backlog_rank,repro_steps,severity,found_in_build',
+        'id,parent_task_id,work_item_type,title,priority,story_points,original_hours,remaining_hours,backlog_rank,repro_steps,severity,found_in_build,sprint_id',
       )
       .eq('planning_team_id', teamId)
       .order('backlog_rank', { ascending: true }),
@@ -145,6 +146,7 @@ export async function listBacklogHierarchy(
       reproSteps: row.repro_steps,
       severity: row.severity,
       foundInBuild: row.found_in_build,
+      sprintId: row.sprint_id,
       assigneeIds: assigneesByTask.get(row.id) ?? [],
       children: [],
     });

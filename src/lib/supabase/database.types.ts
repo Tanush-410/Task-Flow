@@ -540,6 +540,67 @@ export type Database = {
         };
         Relationships: [];
       };
+      sprints: {
+        Row: {
+          created_at: string;
+          created_by: string | null;
+          end_date: string;
+          id: string;
+          name: string;
+          organization_id: string;
+          planning_team_id: string;
+          start_date: string;
+          status: Database['public']['Enums']['sprint_status'];
+          updated_at: string;
+        };
+        Insert: {
+          created_at?: string;
+          created_by?: string | null;
+          end_date: string;
+          id?: string;
+          name: string;
+          organization_id: string;
+          planning_team_id: string;
+          start_date: string;
+          status?: Database['public']['Enums']['sprint_status'];
+          updated_at?: string;
+        };
+        Update: {
+          created_at?: string;
+          created_by?: string | null;
+          end_date?: string;
+          id?: string;
+          name?: string;
+          organization_id?: string;
+          planning_team_id?: string;
+          start_date?: string;
+          status?: Database['public']['Enums']['sprint_status'];
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'sprints_created_by_fkey';
+            columns: ['created_by'];
+            isOneToOne: false;
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'sprints_organization_id_fkey';
+            columns: ['organization_id'];
+            isOneToOne: false;
+            referencedRelation: 'organizations';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'sprints_planning_team_id_fkey';
+            columns: ['planning_team_id'];
+            isOneToOne: false;
+            referencedRelation: 'planning_teams';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
       task_acknowledgements: {
         Row: {
           acknowledged_at: string;
@@ -1179,6 +1240,7 @@ export type Database = {
           remaining_hours: number | null;
           repro_steps: string | null;
           severity: Database['public']['Enums']['task_priority'] | null;
+          sprint_id: string | null;
           start_at: string | null;
           status: Database['public']['Enums']['task_status'];
           story_points: number | null;
@@ -1206,6 +1268,7 @@ export type Database = {
           remaining_hours?: number | null;
           repro_steps?: string | null;
           severity?: Database['public']['Enums']['task_priority'] | null;
+          sprint_id?: string | null;
           start_at?: string | null;
           status?: Database['public']['Enums']['task_status'];
           story_points?: number | null;
@@ -1233,6 +1296,7 @@ export type Database = {
           remaining_hours?: number | null;
           repro_steps?: string | null;
           severity?: Database['public']['Enums']['task_priority'] | null;
+          sprint_id?: string | null;
           start_at?: string | null;
           status?: Database['public']['Enums']['task_status'];
           story_points?: number | null;
@@ -1267,6 +1331,13 @@ export type Database = {
             columns: ['planning_team_id'];
             isOneToOne: false;
             referencedRelation: 'planning_teams';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'tasks_sprint_id_fkey';
+            columns: ['sprint_id'];
+            isOneToOne: false;
+            referencedRelation: 'sprints';
             referencedColumns: ['id'];
           },
         ];
@@ -1458,6 +1529,7 @@ export type Database = {
       membership_role: 'admin' | 'employee';
       membership_status: 'active' | 'deactivated';
       planning_role: 'planner' | 'member';
+      sprint_status: 'planned' | 'active' | 'completed';
       task_activity_type:
         | 'task_created'
         | 'task_updated'
@@ -1623,6 +1695,7 @@ export const Constants = {
       membership_role: ['admin', 'employee'],
       membership_status: ['active', 'deactivated'],
       planning_role: ['planner', 'member'],
+      sprint_status: ['planned', 'active', 'completed'],
       task_activity_type: [
         'task_created',
         'task_updated',

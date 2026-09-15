@@ -8,6 +8,7 @@ import { listBacklogHierarchy } from '@/modules/backlog/queries';
 import type { WorkItemType } from '@/modules/backlog/schemas';
 import { listAssignableMembers } from '@/modules/members/queries';
 import { requirePlanningTeamAccess } from '@/modules/planning-teams/queries';
+import { listAssignableSprints } from '@/modules/sprints/queries';
 
 const TYPE_FILTERS: WorkItemType[] = ['epic', 'feature', 'user_story', 'task'];
 const ESTIMATE_FILTERS = ['estimated', 'unestimated'] as const;
@@ -38,7 +39,7 @@ export default async function BacklogPage({
   const activeAssigneeId = query.assigneeId || undefined;
   const activeText = query.q ?? '';
 
-  const [team, tree, assignableMembers] = await Promise.all([
+  const [team, tree, assignableMembers, sprints] = await Promise.all([
     requirePlanningTeamAccess(teamId),
     listBacklogHierarchy(teamId, {
       type: activeType,
@@ -47,6 +48,7 @@ export default async function BacklogPage({
       text: activeText,
     }),
     listAssignableMembers(),
+    listAssignableSprints(teamId),
   ]);
 
   const memberNameById = Object.fromEntries(
@@ -87,6 +89,7 @@ export default async function BacklogPage({
       <BacklogTree
         items={tree}
         memberNameById={memberNameById}
+        sprints={sprints}
         teamId={teamId}
       />
     </section>

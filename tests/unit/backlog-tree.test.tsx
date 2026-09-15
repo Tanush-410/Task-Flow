@@ -48,6 +48,7 @@ function item(overrides: Partial<BacklogWorkItem>): BacklogWorkItem {
     reproSteps: null,
     severity: null,
     foundInBuild: null,
+    sprintId: null,
     assigneeIds: [],
     children: [],
     ...overrides,
@@ -88,7 +89,14 @@ afterEach(() => {
 
 describe('BacklogTree', () => {
   it('shows an empty state when there are no items', () => {
-    render(<BacklogTree items={[]} memberNameById={{}} teamId={teamId} />);
+    render(
+      <BacklogTree
+        items={[]}
+        memberNameById={{}}
+        sprints={[]}
+        teamId={teamId}
+      />,
+    );
 
     expect(screen.getByText('No work items match these filters')).toBeVisible();
   });
@@ -98,6 +106,7 @@ describe('BacklogTree', () => {
       <BacklogTree
         items={baseTree()}
         memberNameById={memberNameById}
+        sprints={[]}
         teamId={teamId}
       />,
     );
@@ -118,6 +127,7 @@ describe('BacklogTree', () => {
       <BacklogTree
         items={baseTree()}
         memberNameById={memberNameById}
+        sprints={[]}
         teamId={teamId}
       />,
     );
@@ -140,6 +150,7 @@ describe('BacklogTree', () => {
       <BacklogTree
         items={baseTree()}
         memberNameById={memberNameById}
+        sprints={[]}
         teamId={teamId}
       />,
     );
@@ -176,6 +187,7 @@ describe('BacklogTree', () => {
       <BacklogTree
         items={baseTree()}
         memberNameById={memberNameById}
+        sprints={[]}
         teamId={teamId}
       />,
     );
@@ -203,6 +215,7 @@ describe('BacklogTree', () => {
       <BacklogTree
         items={baseTree()}
         memberNameById={memberNameById}
+        sprints={[]}
         teamId={teamId}
       />,
     );
@@ -231,6 +244,7 @@ describe('BacklogTree', () => {
       <BacklogTree
         items={baseTree()}
         memberNameById={memberNameById}
+        sprints={[]}
         teamId={teamId}
       />,
     );
@@ -250,6 +264,7 @@ describe('BacklogTree', () => {
       <BacklogTree
         items={baseTree()}
         memberNameById={memberNameById}
+        sprints={[]}
         teamId={teamId}
       />,
     );
@@ -274,6 +289,7 @@ describe('BacklogTree', () => {
       <BacklogTree
         items={baseTree()}
         memberNameById={memberNameById}
+        sprints={[]}
         teamId={teamId}
       />,
     );
@@ -307,6 +323,7 @@ describe('BacklogTree', () => {
       <BacklogTree
         items={baseTree()}
         memberNameById={memberNameById}
+        sprints={[]}
         teamId={teamId}
       />,
     );
@@ -368,6 +385,7 @@ describe('BacklogTree', () => {
       <BacklogTree
         items={treeWithTask}
         memberNameById={memberNameById}
+        sprints={[]}
         teamId={teamId}
       />,
     );
@@ -382,6 +400,7 @@ describe('BacklogTree', () => {
       <BacklogTree
         items={baseTree()}
         memberNameById={memberNameById}
+        sprints={[]}
         teamId={teamId}
       />,
     );
@@ -410,6 +429,7 @@ describe('BacklogTree', () => {
       <BacklogTree
         items={baseTree()}
         memberNameById={memberNameById}
+        sprints={[]}
         teamId={teamId}
       />,
     );
@@ -450,6 +470,7 @@ describe('BacklogTree', () => {
       <BacklogTree
         items={baseTree()}
         memberNameById={memberNameById}
+        sprints={[]}
         teamId={teamId}
       />,
     );
@@ -507,6 +528,7 @@ describe('BacklogTree', () => {
       <BacklogTree
         items={treeWithBug}
         memberNameById={memberNameById}
+        sprints={[]}
         teamId={teamId}
       />,
     );

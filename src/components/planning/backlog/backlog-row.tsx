@@ -87,6 +87,50 @@ const PRIORITY_VARIANT: Record<string, BadgeVariant> = {
   urgent: 'destructive',
 };
 
+export type SprintOption = { id: string; name: string };
+
+// Only leaf-ish work -- scheduling an Epic/Feature into a sprint doesn't
+// mean much when its children are what actually gets done day to day.
+const SPRINT_ASSIGNABLE_TYPES: WorkItemType[] = ['user_story', 'bug', 'task'];
+
+function SprintPicker({
+  item,
+  sprints,
+  onChange,
+}: {
+  item: BacklogWorkItem;
+  sprints: SprintOption[];
+  onChange: (sprintId: string | null) => void;
+}) {
+  const current = sprints.find((sprint) => sprint.id === item.sprintId);
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <button
+          className="shrink-0 rounded px-1.5 py-0.5 text-xs text-muted-foreground hover:bg-muted hover:text-foreground"
+          type="button"
+        >
+          {current ? current.name : '+ Sprint'}
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end">
+        <DropdownMenuItem onSelect={() => onChange(null)}>
+          No sprint
+        </DropdownMenuItem>
+        {sprints.map((sprint) => (
+          <DropdownMenuItem
+            key={sprint.id}
+            onSelect={() => onChange(sprint.id)}
+          >
+            {sprint.name}
+          </DropdownMenuItem>
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
 function formatEstimate(item: BacklogWorkItem): string | null {
   if (item.storyPoints != null) return `${item.storyPoints} pts`;
   if (item.originalHours != null && item.remainingHours != null) {
@@ -199,7 +243,9 @@ export function BacklogRow({
   onToggle,
   onMove,
   onEstimateSave,
+  onSprintChange,
   memberNameById,
+  sprints,
   pendingIds,
   teamId,
 }: {
@@ -214,7 +260,9 @@ export function BacklogRow({
     afterTaskId: string | null,
   ) => void;
   onEstimateSave: (item: BacklogWorkItem, patch: EstimatePatch) => void;
+  onSprintChange: (item: BacklogWorkItem, sprintId: string | null) => void;
   memberNameById: Record<string, string>;
+  sprints: SprintOption[];
   pendingIds: Set<string>;
   teamId: string;
 }) {
@@ -329,6 +377,14 @@ export function BacklogRow({
             {estimate ?? '+ Estimate'}
           </button>
         )}
+
+        {SPRINT_ASSIGNABLE_TYPES.includes(item.type) ? (
+          <SprintPicker
+            item={item}
+            onChange={(sprintId) => onSprintChange(item, sprintId)}
+            sprints={sprints}
+          />
+        ) : null}
 
         {item.assigneeIds.length > 0 ? (
           <div className="flex shrink-0 -space-x-1.5">
@@ -473,9 +529,11 @@ export function BacklogRow({
                 memberNameById={memberNameById}
                 onEstimateSave={onEstimateSave}
                 onMove={onMove}
+                onSprintChange={onSprintChange}
                 onToggle={onToggle}
                 pendingIds={pendingIds}
                 siblings={item.children}
+                sprints={sprints}
                 teamId={teamId}
               />
             ))}

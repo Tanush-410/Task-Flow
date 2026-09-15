@@ -173,6 +173,7 @@ export async function updateWorkItemPlanningFields(
       repro_steps: string | null;
       severity: 'low' | 'medium' | 'high' | 'urgent' | null;
       found_in_build: string | null;
+      sprint_id: string | null;
     }> = {};
     if (parsed.data.title !== undefined) patch.title = parsed.data.title;
     if (parsed.data.description !== undefined) {
@@ -194,6 +195,9 @@ export async function updateWorkItemPlanningFields(
     }
     if (parsed.data.foundInBuild !== undefined) {
       patch.found_in_build = parsed.data.foundInBuild;
+    }
+    if (parsed.data.sprintId !== undefined) {
+      patch.sprint_id = parsed.data.sprintId;
     }
 
     const { data, error } = await supabase

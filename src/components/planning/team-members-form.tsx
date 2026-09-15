@@ -93,6 +93,24 @@ export function TeamMembersForm({
         value={JSON.stringify(submittedRows)}
       />
 
+      {canManage ? (
+        <div className="flex justify-end">
+          <Button
+            disabled={pending || rows.every((row) => row.selected)}
+            onClick={() =>
+              setRows((current) =>
+                current.map((row) => ({ ...row, selected: true })),
+              )
+            }
+            size="sm"
+            type="button"
+            variant="outline"
+          >
+            Add all active employees
+          </Button>
+        </div>
+      ) : null}
+
       <div className="overflow-hidden rounded-xl border border-border">
         <div className="hidden grid-cols-[minmax(0,1fr)_9rem_10rem] gap-4 border-b border-border bg-muted/40 px-4 py-2.5 text-xs font-medium tracking-wide text-muted-foreground uppercase sm:grid">
           <span>Member</span>

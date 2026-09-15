@@ -5,6 +5,7 @@ const mocks = vi.hoisted(() => ({
   listBacklogHierarchy: vi.fn(),
   listAssignableMembers: vi.fn(),
   requirePlanningTeamAccess: vi.fn(),
+  listAssignableSprints: vi.fn(),
 }));
 
 vi.mock('server-only', () => ({}));
@@ -20,6 +21,9 @@ vi.mock('@/modules/members/queries', () => ({
 }));
 vi.mock('@/modules/planning-teams/queries', () => ({
   requirePlanningTeamAccess: mocks.requirePlanningTeamAccess,
+}));
+vi.mock('@/modules/sprints/queries', () => ({
+  listAssignableSprints: mocks.listAssignableSprints,
 }));
 
 import BacklogPage from '@/app/(app)/planning/teams/[teamId]/backlog/page';
@@ -41,6 +45,7 @@ describe('BacklogPage', () => {
     mocks.listAssignableMembers.mockResolvedValue([
       { userId: 'user-1', displayName: 'Ada Lovelace' },
     ]);
+    mocks.listAssignableSprints.mockResolvedValue([]);
     mocks.listBacklogHierarchy.mockResolvedValue([
       {
         id: epicId,
@@ -52,6 +57,7 @@ describe('BacklogPage', () => {
         originalHours: null,
         remainingHours: null,
         backlogRank: 'V',
+        sprintId: null,
         assigneeIds: [],
         children: [],
       },
@@ -84,6 +90,7 @@ describe('BacklogPage', () => {
       name: 'Platform',
     });
     mocks.listAssignableMembers.mockResolvedValue([]);
+    mocks.listAssignableSprints.mockResolvedValue([]);
     mocks.listBacklogHierarchy.mockResolvedValue([]);
 
     render(

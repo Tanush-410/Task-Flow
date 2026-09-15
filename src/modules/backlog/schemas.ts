@@ -74,6 +74,7 @@ export const workItemPlanningFieldsUpdateSchema = z
     reproSteps: reproStepsSchema.nullable().optional(),
     severity: taskPrioritySchema.nullable().optional(),
     foundInBuild: foundInBuildSchema.nullable().optional(),
+    sprintId: uuidSchema.nullable().optional(),
   })
   .refine(
     (value) =>
@@ -85,7 +86,8 @@ export const workItemPlanningFieldsUpdateSchema = z
       value.originalHours !== undefined ||
       value.reproSteps !== undefined ||
       value.severity !== undefined ||
-      value.foundInBuild !== undefined,
+      value.foundInBuild !== undefined ||
+      value.sprintId !== undefined,
     { message: 'At least one field must change' },
   )
   .refine(
