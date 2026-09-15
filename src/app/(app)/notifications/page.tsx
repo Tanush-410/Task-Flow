@@ -67,7 +67,15 @@ export default async function NotificationsPage() {
                   <p className="mt-1 text-sm text-muted-foreground">
                     {notification.body}
                   </p>
-                  {notification.task_id ? (
+                  {notification.notification_type ===
+                  'connection_request_received' ? (
+                    <Link
+                      className="mt-2 inline-block text-sm font-semibold text-primary underline underline-offset-2"
+                      href="/profile"
+                    >
+                      View request
+                    </Link>
+                  ) : notification.task_id ? (
                     <Link
                       className="mt-2 inline-block text-sm font-semibold text-primary underline underline-offset-2"
                       href={`/tasks/${notification.task_id}`}

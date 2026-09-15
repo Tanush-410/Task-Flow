@@ -1473,7 +1473,9 @@ export type Database = {
         | 'assignment_delayed'
         | 'assignment_completed'
         | 'acknowledgement_required'
-        | 'comment_added';
+        | 'comment_added'
+        | 'connection_request_received'
+        | 'connection_request_responded';
       task_priority: 'low' | 'medium' | 'high' | 'urgent';
       task_recurrence: 'none' | 'daily' | 'weekly' | 'monthly';
       task_status: 'draft' | 'published' | 'archived';
@@ -1638,6 +1640,8 @@ export const Constants = {
         'assignment_completed',
         'acknowledgement_required',
         'comment_added',
+        'connection_request_received',
+        'connection_request_responded',
       ],
       task_priority: ['low', 'medium', 'high', 'urgent'],
       task_recurrence: ['none', 'daily', 'weekly', 'monthly'],
