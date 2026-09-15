@@ -12,7 +12,8 @@ import { Textarea } from '@/components/ui/textarea';
 
 export type TaskCommentRow = {
   id: string;
-  authorId: string;
+  /** Null once the author has deleted their account -- the comment survives. */
+  authorId: string | null;
   authorName: string;
   body: string;
   createdAt: string;
@@ -121,7 +122,7 @@ export function TaskComments({
               <PersonAvatar
                 displayName={comment.authorName}
                 size="sm"
-                userId={comment.authorId}
+                userId={comment.authorId ?? 'deleted-user'}
               />
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">

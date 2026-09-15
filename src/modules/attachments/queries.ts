@@ -11,7 +11,7 @@ export type TaskAttachmentRow = {
   fileName: string;
   fileSize: number;
   mimeType: string;
-  uploadedBy: string;
+  uploadedBy: string | null;
   createdAt: string;
   downloadUrl: string | null;
 };

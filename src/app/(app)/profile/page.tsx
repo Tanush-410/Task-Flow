@@ -7,6 +7,7 @@ import {
 } from '@/modules/members/queries';
 import { ConnectionRequestList } from '@/components/connection-request-list';
 import { CopyButton } from '@/components/copy-button';
+import { DeleteAccountCard } from '@/components/delete-account-card';
 import { PersonAvatar } from '@/components/person-avatar';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -84,6 +85,8 @@ export default async function ProfilePage() {
           </CardContent>
         </Card>
       ) : null}
+
+      <DeleteAccountCard />
     </section>
   );
 }

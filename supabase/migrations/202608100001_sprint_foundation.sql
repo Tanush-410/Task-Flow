@@ -398,16 +398,16 @@ values
   (
     'native_sprint_planning', 'development', true, 100,
     'product-engineering', 'Gate native sprint planning',
-    'Enabled for local verification', '2026-09-10', '2027-08-10'
+    'Enabled for local verification', current_date, current_date + 365
   ),
   (
     'native_sprint_planning', 'staging', false, 0,
     'product-engineering', 'Gate native sprint planning',
-    'Enable after increment acceptance', '2026-09-10', '2027-08-10'
+    'Enable after increment acceptance', current_date, current_date + 365
   ),
   (
     'native_sprint_planning', 'production', false, 0,
     'product-engineering', 'Gate native sprint planning',
-    'Organization-scoped rollout after staging approval', '2026-09-10', '2027-08-10'
+    'Organization-scoped rollout after staging approval', current_date, current_date + 365
   )
 on conflict (organization_id, environment, role_scope, key) do nothing;

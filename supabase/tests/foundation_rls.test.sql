@@ -1,6 +1,6 @@
 begin;
 
-select plan(138);
+select plan(141);
 
 select has_table('public', 'profiles', 'profiles exists');
 select has_table('public', 'organizations', 'organizations exists');
@@ -82,6 +82,29 @@ select ok(
     'execute'
   ),
   'anonymous users cannot execute invitation acceptance'
+);
+
+select has_function(
+  'public',
+  'delete_own_account',
+  array[]::text[],
+  'self-service account deletion function exists'
+);
+select ok(
+  has_function_privilege(
+    'authenticated',
+    'public.delete_own_account()',
+    'execute'
+  ),
+  'authenticated users can execute account deletion'
+);
+select ok(
+  not has_function_privilege(
+    'anon',
+    'public.delete_own_account()',
+    'execute'
+  ),
+  'anonymous users cannot execute account deletion'
 );
 
 select policies_are(

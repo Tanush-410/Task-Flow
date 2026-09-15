@@ -127,13 +127,17 @@ export default async function TaskDetailPage({
     ...activityRows
       .map((row) => row.actor_id)
       .filter((id): id is string => Boolean(id)),
-    ...commentRows.map((row) => row.author_id),
+    ...commentRows
+      .map((row) => row.author_id)
+      .filter((id): id is string => Boolean(id)),
   ]);
 
   const commentsWithAuthor: TaskCommentRow[] = commentRows.map((row) => ({
     id: row.id,
     authorId: row.author_id,
-    authorName: displayNames.get(row.author_id) ?? 'Unknown',
+    authorName: row.author_id
+      ? (displayNames.get(row.author_id) ?? 'Unknown')
+      : 'Deleted user',
     body: row.body,
     createdAt: row.created_at,
   }));

@@ -12,7 +12,10 @@ import { serverEnv } from '@/lib/server-env';
 import { createAdminSupabase } from '@/lib/supabase/admin';
 import { createServerSupabase } from '@/lib/supabase/server';
 import type { ActionResult } from '@/lib/result';
-import { getMembershipAccess } from '@/modules/members/queries';
+import {
+  getMembershipAccess,
+  requireMembership,
+} from '@/modules/members/queries';
 
 import {
   isInvitationPath,
@@ -299,6 +302,56 @@ export async function signOut(): Promise<void> {
   const supabase = await createServerSupabase();
   await supabase.auth.signOut();
   redirect('/login');
+}
+
+const LAST_ADMIN_DELETE_ERROR = {
+  code: 'LAST_ADMIN_CANNOT_DELETE',
+  message:
+    "You're the only admin of an organization with other members, so deleting your account would leave it with no one to manage it. Invite another admin (or have an existing admin take over) before deleting your account.",
+} as const;
+const DELETE_ACCOUNT_ERROR = {
+  code: 'DELETE_ACCOUNT_FAILED',
+  message: 'Your account could not be deleted. Please try again.',
+} as const;
+
+/**
+ * Permanently deletes the caller's own account: `delete_own_account` (a
+ * security-definer RPC) cleans up everything that would otherwise block
+ * the foreign-key-restricted deletion of the underlying auth user, then
+ * the service-role admin client removes that auth user directly -- the
+ * only way to actually free the email address for a fresh signup, since a
+ * deactivated-membership approach wouldn't touch auth.users at all.
+ */
+export async function deleteOwnAccount(): Promise<ActionResult<never>> {
+  const traceId = randomUUID();
+  const membership = await requireMembership();
+
+  try {
+    const supabase = await createServerSupabase();
+    const { error } = await supabase.rpc('delete_own_account');
+
+    if (error) {
+      if (error.message === 'LAST_ADMIN_CANNOT_DELETE') {
+        return { ok: false, error: { ...LAST_ADMIN_DELETE_ERROR, traceId } };
+      }
+      return { ok: false, error: { ...DELETE_ACCOUNT_ERROR, traceId } };
+    }
+
+    const admin = createAdminSupabase();
+    const { error: deleteUserError } = await admin.auth.admin.deleteUser(
+      membership.userId,
+    );
+
+    if (deleteUserError) {
+      return { ok: false, error: { ...DELETE_ACCOUNT_ERROR, traceId } };
+    }
+
+    await supabase.auth.signOut();
+  } catch {
+    return { ok: false, error: { ...DELETE_ACCOUNT_ERROR, traceId } };
+  }
+
+  redirect('/login?deleted=1');
 }
 
 const RESET_UNAVAILABLE_MESSAGE =

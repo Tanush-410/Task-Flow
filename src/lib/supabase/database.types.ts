@@ -38,7 +38,7 @@ export type Database = {
         Row: {
           created_at: string;
           id: string;
-          invited_by: string;
+          invited_by: string | null;
           organization_id: string;
           requested_user_id: string;
           responded_at: string | null;
@@ -48,7 +48,7 @@ export type Database = {
         Insert: {
           created_at?: string;
           id?: string;
-          invited_by?: string;
+          invited_by?: string | null;
           organization_id: string;
           requested_user_id: string;
           responded_at?: string | null;
@@ -58,7 +58,7 @@ export type Database = {
         Update: {
           created_at?: string;
           id?: string;
-          invited_by?: string;
+          invited_by?: string | null;
           organization_id?: string;
           requested_user_id?: string;
           responded_at?: string | null;
@@ -192,7 +192,7 @@ export type Database = {
           email: string;
           expires_at: string;
           id: string;
-          invited_by: string;
+          invited_by: string | null;
           organization_id: string;
           revoked_at: string | null;
           role: Database['public']['Enums']['membership_role'];
@@ -205,7 +205,7 @@ export type Database = {
           email: string;
           expires_at: string;
           id?: string;
-          invited_by?: string;
+          invited_by?: string | null;
           organization_id: string;
           revoked_at?: string | null;
           role: Database['public']['Enums']['membership_role'];
@@ -218,7 +218,7 @@ export type Database = {
           email?: string;
           expires_at?: string;
           id?: string;
-          invited_by?: string;
+          invited_by?: string | null;
           organization_id?: string;
           revoked_at?: string | null;
           role?: Database['public']['Enums']['membership_role'];
@@ -378,7 +378,7 @@ export type Database = {
       organizations: {
         Row: {
           created_at: string;
-          created_by: string;
+          created_by: string | null;
           id: string;
           name: string;
           timezone: string;
@@ -386,7 +386,7 @@ export type Database = {
         };
         Insert: {
           created_at?: string;
-          created_by: string;
+          created_by?: string | null;
           id?: string;
           name: string;
           timezone?: string;
@@ -394,7 +394,7 @@ export type Database = {
         };
         Update: {
           created_at?: string;
-          created_by?: string;
+          created_by?: string | null;
           id?: string;
           name?: string;
           timezone?: string;
@@ -468,7 +468,7 @@ export type Database = {
       planning_teams: {
         Row: {
           created_at: string;
-          created_by: string;
+          created_by: string | null;
           default_sprint_length_days: number;
           description: string;
           id: string;
@@ -479,7 +479,7 @@ export type Database = {
         };
         Insert: {
           created_at?: string;
-          created_by?: string;
+          created_by?: string | null;
           default_sprint_length_days?: number;
           description?: string;
           id?: string;
@@ -490,7 +490,7 @@ export type Database = {
         };
         Update: {
           created_at?: string;
-          created_by?: string;
+          created_by?: string | null;
           default_sprint_length_days?: number;
           description?: string;
           id?: string;
@@ -682,7 +682,7 @@ export type Database = {
       };
       task_assignments: {
         Row: {
-          assigned_by: string;
+          assigned_by: string | null;
           assignee_id: string;
           completed_at: string | null;
           created_at: string;
@@ -697,7 +697,7 @@ export type Database = {
           updated_at: string;
         };
         Insert: {
-          assigned_by: string;
+          assigned_by?: string | null;
           assignee_id: string;
           completed_at?: string | null;
           created_at?: string;
@@ -712,7 +712,7 @@ export type Database = {
           updated_at?: string;
         };
         Update: {
-          assigned_by?: string;
+          assigned_by?: string | null;
           assignee_id?: string;
           completed_at?: string | null;
           created_at?: string;
@@ -767,7 +767,7 @@ export type Database = {
           organization_id: string;
           storage_path: string;
           task_id: string;
-          uploaded_by: string;
+          uploaded_by: string | null;
         };
         Insert: {
           created_at?: string;
@@ -778,7 +778,7 @@ export type Database = {
           organization_id: string;
           storage_path: string;
           task_id: string;
-          uploaded_by: string;
+          uploaded_by?: string | null;
         };
         Update: {
           created_at?: string;
@@ -789,7 +789,7 @@ export type Database = {
           organization_id?: string;
           storage_path?: string;
           task_id?: string;
-          uploaded_by?: string;
+          uploaded_by?: string | null;
         };
         Relationships: [
           {
@@ -818,7 +818,7 @@ export type Database = {
       task_checklist_items: {
         Row: {
           created_at: string;
-          created_by: string;
+          created_by: string | null;
           id: string;
           is_done: boolean;
           organization_id: string;
@@ -829,7 +829,7 @@ export type Database = {
         };
         Insert: {
           created_at?: string;
-          created_by: string;
+          created_by?: string | null;
           id?: string;
           is_done?: boolean;
           organization_id: string;
@@ -840,7 +840,7 @@ export type Database = {
         };
         Update: {
           created_at?: string;
-          created_by?: string;
+          created_by?: string | null;
           id?: string;
           is_done?: boolean;
           organization_id?: string;
@@ -875,7 +875,7 @@ export type Database = {
       };
       task_comments: {
         Row: {
-          author_id: string;
+          author_id: string | null;
           body: string;
           created_at: string;
           id: string;
@@ -884,7 +884,7 @@ export type Database = {
           updated_at: string;
         };
         Insert: {
-          author_id: string;
+          author_id?: string | null;
           body: string;
           created_at?: string;
           id?: string;
@@ -893,7 +893,7 @@ export type Database = {
           updated_at?: string;
         };
         Update: {
-          author_id?: string;
+          author_id?: string | null;
           body?: string;
           created_at?: string;
           id?: string;
@@ -928,7 +928,7 @@ export type Database = {
       task_dependencies: {
         Row: {
           created_at: string;
-          created_by: string;
+          created_by: string | null;
           depends_on_task_id: string;
           id: string;
           organization_id: string;
@@ -936,7 +936,7 @@ export type Database = {
         };
         Insert: {
           created_at?: string;
-          created_by: string;
+          created_by?: string | null;
           depends_on_task_id: string;
           id?: string;
           organization_id: string;
@@ -944,7 +944,7 @@ export type Database = {
         };
         Update: {
           created_at?: string;
-          created_by?: string;
+          created_by?: string | null;
           depends_on_task_id?: string;
           id?: string;
           organization_id?: string;
@@ -1108,7 +1108,7 @@ export type Database = {
         Row: {
           acknowledgement_required: boolean;
           created_at: string;
-          created_by: string;
+          created_by: string | null;
           description: string;
           id: string;
           name: string;
@@ -1120,7 +1120,7 @@ export type Database = {
         Insert: {
           acknowledgement_required?: boolean;
           created_at?: string;
-          created_by: string;
+          created_by?: string | null;
           description?: string;
           id?: string;
           name: string;
@@ -1132,7 +1132,7 @@ export type Database = {
         Update: {
           acknowledgement_required?: boolean;
           created_at?: string;
-          created_by?: string;
+          created_by?: string | null;
           description?: string;
           id?: string;
           name?: string;
@@ -1164,7 +1164,7 @@ export type Database = {
           archived_at: string | null;
           backlog_rank: string | null;
           created_at: string;
-          created_by: string;
+          created_by: string | null;
           description: string;
           due_at: string | null;
           found_in_build: string | null;
@@ -1191,7 +1191,7 @@ export type Database = {
           archived_at?: string | null;
           backlog_rank?: string | null;
           created_at?: string;
-          created_by: string;
+          created_by?: string | null;
           description?: string;
           due_at?: string | null;
           found_in_build?: string | null;
@@ -1218,7 +1218,7 @@ export type Database = {
           archived_at?: string | null;
           backlog_rank?: string | null;
           created_at?: string;
-          created_by?: string;
+          created_by?: string | null;
           description?: string;
           due_at?: string | null;
           found_in_build?: string | null;
@@ -1334,6 +1334,7 @@ export type Database = {
         };
         Returns: string;
       };
+      delete_own_account: { Args: never; Returns: undefined };
       discard_staged_invitation: {
         Args: { invitation_id: string };
         Returns: boolean;

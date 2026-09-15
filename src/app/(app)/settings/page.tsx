@@ -2,6 +2,7 @@ import { signOut } from '@/modules/auth/actions';
 import { getOwnConnectCode, requireAdmin } from '@/modules/members/queries';
 import { getCurrentOrganization } from '@/modules/organizations/queries';
 import { CopyButton } from '@/components/copy-button';
+import { DeleteAccountCard } from '@/components/delete-account-card';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { PageHeader } from '@/components/ui/page-header';
@@ -74,6 +75,8 @@ export default async function SettingsPage() {
           </form>
         </CardContent>
       </Card>
+
+      <DeleteAccountCard />
     </section>
   );
 }
