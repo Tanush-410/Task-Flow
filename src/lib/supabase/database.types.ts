@@ -1442,6 +1442,13 @@ export type Database = {
           id: string;
         }[];
       };
+      update_member_role: {
+        Args: {
+          new_role: Database['public']['Enums']['membership_role'];
+          target_user_id: string;
+        };
+        Returns: undefined;
+      };
     };
     Enums: {
       assignment_status:

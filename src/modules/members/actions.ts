@@ -208,3 +208,68 @@ export async function listPeopleForCommandPalette(): Promise<PaletteMember[]> {
       role: member.role,
     }));
 }
+
+const LAST_ADMIN_DEMOTE_ERROR = {
+  code: 'LAST_ADMIN_CANNOT_DEMOTE',
+  message:
+    "This is your organization's only admin. Promote someone else first if you want to step down.",
+} as const;
+const MEMBER_NOT_FOUND_ERROR = {
+  code: 'MEMBER_NOT_FOUND',
+  message: 'That member could not be found in your organization.',
+} as const;
+const UPDATE_ROLE_ERROR = {
+  code: 'UPDATE_ROLE_FAILED',
+  message: 'The role could not be updated. Please try again.',
+} as const;
+
+/**
+ * Promotes an employee to admin or demotes an admin back to employee.
+ * "Transfer your admin role" is just this called twice: promote someone
+ * else, then demote yourself -- the RPC's own last-admin check (mirroring
+ * accept_invitation's) blocks the second call only if it would leave the
+ * org with nobody able to manage it.
+ */
+export async function updateMemberRole(
+  targetUserId: unknown,
+  newRole: unknown,
+): Promise<ActionResult<{ userId: string; role: 'admin' | 'employee' }>> {
+  const traceId = randomUUID();
+
+  if (
+    typeof targetUserId !== 'string' ||
+    (newRole !== 'admin' && newRole !== 'employee')
+  ) {
+    return {
+      ok: false,
+      error: {
+        code: 'INVALID_ROLE_UPDATE',
+        message: 'Check the member and role.',
+        traceId,
+      },
+    };
+  }
+
+  try {
+    await requireAdmin();
+    const supabase = await createServerSupabase();
+    const { error } = await supabase.rpc('update_member_role', {
+      target_user_id: targetUserId,
+      new_role: newRole,
+    });
+
+    if (error) {
+      if (error.message === 'LAST_ADMIN_CANNOT_DEMOTE') {
+        return { ok: false, error: { ...LAST_ADMIN_DEMOTE_ERROR, traceId } };
+      }
+      if (error.message === 'MEMBER_NOT_FOUND') {
+        return { ok: false, error: { ...MEMBER_NOT_FOUND_ERROR, traceId } };
+      }
+      return { ok: false, error: { ...UPDATE_ROLE_ERROR, traceId } };
+    }
+
+    return { ok: true, data: { userId: targetUserId, role: newRole } };
+  } catch {
+    return { ok: false, error: { ...UPDATE_ROLE_ERROR, traceId } };
+  }
+}

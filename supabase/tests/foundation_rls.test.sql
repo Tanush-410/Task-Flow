@@ -1,6 +1,6 @@
 begin;
 
-select plan(141);
+select plan(144);
 
 select has_table('public', 'profiles', 'profiles exists');
 select has_table('public', 'organizations', 'organizations exists');
@@ -89,6 +89,28 @@ select has_function(
   'delete_own_account',
   array[]::text[],
   'self-service account deletion function exists'
+);
+select has_function(
+  'public',
+  'update_member_role',
+  array['uuid', 'public.membership_role'],
+  'admin role-management function exists'
+);
+select ok(
+  has_function_privilege(
+    'authenticated',
+    'public.update_member_role(uuid, public.membership_role)',
+    'execute'
+  ),
+  'authenticated users can execute member role updates'
+);
+select ok(
+  not has_function_privilege(
+    'anon',
+    'public.update_member_role(uuid, public.membership_role)',
+    'execute'
+  ),
+  'anonymous users cannot execute member role updates'
 );
 select ok(
   has_function_privilege(

@@ -3,6 +3,7 @@ import Link from 'next/link';
 
 import { ConnectEmployeeForm } from '@/components/connect-employee-form';
 import { InviteMemberForm } from '@/components/invite-member-form';
+import { MemberRoleAction } from '@/components/member-role-action';
 import { PersonAvatar } from '@/components/person-avatar';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -11,15 +12,19 @@ import { PageHeader } from '@/components/ui/page-header';
 import {
   listOrganizationMembers,
   listPendingInvitations,
+  requireAdmin,
 } from '@/modules/members/queries';
 import { getEmployeeWorkload } from '@/modules/reports/queries';
 
 export default async function EmployeesPage() {
-  const [members, workload, pendingInvitations] = await Promise.all([
-    listOrganizationMembers(),
-    getEmployeeWorkload(),
-    listPendingInvitations(),
-  ]);
+  const [membership, members, workload, pendingInvitations] = await Promise.all(
+    [
+      requireAdmin(),
+      listOrganizationMembers(),
+      getEmployeeWorkload(),
+      listPendingInvitations(),
+    ],
+  );
   const maxActive = Math.max(1, ...workload.map((row) => row.activeCount));
 
   return (
@@ -172,41 +177,53 @@ export default async function EmployeesPage() {
           ) : (
             <ul className="divide-y divide-border">
               {members.map((member) => {
-                const content = (
-                  <>
-                    <div className="flex items-center gap-3">
-                      <PersonAvatar
-                        displayName={member.displayName}
-                        userId={member.userId}
-                      />
-                      <span className="text-sm font-semibold text-foreground">
-                        {member.displayName}
-                      </span>
-                    </div>
-                    <Badge
-                      variant={
-                        member.role === 'admin' ? 'default' : 'secondary'
-                      }
-                    >
-                      {member.role}
-                    </Badge>
-                  </>
+                const isSelf = member.userId === membership.userId;
+                const identity = (
+                  <div className="flex min-w-0 items-center gap-3">
+                    <PersonAvatar
+                      displayName={member.displayName}
+                      userId={member.userId}
+                    />
+                    <span className="truncate text-sm font-semibold text-foreground">
+                      {member.displayName}
+                      {isSelf ? (
+                        <span className="ml-1.5 font-normal text-muted-foreground">
+                          (you)
+                        </span>
+                      ) : null}
+                    </span>
+                  </div>
                 );
 
                 return (
-                  <li key={member.id}>
+                  <li
+                    className="flex flex-wrap items-center justify-between gap-3 py-3"
+                    key={member.id}
+                  >
                     {member.role === 'employee' ? (
                       <Link
-                        className="flex items-center justify-between gap-4 py-3 hover:opacity-80"
+                        className="min-w-0 hover:opacity-80"
                         href={`/employees/${member.userId}`}
                       >
-                        {content}
+                        {identity}
                       </Link>
                     ) : (
-                      <div className="flex items-center justify-between gap-4 py-3">
-                        {content}
-                      </div>
+                      identity
                     )}
+                    <div className="flex items-center gap-3">
+                      <Badge
+                        variant={
+                          member.role === 'admin' ? 'default' : 'secondary'
+                        }
+                      >
+                        {member.role}
+                      </Badge>
+                      <MemberRoleAction
+                        isSelf={isSelf}
+                        role={member.role}
+                        userId={member.userId}
+                      />
+                    </div>
                   </li>
                 );
               })}

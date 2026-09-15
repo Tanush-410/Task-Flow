@@ -17,7 +17,7 @@ describe('feature flag evaluation migration', () => {
   it('keeps the pgTAP index assertion and plan synchronized', () => {
     const sql = readFileSync('supabase/tests/foundation_rls.test.sql', 'utf8');
 
-    expect(sql).toMatch(/select plan\(141\)/i);
+    expect(sql).toMatch(/select plan\(144\)/i);
     expect(sql).toMatch(
       /has_index\([\s\S]*?'public',[\s\S]*?'feature_flags',[\s\S]*?'feature_flags_evaluation_lookup_idx'/i,
     );
